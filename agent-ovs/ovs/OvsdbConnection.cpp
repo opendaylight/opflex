@@ -14,36 +14,13 @@
 #  include <config.h>
 #endif
 
-#include <set>
-#include <tuple>
-#include <memory>
+#include "ovs/include/OvsdbConnection.h"
+#include <opflexagent/logging.h>
+#include "opflex/rpc/JsonRpcConnection.h"
 
-#include <yajr/rpc/methods.hpp>
+namespace opflexagent {
 
-#include "opflex/engine/internal/OpflexMessage.h"
-#include "opflex/engine/internal/OpflexConnection.h"
-#include "opflex/engine/internal/ProcessorMessage.h"
-#include "opflex/engine/internal/OvsdbConnection.h"
-#include "opflex/rpc/JsonRpc.h"
-
-#include "opflex/logging/internal/logging.hpp"
-#include <opflex/yajr/yajr.hpp>
-#include <opflex/yajr/rpc/rpc.hpp>
-
-#include <rapidjson/document.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/prettywriter.h>
-
-using  rapidjson::Writer;
-using rapidjson::Value;
-using rapidjson::Type;
-using rapidjson::Document;
-
-namespace opflex {
-namespace engine {
-namespace internal {
-
-TransactReq::TransactReq(const transData& td) : OpflexMessage("transact", REQUEST),
+TransactReq::TransactReq(const transData& td) : JsonRpcMessage("transact", REQUEST),
         tData(td) {}
 
 void TransactReq::serializePayload(yajr::rpc::SendHandler& writer) {
@@ -52,7 +29,7 @@ void TransactReq::serializePayload(yajr::rpc::SendHandler& writer) {
 }
 
 JsonReq::JsonReq(const list<transData>& tl, uint64_t reqId)
-    : OpflexMessage("transact", REQUEST), reqId(reqId)
+    : JsonRpcMessage("transact", REQUEST), reqId(reqId)
 {
     for (auto& elem : tl) {
         shared_ptr<TransactReq> pTr = make_shared<TransactReq>(elem);
@@ -69,7 +46,7 @@ void OvsdbConnection::send_req_cb(uv_async_t* handle) {
     req_cb_data* reqCbd = (req_cb_data*)handle->data;
     JsonReq* req = reqCbd->req;
     yajr::rpc::MethodName method(req->getMethod().c_str());
-    PayloadWrapper wrapper(req);
+    opflex::jsonrpc::PayloadWrapper wrapper(req);
     yajr::rpc::OutboundRequest outr =
             yajr::rpc::OutboundRequest(wrapper, &method, req->reqId, reqCbd->peer);
     outr.send();
@@ -86,85 +63,8 @@ void OvsdbConnection::sendTransaction(const list<transData>& tl,
     uv_async_send(&send_req_async);
 }
 
-/**
- * walks the Value hierarchy according to the indices passed in the list
- * to retrieve the Value.
- * @param[in] val the Value tree to be walked
- * @param[in] idx list of indices to walk the tree.
- * @return a Value object.
- */
-void getValue(const Document& val, const list<string>& idx, Value& result) {
-    stringstream ss;
-    for (auto& str : idx) {
-        ss << " " << str << ", ";
-    }
-    LOG(DEBUG4) << ss.rdbuf();
-    Document::AllocatorType& alloc = ((Document&)val).GetAllocator();
-    Value tmpVal(Type::kNullType);
-    if (val == NULL || !val.IsArray()) {
-        result = tmpVal;
-        return;
-    }
-    // if string is a number, treat it as index array.
-    // otherwise its an object name.
-    int index;
-    tmpVal.CopyFrom(val, alloc);
-    for (list<string>::const_iterator itr=idx.begin(); itr != idx.end();
-            itr++) {
-        LOG(DEBUG4) << "index " << *itr;
-        bool isArr = false;
-        try {
-            index = stoi(*itr);
-            isArr = true;
-            LOG(DEBUG4) << "Is array";
-        } catch (const invalid_argument& e) {
-            // must be object name.
-            LOG(DEBUG4) << "Is not array";
-        }
-
-        if (isArr) {
-            int arrSize = tmpVal.Size();
-            LOG(DEBUG4) << "arr size " << arrSize;
-            if ((arrSize - 1) < index) {
-                LOG(DEBUG4) << "arr size is less than index";
-                // array size is less than the index we are looking for
-                tmpVal.SetNull();
-                result = tmpVal;
-                return;
-            }
-            tmpVal = tmpVal[index];
-        } else if (tmpVal.IsObject()) {
-            if (tmpVal.HasMember((*itr).c_str())) {
-                Value::ConstMemberIterator itrMem =
-                        tmpVal.FindMember((*itr).c_str());
-                if (itrMem != tmpVal.MemberEnd()) {
-                    LOG(DEBUG4) << "obj name << " << itrMem->name.GetString();
-                    tmpVal.CopyFrom(itrMem->value, alloc);
-                } else {
-                    // member not found
-                    tmpVal.RemoveAllMembers();
-                    result = tmpVal;
-                    return;
-                }
-            } else {
-                tmpVal.RemoveAllMembers();
-                result = tmpVal;
-                return;
-            }
-        } else {
-            LOG(DEBUG) << "Value is not array or object";
-            // some primitive type, should not hit this before
-            // list iteration is over.
-            tmpVal.SetNull();
-            result = tmpVal;
-            return;
-        }
-    }
-    result = tmpVal;
-}
-
 template<typename T>
-void TransactReq::writePair(rapidjson::Writer<T>& writer, shared_ptr<BaseData> bPtr,
+void TransactReq::writePair(rapidjson::Writer<T>& writer, const shared_ptr<BaseData>& bPtr,
         bool kvPair) {
     if (bPtr->getType() == Dtype::INTEGER) {
         shared_ptr<TupleData<int>> tPtr =
@@ -307,7 +207,6 @@ void OvsdbConnection::start() {
 
 void OvsdbConnection::connect_cb(uv_async_t* handle) {
     OvsdbConnection* ocp = (OvsdbConnection*)handle->data;
-    VLOG(5) << ocp;
     // TODO - don't hardcode socket...this whole thing needs to moved out of libopflex
     std::string swPath("/usr/local/var/run/openvswitch/db.sock");
     ocp->peer = yajr::Peer::create(swPath, on_state_change,
@@ -326,19 +225,17 @@ void OvsdbConnection::stop() {
  void OvsdbConnection::on_state_change(yajr::Peer * p, void * data,
                      yajr::StateChange::To stateChange,
                      int error) {
-        OvsdbConnection* conn = (OvsdbConnection*)data;
-        LOG(DEBUG) << "conn ptr " << hex << conn;
-        switch (stateChange) {
+    OvsdbConnection* conn = (OvsdbConnection*)data;
+    LOG(DEBUG) << "conn ptr " << hex << conn;
+    switch (stateChange) {
         case yajr::StateChange::CONNECT:
             conn->setConnected(true);
             LOG(INFO) << "New client connection";
             conn->ready.notify_all();
-
             break;
         case yajr::StateChange::DISCONNECT:
             conn->setConnected(false);
             LOG(INFO) << "Disconnected";
-            //p->stopKeepAlive();
             break;
         case yajr::StateChange::TRANSPORT_FAILURE:
             conn->setConnected(false);
@@ -353,9 +250,8 @@ void OvsdbConnection::stop() {
         case yajr::StateChange::DELETE:
             conn->setConnected(false);
             LOG(INFO) << "Connection closed";
-            //p->stopKeepAlive();
             break;
-        }
+    }
 }
 
 uv_loop_t* OvsdbConnection::loop_selector(void* data) {
@@ -363,18 +259,18 @@ uv_loop_t* OvsdbConnection::loop_selector(void* data) {
     return jRpc->client_loop;
 }
 
-void RpcConnection::handleTransaction(uint64_t reqId,
-            const rapidjson::Document& payload) {
-    pTrans->handleTransaction(reqId, payload);
-}
-
 void OvsdbConnection::connect() {
     connect_async.data = this;
     uv_async_send(&connect_async);
 }
 
-std::shared_ptr<RpcConnection> createConnection(Transaction& trans) {
-    return make_shared<OvsdbConnection>(&trans);
+void OvsdbConnection::disconnect() {
+    // TODO
+}
+
+void OvsdbConnection::handleTransaction(uint64_t reqId,
+            const rapidjson::Document& payload) {
+    pTrans->handleTransaction(reqId, payload);
 }
 
 void MockRpcConnection::sendTransaction(const list<transData>& tl,
@@ -387,25 +283,4 @@ void MockRpcConnection::sendTransaction(const list<transData>& tl,
         LOG(DEBUG) << "No response found";
     }
 }
-
-void ResponseDict::init() {
-    uint64_t j=1000;
-    for (unsigned int i=0 ; i < no_of_msgs; i++, j++) {
-        d[i].GetAllocator().Clear();
-        d[i].Parse(response[i].c_str());
-        dict.emplace(j, i);
-    }
 }
-
-    ResponseDict& ResponseDict::Instance() {
-        static ResponseDict inst;
-        if (!inst.isInitialized) {
-            inst.init();
-            inst.isInitialized = true;
-        }
-        return inst;
-    }
-}
-}
-}
-

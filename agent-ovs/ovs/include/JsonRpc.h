@@ -24,7 +24,7 @@
 #include <chrono>
 #include <thread>
 #include <rapidjson/document.h>
-#include <opflex/rpc/JsonRpc.h>
+#include "OvsdbConnection.h"
 #include <opflexagent/logging.h>
 
 #include <boost/optional.hpp>
@@ -33,13 +33,28 @@ namespace opflexagent {
 
 using namespace std;
 using namespace opflex;
-using namespace opflex::engine::internal;
+using namespace opflex::jsonrpc;
 using namespace std::chrono;
 
 /*
  * name of ERPSAN port
  */
 static const string ERSPAN_PORT_NAME("erspan");
+
+/**
+ * helper function to get Value of a given index
+ * @param[in] val rapidjson Value object
+ * @param[in] idx list of strings representing indices
+ * @param[out] result Value object
+ */
+void getValue(const Document& val, const list<string>& idx, Value& result);
+
+/**
+ * create an RPC connection to a server
+ * @param[in] trans a reference to a Transaction object instance
+ * @return shared pointer to an RpcConnection object
+ */
+shared_ptr<OvsdbConnection> createConnection(Transaction& trans);
 
 /**
  * class to handle JSON/RPC transactions without opflex.
@@ -253,7 +268,7 @@ public:
      * @param[in] port erspan_ifc struct
      * @return true if success, false otherwise
      */
-    bool addErspanPort(const string& bridgeName, shared_ptr<erspan_ifc> port);
+    bool addErspanPort(const string& bridgeName, shared_ptr<erspan_ifc>& port);
 
     /**
      * add mirror data to in memory struct
@@ -402,13 +417,13 @@ public:
      * get rpc connection pointer
      * @return shared pointer to rpc connection object
      */
-    shared_ptr<RpcConnection> getRpcConnectionPtr() { return pConn; }
+    shared_ptr<OvsdbConnection>& getRpcConnectionPtr() { return pConn; }
 
     /**
      * set rpc connection pointer
      * @param rPtr shared pointer to rpc connection object
      */
-    void setRpcConnectionPtr(shared_ptr<RpcConnection> rPtr) { pConn = rPtr; }
+    void setRpcConnectionPtr(shared_ptr<OvsdbConnection>& rPtr) { pConn = rPtr; }
 
     /**
      * set the next request ID
@@ -497,7 +512,7 @@ private:
     map<string, mirror> mirMap;
     const int WAIT_TIMEOUT = 10;
     string error;
-    shared_ptr<RpcConnection> pConn;
+    shared_ptr<OvsdbConnection> pConn;
     shared_ptr<Response> pResp;
     uint64_t id = 0;
 };

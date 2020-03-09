@@ -163,7 +163,8 @@ noinst_HEADERS = \
 	ovs/include/JsonRpc.h \
 	ovs/include/PacketLogHandler.h \
 	ovs/include/PacketDecoder.h \
-	ovs/include/PacketDecoderLayers.h
+	ovs/include/PacketDecoderLayers.h \
+	ovs/include/OvsdbConnection.h
 
 libopflex_agent_la_SOURCES = \
 	lib/AgentLogHandler.cpp \
@@ -259,7 +260,8 @@ if RENDERER_OVS
 	ovs/JsonRpc.cpp \
 	ovs/PacketLogHandler.cpp \
 	ovs/PacketDecoder.cpp \
-	ovs/PacketDecoderLayers.cpp
+	ovs/PacketDecoderLayers.cpp \
+	ovs/OvsdbConnection.cpp
   librenderer_openvswitch_la_CFLAGS = \
 	$(libopenvswitch_CFLAGS) \
 	$(libofproto_CFLAGS)

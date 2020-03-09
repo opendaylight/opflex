@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*!
- * @file JsonRpc.h
+ * @file OvsdbConnection.h
  * @brief Interface definition for various JSON/RPC messages used by the
  * engine
  */
@@ -13,22 +13,16 @@
  */
 
 #pragma once
-#ifndef RPC_JSONRPC_H
-#define RPC_JSONRPC_H
+#ifndef OPFLEX_ENGINE_INTERNAL_OVSDBCONNECTION_H
+#define OPFLEX_ENGINE_INTERNAL_OVSDBCONNECTION_H
 
-#include<set>
-#include<map>
-#include<list>
-
-#include <condition_variable>
-#include <mutex>
+#include <opflex/rpc/JsonRpcConnection.h>
+#include <opflex/rpc/JsonRpcMessage.h>
 
 #include <rapidjson/document.h>
-#include <boost/lexical_cast.hpp>
+#include <opflex/util/ThreadManager.h>
 
-namespace opflex {
-namespace engine {
-namespace internal {
+namespace opflexagent {
 
 using namespace std;
 using namespace rapidjson;
@@ -36,7 +30,7 @@ using namespace rapidjson;
 /**
  * enum for data types to be sent over JSON/RPC
  */
-enum class  Dtype {STRING, INTEGER, BOOL};
+enum class Dtype {STRING, INTEGER, BOOL};
 
 /**
  * Data template for JSON/RPC data representation
@@ -274,6 +268,7 @@ typedef struct transData_ {
             columns(td.columns), rows(td.rows), kvPairs(td.kvPairs) {};
 } transData;
 
+
 /**
  * JSON/RPC transaction base class
  */
@@ -286,116 +281,6 @@ public:
             const rapidjson::Document& payload) = 0;
 };
 
-/**
- * class for managing RPC connection to a server.
- */
-class RpcConnection {
-    public:
-    /**
-     * constructor that takes a pointer to a Transaction object
-     */
-    RpcConnection(Transaction* pTrans_) : pTrans(pTrans_) {}
-
-    /**
-     * call back for transaction response
-     * @param[in] reqId request ID of the request for this response.
-     * @param[in] payload rapidjson::Value reference of the response body.
-     */
-    virtual void handleTransaction(uint64_t reqId,
-                const rapidjson::Document& payload);
-
-    /**
-     * destructor
-     */
-    virtual ~RpcConnection() {}
-
-    /**
-     * initialize the module
-     */
-    virtual void start() = 0;
-
-    /**
-     * stop the module
-     */
-    virtual void stop() = 0;
-
-    /**
-     * create a tcp connection to peer
-     */
-    virtual void connect() = 0;
-    /**
-     * get state of connection
-     * @return true if connected, false otherwise
-     */
-    bool isConnected() { return connected;};
-
-    /**
-     * set connection state
-     * @param[in] state state of connection
-     */
-    void setConnected(bool state) {
-        connected = state;
-    }
-
-    /**
-     * send transaction request
-     * @param[in] tl list of transData objects
-     * @param[in] reqId request ID
-     */
-    virtual void sendTransaction(const list<transData>& tl, const uint64_t& reqId) = 0;
-
-    /**
-     * condition variable used for synchronizing JSON/RPC
-     * request and response
-     */
-    condition_variable ready;
-    /**
-     * mutex used for synchronizing JSON/RPC
-     * request and response
-     */
-    mutex mtx;
-
-    /**
-     * boolean flag to indicate connection state.
-     */
-    bool connected = false;
-    /**
-     * pointer to a Transaction object instance
-     */
-    Transaction* pTrans;
-
-};
-/**
- * class for a mockup of an RpcConnection object
- */
-class MockRpcConnection : public RpcConnection {
-public:
-    /**
-     * constructor that takes a Transaction object reference
-     */
-    MockRpcConnection(Transaction& pTrans_) : RpcConnection(&pTrans_) {}
-
-    /**
-     * establish mock connection
-     */
-    void connect() { connected = true;}
-
-    /**
-     * send transaction
-     * @param tl list of Transaction objects
-     * @param reqId request ID
-     */
-    void sendTransaction(const list<transData>& tl,
-            const uint64_t& reqId);
-
-    /**
-     * destructor
-     */
-    virtual ~MockRpcConnection() {}
-private:
-    void start() {}
-    void stop() {}
-};
 
 /**
  * class holding the request response lookup
@@ -580,21 +465,223 @@ private:
             response13 };
 
 };
-/**
- * create an RPC connection to a server
- * @param[in] trans a reference to a Transaction object instance
- * @return shared pointer to an RpcConnection object
+
+class TransactReq : public opflex::jsonrpc::JsonRpcMessage {
+public:
+    TransactReq(const transData& td);
+
+    virtual void serializePayload(yajr::rpc::SendHandler& writer);
+
+    virtual TransactReq* clone(){
+        return new TransactReq(*this);
+    }
+
+    template <typename T>
+    bool operator()(rapidjson::Writer<T> & writer);
+
+    template <typename T>
+    void writePair(rapidjson::Writer<T>& writer, const shared_ptr<BaseData>& bPtr, bool kvPair);
+
+    transData tData;
+
+};
+
+/*
+ * JSON/RPC transaction message
  */
-shared_ptr<RpcConnection> createConnection(Transaction& trans);
+class JsonReq : public opflex::jsonrpc::JsonRpcMessage {
+public:
+    JsonReq(const list<transData>& tl, uint64_t reqId);
+
+    virtual void serializePayload(yajr::rpc::SendHandler& writer);
+
+    virtual JsonReq* clone(){
+        return new JsonReq(*this);
+    };
+
+    template <typename T>
+    bool operator()(rapidjson::Writer<T> & writer) {
+        writer.StartArray();
+        writer.String("Open_vSwitch");
+        for (shared_ptr<TransactReq> tr : transList) {
+            writer.StartObject();
+            (*tr)(writer);
+            writer.EndObject();
+        }
+        writer.EndArray();
+        return true;
+    }
+
+    list<shared_ptr<TransactReq>> transList;
+    uint64_t reqId;
+};
+
+class OvsdbConnection : public opflex::jsonrpc::RpcConnection {
+    public:
+    OvsdbConnection(Transaction* pTrans_) : opflex::jsonrpc::RpcConnection(), pTrans(pTrans_) {}
+    virtual ~OvsdbConnection() {}
+
+    /**
+     * get pointer to peer object
+     * @return pointer to peer instance
+     */
+    yajr::Peer* getPeer() { return peer;};
+
+    /**
+     * initialize the module
+     */
+    virtual void start();
+
+    /**
+     * stop the module
+     */
+    virtual void stop();
+
+    /**
+     * get state of connection
+     * @return true if connected, false otherwise
+     */
+    bool isConnected() { return connected;};
+
+    /**
+     * set connection state
+     * @param[in] state state of connection
+     */
+    void setConnected(bool state) {
+        connected = state;
+    }
+
+    /**
+     * call back to handle connection state changes
+     * @param[in] p pointer to Peer object
+     * @param[in] data void pointer to passed in context
+     * @param[in] stateChange call back to handle connection state changes
+     * @param[in] error error reported by call back caller
+     */
+    static void on_state_change(yajr::Peer * p, void * data,
+            yajr::StateChange::To stateChange,
+            int error);
+
+    /**
+     * get loop selector attribute
+     * @param[in] data void pointer to context
+     * @return a pointer to uv_loop_t
+     */
+    static uv_loop_t* loop_selector(void* data);
+
+    /**
+     * create a connection to peer
+     */
+    virtual void connect();
+
+    /**
+     * Disconnect this connection from the remote peer.  Must be
+     * called from the libuv processing thread.  Will retry if the
+     * connection type supports it.
+     */
+    virtual void disconnect();
+
+    /**
+     * callback for invoking connect
+     * @param[in] handle pointer to uv_async_t
+     */
+    static void connect_cb(uv_async_t* handle);
+
+    /**
+     * callback for sending requests
+     * @param[in] handle pointer to uv_async_t
+     */
+    static void send_req_cb(uv_async_t* handle);
+
+    /**
+     * send transaction request
+     * @param[in] tl list of transData objects
+     * @param[in] reqId request ID
+     */
+    virtual void sendTransaction(const list<transData>& tl, const uint64_t& reqId);
+
+
+    /**
+     * call back for transaction response
+     * @param[in] reqId request ID of the request for this response.
+     * @param[in] payload rapidjson::Value reference of the response body.
+     */
+    virtual void handleTransaction(uint64_t reqId,
+                const rapidjson::Document& payload);
+
+    yajr::Peer* peer;
+
+    /**
+     * condition variable used for synchronizing JSON/RPC
+     * request and response
+     */
+    condition_variable ready;
+    /**
+     * mutex used for synchronizing JSON/RPC
+     * request and response
+     */
+    mutex mtx;
+
+private:
+
+    typedef struct req_cb_data_ {
+        JsonReq* req;
+        yajr::Peer* peer;
+    } req_cb_data;
+
+    uv_loop_t* client_loop;
+    opflex::util::ThreadManager threadManager;
+    uv_async_t connect_async;
+    uv_async_t send_req_async;
+    /**
+     * pointer to a Transaction object instance
+     */
+    Transaction* pTrans;
+
+protected:
+/**
+ * boolean flag to indicate connection state.
+ */
+bool connected = false;
+};
 
 /**
- * helper function to get Value of a given index
- * @param[in] val rapidjson Value object
- * @param[in] idx list of strings representing indices
- * @param[out] result Value object
+ * class for a mockup of an RpcConnection object
  */
-void getValue(const Document& val, const list<string>& idx, Value& result);
-}
-}
+class MockRpcConnection : public opflexagent::OvsdbConnection {
+public:
+    /**
+     * constructor that takes a Transaction object reference
+     */
+    MockRpcConnection(Transaction* pTrans_) : OvsdbConnection(pTrans_) {}
+
+    /**
+     * establish mock connection
+     */
+    virtual void connect() { connected = true;}
+
+
+    /**
+     * disconnect mock connection
+     */
+    virtual void disconnect() { connected = false;}
+
+    /**
+     * send transaction
+     * @param tl list of Transaction objects
+     * @param reqId request ID
+     */
+    void sendTransaction(const list<transData>& tl,
+                         const uint64_t& reqId);
+
+    /**
+     * destructor
+     */
+    virtual ~MockRpcConnection() {}
+    virtual void start() {}
+    virtual void stop() {}
+
+};
+
 }
 #endif

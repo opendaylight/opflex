@@ -23,7 +23,7 @@ namespace internal {
 
 OpflexMessage::OpflexMessage(const std::string& method_, MessageType type_,
                              const rapidjson::Value* id_) 
-    : method(method_), type(type_), id(id_) {
+    : jsonrpc::JsonRpcMessage(method_, type_, id_) {
 }
 
 void GenericOpflexMessage::serializePayload(yajr::rpc::SendHandler& writer) {
