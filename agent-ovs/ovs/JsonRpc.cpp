@@ -22,8 +22,9 @@
 #include <rapidjson/stringbuffer.h>
 
 #include "JsonRpc.h"
+#include <opflexagent/logging.h>
 
-#include <opflex/rpc/JsonRpc.h>
+#include "OvsdbConnection.h"
 
 #include <random>
 
@@ -36,6 +37,7 @@ using namespace std::chrono;
 
 namespace opflexagent {
 
+using namespace opflex::jsonrpc;
 using namespace rapidjson;
 using boost::uuids::to_string;
 using boost::uuids::basic_random_generator;
@@ -109,7 +111,7 @@ using boost::uuids::basic_random_generator;
             const rapidjson::Document& payload, string& uuid) {
         list<string> ids = {"0","uuid","1"};
         Value val;
-        opflex::engine::internal::getValue(payload, ids, val);
+        opflexagent::getValue(payload, ids, val);
         if (!val.IsNull() && val.IsString()) {
             LOG(DEBUG) << "netflow uuid " << val.GetString();
             uuid = val.GetString();
@@ -179,7 +181,7 @@ using boost::uuids::basic_random_generator;
             const rapidjson::Document& payload, string& uuid) {
         list<string> ids = {"0","uuid","1"};
         Value val;
-        opflex::engine::internal::getValue(payload, ids, val);
+        opflexagent::getValue(payload, ids, val);
         if (!val.IsNull() && val.IsString()) {
             LOG(DEBUG) << "ipfix uuid " << val.GetString();
             uuid = val.GetString();
@@ -256,7 +258,7 @@ using boost::uuids::basic_random_generator;
             try {
                 list<string> ids = { "0","rows","0","_uuid","1" };
                 Value obj3;
-                opflex::engine::internal::getValue(payload, ids, obj3);
+                opflexagent::getValue(payload, ids, obj3);
                 if (obj3.IsNull()) {
                     LOG(DEBUG) << "got null";
                     return false;
@@ -302,7 +304,7 @@ using boost::uuids::basic_random_generator;
         list<string> ids = {"0","rows","0","_uuid","1"};
         string brUuid;
         Value val;
-        opflex::engine::internal::getValue(payload, ids, val);
+        opflexagent::getValue(payload, ids, val);
         if (!val.IsNull() && val.IsString()) {
             LOG(DEBUG) << "bridge uuid " << val.GetString();
             brUuid = val.GetString();
@@ -313,7 +315,7 @@ using boost::uuids::basic_random_generator;
         // OVS supports only one mirror, expect only one.
         ids = {"0","rows","0","mirrors","1"};
         Value val2;
-        opflex::engine::internal::getValue(payload, ids, val2);
+        opflexagent::getValue(payload, ids, val2);
         string mirUuid;
         if (!val2.IsNull() && val2.IsString()) {
             LOG(DEBUG) << "mirror uuid " << val2.GetString();
@@ -387,12 +389,12 @@ using boost::uuids::basic_random_generator;
         set<string> brPortSet;
         list<string> ids = {"0","rows","0","ports","0"};
         Value val;
-        opflex::engine::internal::getValue(payload, ids, val);
+        opflexagent::getValue(payload, ids, val);
         if (!val.IsNull() && val.IsString()) {
             string valStr(val.GetString());
             ids = {"0", "rows", "0", "ports", "1"};
             val.SetObject();
-            opflex::engine::internal::getValue(payload, ids, val);
+            opflexagent::getValue(payload, ids, val);
             if (valStr == "uuid") {
                 string uuidString(val.GetString());
                 brPortSet.emplace(uuidString);
@@ -411,7 +413,7 @@ using boost::uuids::basic_random_generator;
         }
         ids = {"0", "rows", "0", "_uuid", "1"};
         Value val3;
-        opflex::engine::internal::getValue(payload, ids, val3);
+        opflexagent::getValue(payload, ids, val3);
         brPortUuid = val3.GetString();
         brPorts = make_tuple(brPortUuid, brPortSet);
 
@@ -424,12 +426,12 @@ using boost::uuids::basic_random_generator;
             const string& index) {
         list<string> ids = {"0","rows","0",index,"0"};
         Value val;
-        opflex::engine::internal::getValue(payload, ids, val);
+        opflexagent::getValue(payload, ids, val);
         if (!val.IsNull() && val.IsString()) {
             string valStr(val.GetString());
             ids = {"0", "rows", "0", index, "1"};
             val.SetObject();
-            opflex::engine::internal::getValue(payload, ids, val);
+            opflexagent::getValue(payload, ids, val);
             if (valStr == "uuid") {
                 string uuidString(val.GetString());
                 uuidSet.emplace(uuidString);
@@ -612,7 +614,7 @@ using boost::uuids::basic_random_generator;
             try {
                 list<string> ids = { "0","rows"};
                 Value arr;
-                opflex::engine::internal::getValue(payload, ids, arr);
+                opflexagent::getValue(payload, ids, arr);
                 if (arr.IsNull() || !arr.IsArray()) {
                     LOG(DEBUG) << "expected array";
                     return false;
@@ -645,7 +647,7 @@ using boost::uuids::basic_random_generator;
         try {
             list<string> ids = {"0","rows","0","options","1"};
             Value arr;
-            opflex::engine::internal::getValue(payload, ids, arr);
+            opflexagent::getValue(payload, ids, arr);
             if (arr.IsNull() || !arr.IsArray()) {
                 LOG(DEBUG) << "expected array";
                 return false;
@@ -770,7 +772,7 @@ using boost::uuids::basic_random_generator;
                     const rapidjson::Document& payload, string& uuid) {
         list<string> ids = {"0","rows","0","_uuid","1"};
         Value val;
-        opflex::engine::internal::getValue(payload, ids, val);
+        opflexagent::getValue(payload, ids, val);
         if (!val.IsNull() && val.IsString()) {
             uuid = val.GetString();
         } else {
@@ -1020,7 +1022,7 @@ using boost::uuids::basic_random_generator;
             const rapidjson::Document& payload, string& uuid) {
         list<string> ids = {"0","uuid","1"};
         Value val;
-        opflex::engine::internal::getValue(payload, ids, val);
+        opflexagent::getValue(payload, ids, val);
         if (!val.IsNull() && val.IsString()) {
             LOG(DEBUG) << "mirror uuid " << val.GetString();
             uuid = val.GetString();
@@ -1088,7 +1090,7 @@ using boost::uuids::basic_random_generator;
 
     void JsonRpc::start() {
         LOG(DEBUG) << "Starting .....";
-        pConn = createConnection(*this);
+        pConn = opflexagent::createConnection(*this);
         pConn->start();
     }
 
@@ -1111,4 +1113,103 @@ using boost::uuids::basic_random_generator;
         return true;
     }
 
-} // namespace opflex
+void ResponseDict::init() {
+    uint64_t j=1000;
+    for (unsigned int i=0 ; i < no_of_msgs; i++, j++) {
+        d[i].GetAllocator().Clear();
+        d[i].Parse(response[i].c_str());
+        dict.emplace(j, i);
+    }
+}
+
+ResponseDict& ResponseDict::Instance() {
+    static ResponseDict inst;
+    if (!inst.isInitialized) {
+        inst.init();
+        inst.isInitialized = true;
+    }
+    return inst;
+}
+
+/**
+ * walks the Value hierarchy according to the indices passed in the list
+ * to retrieve the Value.
+ * @param[in] val the Value tree to be walked
+ * @param[in] idx list of indices to walk the tree.
+ * @return a Value object.
+ */
+void getValue(const Document& val, const list<string>& idx, Value& result) {
+    stringstream ss;
+    for (auto& str : idx) {
+        ss << " " << str << ", ";
+    }
+    LOG(DEBUG) << ss.rdbuf();
+    Document::AllocatorType& alloc = ((Document&)val).GetAllocator();
+    Value tmpVal(Type::kNullType);
+    if (val == NULL || !val.IsArray()) {
+        result = tmpVal;
+        return;
+    }
+    // if string is a number, treat it as index array.
+    // otherwise its an object name.
+    int index;
+    tmpVal.CopyFrom(val, alloc);
+    for (auto itr=idx.begin(); itr != idx.end();
+            itr++) {
+        LOG(DEBUG) << "index " << *itr;
+        bool isArr = false;
+        try {
+            index = stoi(*itr);
+            isArr = true;
+            LOG(DEBUG) << "Is array";
+        } catch (const invalid_argument& e) {
+            // must be object name.
+            LOG(DEBUG) << "Is not array";
+        }
+
+        if (isArr) {
+            int arrSize = tmpVal.Size();
+            LOG(DEBUG) << "arr size " << arrSize;
+            if ((arrSize - 1) < index) {
+                LOG(DEBUG) << "arr size is less than index";
+                // array size is less than the index we are looking for
+                tmpVal.SetNull();
+                result = tmpVal;
+                return;
+            }
+            tmpVal = tmpVal[index];
+        } else if (tmpVal.IsObject()) {
+            if (tmpVal.HasMember((*itr).c_str())) {
+                Value::ConstMemberIterator itrMem =
+                        tmpVal.FindMember((*itr).c_str());
+                if (itrMem != tmpVal.MemberEnd()) {
+                    LOG(DEBUG) << "obj name << " << itrMem->name.GetString();
+                    tmpVal.CopyFrom(itrMem->value, alloc);
+                } else {
+                    // member not found
+                    tmpVal.RemoveAllMembers();
+                    result = tmpVal;
+                    return;
+                }
+            } else {
+                tmpVal.RemoveAllMembers();
+                result = tmpVal;
+                return;
+            }
+        } else {
+            LOG(DEBUG) << "Value is not array or object";
+            // some primitive type, should not hit this before
+            // list iteration is over.
+            tmpVal.SetNull();
+            result = tmpVal;
+            return;
+        }
+    }
+    result = tmpVal;
+}
+
+std::shared_ptr<OvsdbConnection> createConnection(Transaction& trans) {
+    return make_shared<OvsdbConnection>(&trans);
+}
+
+} // namespace opflexagemt
