@@ -14,8 +14,6 @@
 #  include <config.h>
 #endif
 
-#include <utility>
-
 #include <boost/foreach.hpp>
 #include <boost/optional.hpp>
 #include <boost/scoped_ptr.hpp>
@@ -41,8 +39,6 @@ InspectorClient::newInstance(const std::string& name,
 namespace engine {
 
 using std::string;
-using std::pair;
-using std::make_pair;
 using boost::optional;
 using boost::scoped_ptr;
 using opflex::modb::ObjectStore;
@@ -59,7 +55,8 @@ using internal::OpflexMessage;
 InspectorClientImpl::InspectorClientImpl(const std::string& name_,
                                          const modb::ModelMetadata& model)
     : conn(*this, this, name_), db(threadManager),
-      serializer(&db, this), pendingRequests(0) {
+      serializer(&db, this), pendingRequests(0),
+      followRefs(false), recursive(false), unresolved(false) {
     db.init(model);
     storeClient = &db.getStoreClient("_SYSTEM_");
 }
@@ -88,7 +85,7 @@ void InspectorClientImpl::execute() {
 }
 
 void InspectorClientImpl::executeCommands() {
-    while (commands.size() > 0) {
+    while (!commands.empty()) {
         scoped_ptr<Cmd> command(commands.front());
         commands.pop_front();
         pendingRequests += command->execute(*this);
@@ -119,8 +116,6 @@ public:
 
     InspectorClientImpl& client;
 };
-
-typedef pair<string, URI> pquery;
 
 class PolicyQueryReq : public InspectorMessage {
 public:
