@@ -46,9 +46,17 @@ public:
      */
     void stop();
 
+    /**
+     * Called when netflow objects are updated.
+     * @param netflowURI URI of update object
+     */
     virtual void exporterUpdated(const opflex::modb::URI& netflowURI);
 
-    virtual void exporterDeleted(shared_ptr<ExporterConfigState>& expSt);
+    /**
+     * called when netflow exporterconfig has been deleted
+     * @param expSt exporter state
+     */
+    virtual void exporterDeleted(shared_ptr<ExporterConfigState> expSt);
 
 private:
     /**

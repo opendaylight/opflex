@@ -43,7 +43,7 @@ namespace opflexagent {
         handleNetFlowUpdate(netFlowURI);
     }
 
-    void NetFlowRenderer::exporterDeleted(shared_ptr<ExporterConfigState>& expSt) {
+    void NetFlowRenderer::exporterDeleted(shared_ptr<ExporterConfigState> expSt) {
         LOG(DEBUG) << "deleting exporter";
         unique_lock<mutex> lock(handlerMutex);
          if (!expSt) {
