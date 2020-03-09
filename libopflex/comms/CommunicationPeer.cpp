@@ -558,10 +558,6 @@ void CommunicationPeer::timeout() {
 
         /* close the connection and hope for the best */
         this->onDisconnect();
-     // if (!uv_is_closing((uv_handle_t*)getHandle())) {
-     //     uv_close((uv_handle_t*)getHandle(), on_close);
-     // }
-
         return;
     }
 

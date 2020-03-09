@@ -19,6 +19,7 @@
 #include <rapidjson/document.h>
 
 #include "opflex/yajr/rpc/message_factory.hpp"
+#include "opflex/rpc/JsonRpcMessage.h"
 
 #pragma once
 #ifndef OPFLEX_ENGINE_OPFLEXMESSAGE_H
@@ -33,19 +34,8 @@ class OpflexConnection;
 /**
  * Represent an Opflex message and allow serializing to the socket
  */
-class OpflexMessage  {
+class OpflexMessage : public jsonrpc::JsonRpcMessage {
 public:
-    /**
-     * The type of the message
-     */
-    enum MessageType {
-        /** A request */
-        REQUEST,
-        /** a response message */
-        RESPONSE,
-        /** an error response */
-        ERROR_RESPONSE
-    };
 
     /**
      * Construct a new opflex message
@@ -68,69 +58,8 @@ public:
      */
     virtual OpflexMessage* clone() = 0;
 
-    /**
-     * Get the request method for this message
-     * @return the method for the message
-     */
-    const std::string& getMethod() const { return method; }
-
-    /**
-     * Get the message type for this message
-     *
-     * @return the type for the message
-     */
-    MessageType getType() const { return type; }
-
-    /**
-     * Get a transaction ID for a request.  If nonzero, allocate a
-     * transaction ID using a counter
-     *
-     * @return the transaction ID for the request
-     */
-    virtual uint64_t getReqXid() { return 0; }
-
-    /**
-     * Get the ID for this message.  Must only be called on a response
-     * or error.
-     * @return the ID for the message
-     */
-    const rapidjson::Value& getId() const { return *id; }
-
     virtual void serializePayload(yajr::rpc::SendHandler& writer) = 0;
 
-    /**
-     * Operator to serialize a generic empty payload to any writer
-     * @param writer the writer to serialize to
-     */
-    template <typename T>
-    bool operator()(rapidjson::Writer<T> & writer) {
-        switch (type) {
-        case REQUEST:
-            writer.StartArray();
-            writer.EndArray();
-            break;
-        default:
-            writer.StartObject();
-            writer.EndObject();
-        }
-        return true;
-    }
-
-protected:
-    /**
-     * The request method associated with the message
-     */
-    std::string method;
-    /**
-     * The message type of the message
-     */
-    MessageType type;
-
-    /**
-     * The ID associated with the message; may be NULL for a request
-     * message, but a response must always set it
-     */
-    const rapidjson::Value* id;
 };
 
 /**
