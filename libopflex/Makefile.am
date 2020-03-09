@@ -92,6 +92,21 @@ util_include_HEADERS = \
 	include/opflex/util/ThreadManager.h \
     include/opflex/util/LockGuard.h \
     include/opflex/util/RecursiveLockGuard.h
+yajr_includedir = $(includedir)/opflex/yajr
+yajr_include_HEADERS = \
+    include/opflex/yajr/yajr.hpp
+yajr_internal_includedir = $(includedir)/opflex/yajr/internal
+yajr_internal_include_HEADERS = \
+    include/opflex/yajr/internal/comms.hpp
+yajr_rpc_includedir = $(includedir)/opflex/yajr/rpc
+yajr_rpc_include_HEADERS = \
+    include/opflex/yajr/rpc/message_factory.hpp \
+    include/opflex/yajr/rpc/rpc.hpp \
+    include/opflex/yajr/rpc/send_handler.hpp
+yajr_transport_includedir = $(includedir)/opflex/yajr/transport
+yajr_transport_include_HEADERS = \
+    include/opflex/yajr/transport/engine.hpp \
+    include/opflex/yajr/transport/PlainText.hpp
 
 lib_LTLIBRARIES = libopflex.la
 libopflex_la_SOURCES = 
@@ -127,10 +142,10 @@ if HAVE_DOXYGEN
 	doc/html
 endif
 
-doc/html: $(modb_include_HEADERS) $(modb_mo_include_HEADERS) $(core_include_HEADERS)  $(logging_include_HEADERS) $(c_include_HEADERS) $(rpc_include_HEADERS) $(gbp_include_HEADERS) $(util_include_HEADERS) doc/Doxyfile
+doc/html: $(modb_include_HEADERS) $(modb_mo_include_HEADERS) $(core_include_HEADERS)  $(logging_include_HEADERS) $(c_include_HEADERS) $(rpc_include_HEADERS) $(gbp_include_HEADERS) $(util_include_HEADERS) $(yajr_include_HEADERS) $(yajr_internal_include_HEADERS) $(yajr_rpc_include_HEADERS) $(yajr_transport_include_HEADERS) doc/Doxyfile
 	cd doc && ${DOXYGEN} Doxyfile
 doc: doc/html
-doc/html-internal: clean-doc-internal $(modb_include_HEADERS) $(modb_mo_include_HEADERS) $(core_include_HEADERS)  $(logging_include_HEADERS) $(c_include_HEADERS) $(rpc_include_HEADERS) $(gbp_include_HEADERS) $(util_include_HEADERS) doc/Doxyfile-internal
+doc/html-internal: clean-doc-internal $(modb_include_HEADERS) $(modb_mo_include_HEADERS) $(core_include_HEADERS)  $(logging_include_HEADERS) $(c_include_HEADERS) $(rpc_include_HEADERS) $(gbp_include_HEADERS) $(util_include_HEADERS) $(yajr_include_HEADERS) $(yajr_internal_include_HEADERS) $(yajr_rpc_include_HEADERS) $(yajr_transport_include_HEADERS) doc/Doxyfile-internal
 	cd doc && ${DOXYGEN} Doxyfile-internal
 doc-internal: doc/html-internal
 install-data-local: doc
