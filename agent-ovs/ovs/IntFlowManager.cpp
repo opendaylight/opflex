@@ -37,6 +37,7 @@
 #include <opflexagent/logging.h>
 #include <opflexagent/Endpoint.h>
 #include <opflexagent/EndpointManager.h>
+#include <opflexagent/Faults.h>
 #include <opflexagent/Network.h>
 
 #include "SwitchConnection.h"
@@ -517,6 +518,7 @@ void IntFlowManager::configUpdated(const opflex::modb::URI& configURI) {
                 "encapType from fabric doesn't match agent config");
             fi->setSeverity(modelgbp::fault::SeverityEnumT::CONST_CRITICAL);
             fi->setAffectedObject(configURI.toString());
+            fi->setFaultCode(opflexagent::FaultCodes::ENCAP_MISMATCH);
             mutator.commit();
         }
     }

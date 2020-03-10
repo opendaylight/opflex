@@ -119,7 +119,8 @@ libopflex_agent_la_include_HEADERS = \
 	lib/include/opflexagent/SnatSource.h \
 	lib/include/opflexagent/SnatListener.h \
 	lib/include/opflexagent/FSPacketDropLogConfigSource.h \
-	lib/include/opflexagent/PacketDropLogConfig.h
+	lib/include/opflexagent/PacketDropLogConfig.h \
+	lib/include/opflexagent/Faults.h
 if ENABLE_PROMETHEUS
 libopflex_agent_la_include_HEADERS += lib/include/opflexagent/PrometheusManager.h
 endif

@@ -10,6 +10,7 @@
  */
 
 #include <opflexagent/Agent.h>
+#include <opflexagent/Faults.h>
 #include <opflexagent/logging.h>
 #include <modelgbp/fault/SeverityEnumT.hpp>
 #include <boost/program_options.hpp>
@@ -124,6 +125,7 @@ public:
         auto fi = fu.get()->addFaultInstance(to_string(uuidGen()));
         fi->setDescription("broken endpoint");
         fi->setSeverity(modelgbp::fault::SeverityEnumT::CONST_CRITICAL);
+        fi->setFaultCode(opflexagent::FaultCodes::SAMPLE_FAULT);
         auto l2Ep = *(l2Eps.begin());
         fi->setAffectedObject(l2Ep.get()->getURI().toString());
         mutator.commit();
