@@ -16,7 +16,6 @@
 #include <boost/array.hpp>
 #include <boost/bind.hpp>
 #include <opflexagent/logging.h>
-#include <opflexagent/logging.h>
 #include "PacketDecoderLayers.h"
 #include <mutex>
 #include <condition_variable>
@@ -101,6 +100,7 @@ public:
         : pktLogger(logHandler), clientSocket(client_io),
           remoteEndpoint(socketFileName), stopped(false),
           connected(false), pendingDataLen(0) {
+        LOG(INFO) << "Packet Event socket set to " << socketFileName;
     }
     /**
      * Connect to a given local socket and export events

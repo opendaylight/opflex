@@ -320,11 +320,8 @@ void OVSRenderer::start() {
         std::thread client_thread([this]() {
            this->getPacketLogger().startExporter();
         });
-        std::thread server_thread([this]() {
-            this->pktLoggerIO.run();
-        });
+        this->pktLoggerIO.run();
         client_thread.join();
-        server_thread.join();
         signal_thread.join();
         exit(0);
     }

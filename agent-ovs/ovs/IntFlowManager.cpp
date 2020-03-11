@@ -129,6 +129,7 @@ void IntFlowManager::populateTableDescriptionMap() {
     TABLE_DESC(LEARN_TABLE_ID, "LEARN_TABLE", "Learn table drop")
     TABLE_DESC(SERVICE_DST_TABLE_ID, "SERVICE_DST_TABLE",
             "Service destination missing/incorrect")
+    TABLE_DESC(POL_TABLE_ID, "POL_TABLE", "Contract missing/incorrect")
     TABLE_DESC(STATS_TABLE_ID, "STATS_TABLE", "Stats Table drop")
     TABLE_DESC(OUT_TABLE_ID, "OUT_TABLE",
             "Derived output port missing/incorrect")
