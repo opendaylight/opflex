@@ -63,6 +63,7 @@ Agent::Agent(OFFramework& framework_, const LogParams& _logParams)
       prometheusManager(*this, framework),
       policyManager(framework, agent_io),
       endpointManager(*this, framework, policyManager, prometheusManager),
+      serviceManager(*this, framework),
       extraConfigManager(framework),
       notifServer(agent_io),rendererFwdMode(opflex_elem_t::INVALID_MODE),
       started(false), presetFwdMode(opflex_elem_t::INVALID_MODE),
@@ -74,6 +75,7 @@ Agent::Agent(OFFramework& framework_, const LogParams& _logParams)
     : framework(framework_),
       policyManager(framework, agent_io),
       endpointManager(*this, framework, policyManager),
+      serviceManager(*this, framework),
       extraConfigManager(framework),
       notifServer(agent_io),rendererFwdMode(opflex_elem_t::INVALID_MODE),
       started(false), presetFwdMode(opflex_elem_t::INVALID_MODE),
@@ -534,6 +536,7 @@ void Agent::start() {
         modelgbp::dmtree::Root::createRootElement(framework);
     root->addPolicyUniverse();
     root->addRelatorUniverse();
+    root->addSvcServiceUniverse();
     root->addEprL2Universe();
     root->addEprL3Universe();
     root->addInvUniverse();
