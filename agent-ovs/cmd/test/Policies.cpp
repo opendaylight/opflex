@@ -40,6 +40,7 @@ void Policies::writeBasicInit(opflex::ofcore::OFFramework& framework) {
         modelgbp::dmtree::Root::createRootElement(framework);
     root->addPolicyUniverse();
     root->addRelatorUniverse();
+    root->addSvcServiceUniverse();
     root->addEprL2Universe();
     root->addEprL3Universe();
     root->addEpdrL2Discovered();

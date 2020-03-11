@@ -63,6 +63,9 @@ std::ostream & operator<<(std::ostream &os, const Service& s) {
             if (sm.getNextHopPort())
                 os << ":" << sm.getNextHopPort().get();
 
+            if (sm.getGatewayIP())
+                os << ",GW-IP:" << sm.getGatewayIP().get();
+
             if (sm.isConntrackMode())
                 os << " (conntrack)";
         }

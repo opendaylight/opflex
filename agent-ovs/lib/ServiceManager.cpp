@@ -1,4 +1,4 @@
-/* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
+/* -*- C++ -*-; c-basic-offset: 5; indent-tabs-mode: nil */
 /*
  * Implementation for ServiceManager class.
  *
@@ -11,6 +11,11 @@
 
 #include <opflexagent/ServiceManager.h>
 #include <opflexagent/logging.h>
+#include <opflex/modb/Mutator.h>
+#include <modelgbp/svc/ServiceUniverse.hpp>
+#include <modelgbp/svc/ServiceModeEnumT.hpp>
+#include <modelgbp/svc/ConnTrackEnumT.hpp>
+#include <modelgbp/gbpe/EncapTypeEnumT.hpp>
 
 namespace opflexagent {
 
@@ -22,8 +27,9 @@ using std::unique_lock;
 using std::mutex;
 using boost::optional;
 
-ServiceManager::ServiceManager() {
-
+ServiceManager::ServiceManager (Agent& agent_,
+                                opflex::ofcore::OFFramework& framework_)
+    : agent(agent_), framework(framework_) {
 }
 
 void ServiceManager::registerListener(ServiceListener* listener) {
@@ -82,6 +88,118 @@ void ServiceManager::removeDomains(const Service& service) {
     }
 }
 
+/* Populate MODB with services, service mappings and attributes */
+void
+ServiceManager::updateMoDB (const opflexagent::Service& service, bool add)
+{
+    using namespace modelgbp::svc;
+    using namespace modelgbp::gbpe;
+    using namespace opflex::modb;
+    Mutator mutator(framework, "policyelement");
+
+    optional<shared_ptr<ServiceUniverse> > su =
+                          ServiceUniverse::resolve(framework);
+    if (!su)
+        return;
+
+    optional<shared_ptr<modelgbp::svc::Service> > opService =
+                    su.get()->resolveSvcService(service.getUUID());
+
+    if (add) {
+        shared_ptr<modelgbp::svc::Service> pService = nullptr;
+        if (opService)
+            pService = opService.get();
+        else
+            pService = su.get()->addSvcService(service.getUUID());
+        // Populate service props
+        const optional<URI>& domain = service.getDomainURI();
+        if (domain)
+            pService->setDom(domain.get().toString());
+        else
+            pService->unsetDom();
+
+        const optional<string>& interfaceName = service.getInterfaceName();
+        if (interfaceName)
+            pService->setInterfaceName(interfaceName.get());
+        else
+            pService->unsetInterfaceName();
+
+        const optional<string>& interfaceIP = service.getIfaceIP();
+        if (interfaceIP)
+            pService->setInterfaceIP(interfaceIP.get());
+        else
+            pService->unsetInterfaceIP();
+
+        const optional<MAC>& mac = service.getServiceMAC();
+        if (mac)
+            pService->setMac(mac.get());
+        else
+            pService->unsetMac();
+
+        Service::ServiceMode mode = service.getServiceMode();
+        if (mode == Service::ServiceMode::LOCAL_ANYCAST)
+            pService->setMode(ServiceModeEnumT::CONST_ANYCAST);
+        else if (mode == Service::ServiceMode::LOADBALANCER)
+            pService->setMode(ServiceModeEnumT::CONST_LB);
+        else
+            pService->unsetMode();
+
+        const optional<uint16_t>& ifaceVlan = service.getIfaceVlan();
+        if (ifaceVlan) {
+            pService->setInterfaceEncapType(EncapTypeEnumT::CONST_VLAN);
+            pService->setInterfaceEncapId(ifaceVlan.get());
+        } else {
+            pService->unsetInterfaceEncapType();
+            pService->unsetInterfaceEncapId();
+        }
+
+        // Populate service attributes
+        const Service::attr_map_t& attr_map = service.getAttributes();
+        for (const std::pair<const string, string>& ap : attr_map) {
+            shared_ptr<ServiceAttribute> sa =
+                        pService->addSvcServiceAttribute(ap.first);
+            sa->setValue(ap.second);
+        }
+
+        // Populate service mappings
+        for (const auto& sm : service.getServiceMappings()) {
+            const auto& proto = sm.getServiceProto();
+            const auto& ip = sm.getServiceIP();
+            const auto& port = sm.getServicePort();
+            if (proto && ip && port) {
+                shared_ptr<ServiceMapping> pSM =
+                        pService->addSvcServiceMapping(ip.get(), proto.get(), port.get());
+
+                if (sm.isConntrackMode())
+                    pSM->setConnectionTracking(ConnTrackEnumT::CONST_ENABLED);
+                else
+                    pSM->setConnectionTracking(ConnTrackEnumT::CONST_DISABLED);
+
+                const auto& nhPort = sm.getNextHopPort();
+                if (nhPort)
+                    pSM->setNexthopPort(nhPort.get());
+                else
+                    pSM->unsetNexthopPort();
+
+                const auto& gwIP = sm.getGatewayIP();
+                if (gwIP)
+                    pSM->setGatewayIP(gwIP.get());
+                else
+                    pSM->unsetGatewayIP();
+
+                // Populate next hop IPs of service mapping
+                for (const auto& ip : sm.getNextHopIPs())
+                    shared_ptr<NexthopIP> nhIP = pSM->addSvcNexthopIP(ip);
+            }
+        }
+    } else {
+        if (opService)
+            opService.get()->remove();
+    }
+
+    mutator.commit();
+}
+
 void ServiceManager::updateService(const Service& service) {
     unique_lock<mutex> guard(serv_mutex);
     const string& uuid = service.getUUID();
@@ -101,6 +219,8 @@ void ServiceManager::updateService(const Service& service) {
 
     as.service = make_shared<const Service>(service);
 
+    updateMoDB(service, true);
+
     guard.unlock();
     notifyListeners(uuid);
 }
@@ -111,6 +231,7 @@ void ServiceManager::removeService(const std::string& uuid) {
     if (it != aserv_map.end()) {
         // update interface name to service mapping
         ServiceState& as = it->second;
+        updateMoDB(*as.service, false);
         removeIfaces(*as.service);
         removeDomains(*as.service);
 

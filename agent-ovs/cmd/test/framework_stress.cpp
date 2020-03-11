@@ -144,6 +144,7 @@ int main(int argc, char** argv) {
                 root->addGbpeVMUniverse();
                 root->addObserverEpStatUniverse();
                 root->addObserverSysStatUniverse();
+                root->addSvcServiceUniverse();
 
                 root->addDomainConfig()
                     ->addDomainConfigToConfigRSrc()

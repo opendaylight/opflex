@@ -18,12 +18,15 @@
 
 #include <boost/noncopyable.hpp>
 #include <opflex/modb/URI.h>
+#include <opflex/ofcore/OFFramework.h>
 
 #include <unordered_set>
 #include <unordered_map>
 #include <mutex>
 
 namespace opflexagent {
+
+class Agent;
 
 /**
  * Manage service endpoints
@@ -33,7 +36,8 @@ public:
     /**
      * Instantiate a new service manager
      */
-    ServiceManager();
+    ServiceManager(Agent& agent,
+                   opflex::ofcore::OFFramework& framework);
 
     /**
      * Register a listener for service change events
@@ -107,6 +111,20 @@ private:
      * @param uuid the UUID of the service that no longer exists
      */
     void removeService(const std::string& uuid);
+
+    /**
+     * Update modb with service related information
+     *
+     * @param service  the state of service
+     * @param add      indicates if service is added or removed
+     */
+    void updateMoDB(const Service& service, bool add);
+
+    // reference to opflex agent
+    Agent& agent;
+
+    // reference to opflex framework
+    opflex::ofcore::OFFramework& framework;
 
     class ServiceState {
     public:

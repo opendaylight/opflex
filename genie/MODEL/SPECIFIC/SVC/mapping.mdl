@@ -15,7 +15,7 @@ module[svc]
         member[serviceIP; type=address/IP]
 
         # Proto of service mapping
-        member[serviceProto; type=l3/IpProt]
+        member[serviceProto; type=ascii/String]
 
         # IP of service gateway
         member[gatewayIP; type=address/IP]
