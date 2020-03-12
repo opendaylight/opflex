@@ -36,7 +36,7 @@ using util::LockGuard;
 using yajr::transport::ZeroCopyOpenSSL;
 
 OpflexListener::OpflexListener(HandlerFactory& handlerFactory_,
-                               int port_,
+                               uint16_t port_,
                                const std::string& name_,
                                const std::string& domain_)
     : handlerFactory(handlerFactory_), port(port_),

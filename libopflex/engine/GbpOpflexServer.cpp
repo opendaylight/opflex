@@ -26,7 +26,7 @@
 namespace opflex {
 namespace test {
 
-GbpOpflexServer::GbpOpflexServer(int port, uint8_t roles,
+GbpOpflexServer::GbpOpflexServer(uint16_t port, uint8_t roles,
                                  const peer_vec_t& peers,
                                  const std::vector<std::string>& proxies,
                                  const modb::ModelMetadata& md,
@@ -70,7 +70,7 @@ const std::vector<std::string>& GbpOpflexServer::getProxies() const {
     return pimpl->getProxies();
 }
 
-int GbpOpflexServer::getPort() const { return pimpl->getPort(); }
+uint16_t GbpOpflexServer::getPort() const { return pimpl->getPort(); }
 uint8_t GbpOpflexServer::getRoles() const { return pimpl->getRoles(); }
 
 } /* namespace test */
@@ -85,7 +85,7 @@ using test::GbpOpflexServer;
 using boost::asio::deadline_timer;
 using boost::posix_time::seconds;
 
-GbpOpflexServerImpl::GbpOpflexServerImpl(int port_, uint8_t roles_,
+GbpOpflexServerImpl::GbpOpflexServerImpl(uint16_t port_, uint8_t roles_,
                                          const GbpOpflexServer::peer_vec_t& peers_,
                                          const std::vector<std::string>& proxies_,
                                          const modb::ModelMetadata& md,

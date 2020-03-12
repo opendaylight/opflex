@@ -49,7 +49,7 @@ public:
      * @param md the model metadata for the server
      * @param prr_interval_secs how often to wakeup prr timer thread
      */
-    GbpOpflexServerImpl(int port, uint8_t roles,
+    GbpOpflexServerImpl(uint16_t port, uint8_t roles,
                         const test::GbpOpflexServer::peer_vec_t& peers,
                         const std::vector<std::string>& proxies,
                         const modb::ModelMetadata& md,
@@ -118,7 +118,7 @@ public:
      *
      * @return the port number
      */
-    int getPort() { return port; }
+    uint16_t getPort() { return port; }
 
     /**
      * Get the roles that this server was configured with
@@ -187,7 +187,7 @@ public:
      */
     int getPrrIntervalSecs() { return prr_interval_secs; }
 private:
-    int port;
+    uint16_t port;
     uint8_t roles;
 
     test::GbpOpflexServer::peer_vec_t peers;
