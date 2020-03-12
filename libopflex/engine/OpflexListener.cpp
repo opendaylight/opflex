@@ -36,7 +36,7 @@ using util::LockGuard;
 using yajr::transport::ZeroCopyOpenSSL;
 
 OpflexListener::OpflexListener(HandlerFactory& handlerFactory_,
-                               int port_,
+                               uint16_t port_,
                                const std::string& name_,
                                const std::string& domain_)
     : handlerFactory(handlerFactory_), port(port_),
@@ -50,7 +50,7 @@ OpflexListener::OpflexListener(HandlerFactory& handlerFactory_,
                                const std::string& name_,
                                const std::string& domain_)
     : handlerFactory(handlerFactory_), socketName(socketName_),
-      port(-1), name(name_), domain(domain_), active(true) {
+      port(0), name(name_), domain(domain_), active(true) {
     uv_mutex_init(&conn_mutex);
     uv_key_create(&conn_mutex_key);
 }
@@ -112,7 +112,7 @@ void OpflexListener::listen() {
 
     yajr::initLoop(&server_loop);
 
-    if (port < 0) {
+    if (!socketName.empty()) {
         listener =
             yajr::Listener::create(socketName,
                                    OpflexServerConnection::on_state_change,

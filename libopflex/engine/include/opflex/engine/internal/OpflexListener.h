@@ -50,7 +50,7 @@ public:
      * @param domain the opflex domain for the server
      */
     OpflexListener(HandlerFactory& handlerFactory,
-                   int port,
+                   uint16_t port,
                    const std::string& name,
                    const std::string& domain);
 
@@ -99,7 +99,7 @@ public:
     /**
      * Get the bind port for this connection
      */
-    int getPort() const { return port; }
+    uint16_t getPort() const { return port; }
 
     /**
      * Get the unique name for this component in the policy domain
@@ -182,7 +182,7 @@ private:
     HandlerFactory& handlerFactory;
 
     std::string socketName;
-    int port;
+    uint16_t port;
 
 #ifdef HAVE_CXX11
     std::unique_ptr<yajr::transport::ZeroCopyOpenSSL::Ctx> serverCtx;
