@@ -405,6 +405,7 @@ agent_test_SOURCES = \
 	lib/test/Network_test.cpp \
 	lib/test/SpanManager_test.cpp \
 	lib/test/NetflowManager_test.cpp \
+	lib/test/ServiceManager_test.cpp \
 	cmd/test/agent_test.cpp
 
 agent_test_LDADD = \

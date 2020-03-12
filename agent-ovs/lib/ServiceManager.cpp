@@ -102,6 +102,8 @@ ServiceManager::updateMoDB (const opflexagent::Service& service, bool add)
     if (!su)
         return;
 
+    LOG(DEBUG) << "Updating modb for service: " << service.getUUID()
+               << " add: " << add;
     optional<shared_ptr<modelgbp::svc::Service> > opService =
                     su.get()->resolveSvcService(service.getUUID());
 
@@ -193,8 +195,17 @@ ServiceManager::updateMoDB (const opflexagent::Service& service, bool add)
             }
         }
     } else {
-        if (opService)
+        if (opService) {
+            std::vector<shared_ptr<ServiceMapping> > outSM;
+            opService.get()->resolveSvcServiceMapping(outSM);
+            for (auto& sm : outSM)
+                sm->remove();
+            std::vector<shared_ptr<ServiceAttribute> > outSA;
+            opService.get()->resolveSvcServiceAttribute(outSA);
+            for (auto& sa : outSA)
+                sa->remove();
             opService.get()->remove();
+        }
     }
 
     mutator.commit();
@@ -219,6 +230,15 @@ void ServiceManager::updateService(const Service& service) {
 
     as.service = make_shared<const Service>(service);
 
+    // During service update, today host agent creates a new service file always
+    // So we wont have a case of actual service prop update.
+    // Note: If we are doing actual service file update, then the prior Service for
+    // that UUID appears to get quashed above, and the new updated Service state gets processed
+    // within ServiceManager. In such a case, keeping MoDB also upto date with the service
+    // state by doing a delete/readd of the service object.
+    // We can keep a rolling hash to detect MoDB update, but considering that the service files
+    // are never updated today, we can revisit hashing changes later.
+    updateMoDB(service, false);
     updateMoDB(service, true);
 
     guard.unlock();
