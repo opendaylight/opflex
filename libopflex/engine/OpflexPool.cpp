@@ -276,7 +276,8 @@ void OpflexPool::doRemovePeer(const string& hostname, int port) {
 
 void OpflexPool::resetAllPeers() {
     util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
-    BOOST_FOREACH(conn_map_t::value_type& v, connections) {
+    conn_map_t conns(connections);
+    BOOST_FOREACH(conn_map_t::value_type& v, conns) {
         v.second.conn->close();
     }
 }
