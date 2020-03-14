@@ -89,7 +89,7 @@ public:
     /**
      * Default constructor
      */
-    PropertyInfo() {}
+    PropertyInfo() : prop_id(0), prop_type(U64), class_id(0), cardinality(SCALAR) {}
 
     /**
      * Construct a property info object with the provided property

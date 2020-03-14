@@ -597,7 +597,7 @@ void MOSerializer::displayObject(std::ostream& ostream,
              std::vector<modb::URI> >::iterator clsit;
     std::vector<modb::URI>::const_iterator cit;
     for (clsit = children.begin(); clsit != children.end(); ) {
-        if (clsit->second.size() == 0)
+        if (clsit->second.empty())
             children.erase(clsit++);
         else {
             hasChildren = true;
@@ -659,7 +659,7 @@ void MOSerializer::displayObject(std::ostream& ostream,
     }
     ostream << " " << std::endl;
 
-    if (includeProps && dispProps.size() > 0) {
+    if (includeProps && !dispProps.empty()) {
         lineLength = 0;
         string pprefix = prefix;
         lineLength += prefixCharCount;
@@ -818,6 +818,7 @@ void MOSerializer::displayUnresolvedObject(std::ostream& ostream,
                             oi->getReference(pit->first, i));
                         if (!first) {
                             str << ", ";
+                        } else {
                             first = false;
                         }
                         const modb::ClassInfo& ref_class =
