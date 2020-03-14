@@ -559,7 +559,7 @@ BOOST_FIXTURE_TEST_CASE( epgmapping, EndpointFixture ) {
 
 BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
 
-    // check already existing
+    // check already existing ep file
     fs::path path1(temp / "83f18f0b-80f7-46e2-b06c-4d9487b0c754.ep");
     fs::ofstream os(path1);
     os << "{"
@@ -568,7 +568,13 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
        << "\"ip\":[\"10.0.0.1\",\"10.0.0.2\"],"
        << "\"interface-name\":\"veth0\","
        << "\"endpoint-group\":\"/PolicyUniverse/PolicySpace/test/GbpEpGroup/epg/\","
-       << "\"attributes\":{\"attr1\":\"value1\"}"
+       << "\"security-group\":["
+       << "{\"policy-space\":\"sg1-space1\",\"name\":\"sg1\"},"
+       << "{\"policy-space\":\"sg2-space2\",\"name\":\"sg2\"}"
+       << "],"
+       << "\"attributes\":{"
+       << "\"attr1\":\"value1\",\"attr2\":\"value2\""
+       << "}"
        << "}" << std::endl;
     os.close();
 
@@ -593,35 +599,98 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
         .addElement(rduri.toString())
         .addElement("10.0.0.2").build();
 
+    URI sgc1 = URIBuilder()
+        .addElement("PolicyUniverse")
+        .addElement("PolicySpace")
+        .addElement("sg1-space1")
+        .addElement("GbpSecGroup")
+        .addElement("sg1")
+        .build();
+    URI l2sgc_1 = URIBuilder(l2epr)
+        .addElement("EprSecurityGroupContext")
+        .addElement(sgc1.toString())
+        .build();
+    URI l31sgc_1 = URIBuilder(l3epr_1)
+        .addElement("EprSecurityGroupContext")
+        .addElement(sgc1.toString())
+        .build();
+    URI l32sgc_1 = URIBuilder(l3epr_2)
+        .addElement("EprSecurityGroupContext")
+        .addElement(sgc1.toString())
+        .build();
+
+    URI sgc2 = URIBuilder()
+        .addElement("PolicyUniverse")
+        .addElement("PolicySpace")
+        .addElement("sg2-space2")
+        .addElement("GbpSecGroup")
+        .addElement("sg2")
+        .build();
+    URI l2sgc_2 = URIBuilder(l2epr)
+        .addElement("EprSecurityGroupContext")
+        .addElement(sgc2.toString())
+        .build();
+    URI l31sgc_2 = URIBuilder(l3epr_1)
+        .addElement("EprSecurityGroupContext")
+        .addElement(sgc2.toString())
+        .build();
+    URI l32sgc_2 = URIBuilder(l3epr_2)
+        .addElement("EprSecurityGroupContext")
+        .addElement(sgc2.toString())
+        .build();
+
+    URI epset = URIBuilder(l2epr)
+        .addElement("GbpeReportedEpAttributeSet")
+        .build();
+    URI epattr_1 = URIBuilder(epset)
+        .addElement("GbpeReportedEpAttribute")
+        .addElement("attr1")
+        .build();
+    URI epattr_2 = URIBuilder(epset)
+        .addElement("GbpeReportedEpAttribute")
+        .addElement("attr2")
+        .build();
+
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr_1), 500);
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr_2), 500);
     WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr), 500);
+    WAIT_FOR(hasPolicyEntry<SecurityGroupContext>(framework, l2sgc_1), 500);
+    WAIT_FOR(hasPolicyEntry<SecurityGroupContext>(framework, l2sgc_2), 500);
+    WAIT_FOR(hasPolicyEntry<SecurityGroupContext>(framework, l31sgc_1), 500);
+    WAIT_FOR(hasPolicyEntry<SecurityGroupContext>(framework, l31sgc_2), 500);
+    WAIT_FOR(hasPolicyEntry<SecurityGroupContext>(framework, l32sgc_1), 500);
+    WAIT_FOR(hasPolicyEntry<SecurityGroupContext>(framework, l32sgc_2), 500);
+    WAIT_FOR(hasPolicyEntry<ReportedEpAttribute>(framework, epattr_1), 500);
+    WAIT_FOR(hasPolicyEntry<ReportedEpAttribute>(framework, epattr_2), 500);
 
-    URI l2epr2 = URIBuilder()
-        .addElement("EprL2Universe")
-        .addElement("EprL2Ep")
-        .addElement(bduri.toString())
-        .addElement(MAC("10:ff:00:a3:01:01")).build();
-
-    // check for a new EP added to watch directory
-    fs::path path2(temp / "83f18f0b-80f7-46e2-b06c-4d9487b0c755.ep");
-    fs::ofstream os2(path2);
+    // Check updates to existing file: attr delete, sec grp delete
+    fs::ofstream os2(path1);
     os2 << "{"
-       << "\"uuid\":\"83f18f0b-80f7-46e2-b06c-4d9487b0c755\","
-       << "\"mac\":\"10:ff:00:a3:01:01\","
-       << "\"ip\":[\"10.0.0.3\"],"
-       << "\"interface-name\":\"veth1\","
+       << "\"uuid\":\"83f18f0b-80f7-46e2-b06c-4d9487b0c754\","
+       << "\"mac\":\"10:ff:00:a3:01:00\","
+       << "\"ip\":[\"10.0.0.1\",\"10.0.0.2\"],"
+       << "\"interface-name\":\"veth0\","
        << "\"endpoint-group\":\"/PolicyUniverse/PolicySpace/test/GbpEpGroup/epg/\","
-       << "\"attributes\":{\"attr2\":\"value2\"}"
+       << "\"security-group\":["
+       << "{\"policy-space\":\"sg1-space1\",\"name\":\"sg1\"}"
+       << "],"
+       << "\"attributes\":{"
+       << "\"attr1\":\"value1\""
+       << "}"
        << "}" << std::endl;
     os2.close();
 
-    WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr2), 500);
-
-    // check for removing an endpoint
-    fs::remove(path2);
-
-    WAIT_FOR(!hasEPREntry<L2Ep>(framework, l2epr2), 500);
+    WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr_1), 500);
+    WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr_2), 500);
+    WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr), 500);
+    WAIT_FOR(hasPolicyEntry<SecurityGroupContext>(framework, l2sgc_1), 500);
+    WAIT_FOR(!hasPolicyEntry<SecurityGroupContext>(framework, l2sgc_2), 500);
+    WAIT_FOR(hasPolicyEntry<SecurityGroupContext>(framework, l31sgc_1), 500);
+    WAIT_FOR(!hasPolicyEntry<SecurityGroupContext>(framework, l31sgc_2), 500);
+    WAIT_FOR(hasPolicyEntry<SecurityGroupContext>(framework, l32sgc_1), 500);
+    WAIT_FOR(!hasPolicyEntry<SecurityGroupContext>(framework, l32sgc_2), 500);
+    WAIT_FOR(hasPolicyEntry<ReportedEpAttribute>(framework, epattr_1), 500);
+    WAIT_FOR(!hasPolicyEntry<ReportedEpAttribute>(framework, epattr_2), 500);
 
     // check for overwriting existing file with new ep
     fs::ofstream os3(path1);
@@ -639,6 +708,14 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
     WAIT_FOR(!hasEPREntry<L3Ep>(framework, l3epr_1), 500);
     WAIT_FOR(!hasEPREntry<L3Ep>(framework, l3epr_2), 500);
     WAIT_FOR(!hasEPREntry<L2Ep>(framework, l2epr), 500);
+    WAIT_FOR(!hasPolicyEntry<SecurityGroupContext>(framework, l2sgc_1), 500);
+    WAIT_FOR(!hasPolicyEntry<SecurityGroupContext>(framework, l2sgc_2), 500);
+    WAIT_FOR(!hasPolicyEntry<SecurityGroupContext>(framework, l31sgc_1), 500);
+    WAIT_FOR(!hasPolicyEntry<SecurityGroupContext>(framework, l31sgc_2), 500);
+    WAIT_FOR(!hasPolicyEntry<SecurityGroupContext>(framework, l32sgc_1), 500);
+    WAIT_FOR(!hasPolicyEntry<SecurityGroupContext>(framework, l32sgc_2), 500);
+    WAIT_FOR(!hasPolicyEntry<ReportedEpAttribute>(framework, epattr_1), 500);
+    WAIT_FOR(!hasPolicyEntry<ReportedEpAttribute>(framework, epattr_2), 500);
 
     URI l2epr3 = URIBuilder()
         .addElement("EprL2Universe")
@@ -646,7 +723,52 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
         .addElement(bduri.toString())
         .addElement(MAC("10:ff:00:a3:01:02")).build();
 
+    epset = URIBuilder(l2epr3)
+        .addElement("GbpeReportedEpAttributeSet")
+        .build();
+    epattr_1 = URIBuilder(epset)
+        .addElement("GbpeReportedEpAttribute")
+        .addElement("attr1")
+        .build();
+
     WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr3, uuid3), 500);
+    WAIT_FOR(hasPolicyEntry<ReportedEpAttribute>(framework, epattr_1), 500);
+
+    // check for a new EP added to watch directory
+    URI l2epr2 = URIBuilder()
+        .addElement("EprL2Universe")
+        .addElement("EprL2Ep")
+        .addElement(bduri.toString())
+        .addElement(MAC("10:ff:00:a3:01:01")).build();
+
+    epset = URIBuilder(l2epr2)
+        .addElement("GbpeReportedEpAttributeSet")
+        .build();
+    epattr_1 = URIBuilder(epset)
+        .addElement("GbpeReportedEpAttribute")
+        .addElement("attr2")
+        .build();
+
+    fs::path path2(temp / "83f18f0b-80f7-46e2-b06c-4d9487b0c755.ep");
+    fs::ofstream os4(path2);
+    os4 << "{"
+       << "\"uuid\":\"83f18f0b-80f7-46e2-b06c-4d9487b0c755\","
+       << "\"mac\":\"10:ff:00:a3:01:01\","
+       << "\"ip\":[\"10.0.0.3\"],"
+       << "\"interface-name\":\"veth1\","
+       << "\"endpoint-group\":\"/PolicyUniverse/PolicySpace/test/GbpEpGroup/epg/\","
+       << "\"attributes\":{\"attr2\":\"value2\"}"
+       << "}" << std::endl;
+    os4.close();
+
+    WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr2), 500);
+    WAIT_FOR(hasPolicyEntry<ReportedEpAttribute>(framework, epattr_1), 500);
+
+    // check for removing an endpoint
+    fs::remove(path2);
+
+    WAIT_FOR(!hasEPREntry<L2Ep>(framework, l2epr2), 500);
+    WAIT_FOR(!hasPolicyEntry<ReportedEpAttribute>(framework, epattr_1), 500);
 
     watcher.stop();
 }
