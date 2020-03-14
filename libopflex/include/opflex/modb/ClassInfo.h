@@ -103,7 +103,7 @@ public:
     /**
      * Default constructor
      */
-    ClassInfo() {}
+    ClassInfo() : class_id(0), class_type(POLICY) {}
 
     /**
      * Construct a class info object for the given class ID

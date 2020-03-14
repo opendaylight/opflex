@@ -45,7 +45,10 @@ void Inspector::setSocketName(const std::string& name) {
 
 void Inspector::start() {
     LOG(INFO) << "Starting inspector on \"" << name << "\"";
-    std::remove(name.c_str());
+    int rc = std::remove(name.c_str());
+    if (rc) {
+        LOG(DEBUG) << "Unable to remove " << name;
+    }
     listener.reset(new OpflexListener(*this, name, "inspector", "inspector"));
     listener->listen();
 }
