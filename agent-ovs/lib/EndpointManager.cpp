@@ -340,9 +340,35 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
             LocalL3Ep::remove(framework, locall3ep);
         }
         for (const URI& l2ep : es.l2EPs) {
+            // The contained objects dont get deleted during make check tests.
+            // Free them up here.
+            auto l2e = L2Ep::resolve(framework, l2ep);
+            if (l2e) {
+                std::vector<shared_ptr<SecurityGroupContext> > outSGC;
+                l2e.get()->resolveEprSecurityGroupContext(outSGC);
+                for (auto &sgc : outSGC)
+                    sgc->remove();
+                auto epas = l2e.get()->resolveGbpeReportedEpAttributeSet();
+                if (epas) {
+                    std::vector<shared_ptr<ReportedEpAttribute> > outEPA;
+                    epas.get()->resolveGbpeReportedEpAttribute(outEPA);
+                    for (auto &epa : outEPA)
+                        epa->remove();
+                    epas.get()->remove();
+                }
+            }
             L2Ep::remove(framework, l2ep);
         }
         for (const URI& l3ep : es.l3EPs) {
+            // The contained objects dont get deleted during make check tests.
+            // Free them up here.
+            auto l3e = L3Ep::resolve(framework, l3ep);
+            if (l3e) {
+                std::vector<shared_ptr<SecurityGroupContext> > outSGC;
+                l3e.get()->resolveEprSecurityGroupContext(outSGC);
+                for (auto &sgc : outSGC)
+                    sgc->remove();
+            }
             L3Ep::remove(framework, l3ep);
         }
         EpCounter::remove(framework, uuid);
@@ -951,6 +977,23 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid,
     return updated;
 }
 
+/* Form the URI of secGroup from the given security group.
+ * This is needed since we want to generate URI without the EPR prefixes of the EP */
+static URI formSecGroupURI (SecurityGroupContext& sgc)
+{
+    const auto& sg = sgc.getSecGroup("");
+    size_t spaceStart = sg.find("PolicySpace") + 12;
+    size_t gsgStart = sg.rfind("GbpSecGroup");
+    size_t nameStart = gsgStart + 12;
+    return URIBuilder()
+               .addElement("PolicyUniverse")
+               .addElement("PolicySpace")
+               .addElement(sg.substr(spaceStart, gsgStart-spaceStart-1))
+               .addElement("GbpSecGroup")
+               .addElement(sg.substr(nameStart, sg.size()-nameStart-1))
+               .build();
+}
+
 static shared_ptr<modelgbp::epr::L2Ep>
 populateL2E(shared_ptr<modelgbp::epr::L2Universe>& l2u,
             shared_ptr<const Endpoint>& ep,
@@ -968,6 +1011,14 @@ populateL2E(shared_ptr<modelgbp::epr::L2Universe>& l2u,
     l2e->setUuid(uuid);
     l2e->setGroup(egURI.toString());
 
+    // Free up deleted security group context
+    std::vector<shared_ptr<SecurityGroupContext> > outSGC;
+    l2e->resolveEprSecurityGroupContext(outSGC);
+    for (auto &sgc : outSGC) {
+        auto sgURI = formSecGroupURI(*sgc);
+        if (secGroups.find(sgURI) == secGroups.end())
+            sgc->remove();
+    }
     for (const opflex::modb::URI& secGroup : secGroups) {
         l2e->addEprSecurityGroupContext(secGroup.toString());
     }
@@ -976,9 +1027,21 @@ populateL2E(shared_ptr<modelgbp::epr::L2Universe>& l2u,
         l2e->setInterfaceName(ep->getAccessInterface().get());
     else if (ep->getInterfaceName())
         l2e->setInterfaceName(ep->getInterfaceName().get());
+
     const Endpoint::attr_map_t& attr_map = ep->getAttributes();
+    // Free up deleted attributes
     shared_ptr<ReportedEpAttributeSet> epas =
         l2e->addGbpeReportedEpAttributeSet();
+    if (epas) {
+        std::vector<shared_ptr<ReportedEpAttribute> > outEPA;
+        epas->resolveGbpeReportedEpAttribute(outEPA);
+        for (auto &epa : outEPA) {
+            auto name = epa->getName();
+            if (name)
+                if (attr_map.find(name.get()) == attr_map.end())
+                    epa->remove();
+        }
+    }
     for (const pair<const string, string>& ap : attr_map) {
         shared_ptr<ReportedEpAttribute> epa =
             epas->addGbpeReportedEpAttribute(ap.first);
@@ -1007,6 +1070,14 @@ populateL3E(shared_ptr<modelgbp::epr::L3Universe>& l3u,
         .setGroup(egURI.toString())
         .setUuid(uuid);
 
+    // Free up deleted security group context
+    std::vector<shared_ptr<SecurityGroupContext> > outSGC;
+    l3e->resolveEprSecurityGroupContext(outSGC);
+    for (auto &sgc : outSGC) {
+        auto sgURI = formSecGroupURI(*sgc);
+        if (secGroups.find(sgURI) == secGroups.end())
+            sgc->remove();
+    }
     for (const opflex::modb::URI& secGroup : secGroups) {
         l3e->addEprSecurityGroupContext(secGroup.toString());
     }
