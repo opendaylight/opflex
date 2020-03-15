@@ -425,7 +425,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
 
     if (statMode == StatMode::SIM) {
         LOG(INFO) << "Simulation of stats enabled";
-        Agent::StatProps statProps;
+        Agent::StatProps statProps{};
         statProps.interval = 30;
         setSimStatProperties(OPFLEX_STATS_INTERFACE_SETTING, OPFLEX_STATS_INTERFACE_INTERVAL,
                              properties, statProps);
@@ -633,12 +633,17 @@ void Agent::start() {
         policyManager.registerListener(&(*pSimStats));
     }
 
-    // disable reporting of some stats for now (MODB only)
-    LOG(INFO) << "Disable unsupported stat reporting";
-    framework.overrideObservableReporting(modelgbp::observer::OpflexCounter::CLASS_ID, false);
-    framework.overrideObservableReporting(modelgbp::gbpe::EpToSvcCounter::CLASS_ID, false);
-    framework.overrideObservableReporting(modelgbp::gbpe::SvcToEpCounter::CLASS_ID, false);
-    framework.overrideObservableReporting(modelgbp::gbpe::TableDropCounter::CLASS_ID, false);
+    if (statMode == StatMode::OFF) {
+        LOG(INFO) << "Disable stats reporting completely";
+        framework.disableObservableReporting();
+    } else {
+        // disable reporting of some stats for now (MODB only)
+        LOG(INFO) << "Disable unsupported stat reporting";
+        framework.overrideObservableReporting(modelgbp::observer::OpflexCounter::CLASS_ID, false);
+        framework.overrideObservableReporting(modelgbp::gbpe::EpToSvcCounter::CLASS_ID, false);
+        framework.overrideObservableReporting(modelgbp::gbpe::SvcToEpCounter::CLASS_ID, false);
+        framework.overrideObservableReporting(modelgbp::gbpe::TableDropCounter::CLASS_ID, false);
+    }
 }
 
 void Agent::stop() {

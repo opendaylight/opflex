@@ -281,5 +281,8 @@ void OFFramework::overrideObservableReporting(modb::class_id_t class_id, bool en
     pimpl->processor.overrideObservableReporting(class_id, enabled);
 }
 
+void OFFramework::disableObservableReporting() {
+    pimpl->processor.disableObservableReporting();
+}
 } /* namespace ofcore */
 } /* namespace opflex */

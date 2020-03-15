@@ -243,6 +243,11 @@ public:
      */
     bool isObservableReportable(modb::class_id_t class_id);
 
+    /**
+     * Disable reporting of all observables
+     */
+    void disableObservableReporting();
+
 private:
     /**
      * The system store client
@@ -273,6 +278,11 @@ private:
      * Override whether observable is reportable
      */
      std::map<modb::class_id_t, bool> overrideReportable;
+
+     /**
+      * Should reporting of observables be completely disabled.
+      */
+     bool reportObservables;
 
     /**
      * The status of items in the MODB with respect to the opflex

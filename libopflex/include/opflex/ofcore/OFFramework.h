@@ -901,6 +901,11 @@ public:
      */
      void overrideObservableReporting(modb::class_id_t class_id, bool enabled);
 
+     /**
+      * Disable reporting of all observables
+      */
+     void disableObservableReporting();
+
 private:
     /**
      * Get the object store that provides access to the managed object
