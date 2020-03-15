@@ -220,7 +220,7 @@ void OpflexPool::updatePeerStatus(const string& hostname, int port,
 OpflexClientConnection* OpflexPool::getPeer(const string& hostname,
                                             int port) {
     util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
-    conn_map_t::iterator it = connections.find(make_pair(hostname, port));
+    auto it = connections.find(make_pair(hostname, port));
     if (it != connections.end()) {
         return it->second.conn;
     }
@@ -265,7 +265,7 @@ void OpflexPool::addPeer(OpflexClientConnection* conn) {
 }
 
 void OpflexPool::doRemovePeer(const string& hostname, int port) {
-    conn_map_t::iterator it = connections.find(make_pair(hostname, port));
+    auto it = connections.find(make_pair(hostname, port));
     if (it != connections.end()) {
         if (it->second.conn) {
             doSetRoles(it->second, 0);
@@ -288,7 +288,7 @@ void OpflexPool::updateRole(ConnData& cd,
                             OFConstants::OpflexRole role) {
     if (cd.roles & role) {
         if (!(newroles & role)) {
-            role_map_t::iterator it = roles.find(role);
+            auto it = roles.find(role);
             if (it != roles.end()) {
                 if (it->second.curMaster == cd.conn)
                     it->second.curMaster = NULL;
@@ -337,7 +337,7 @@ OpflexClientConnection*
 OpflexPool::getMasterForRole(OFConstants::OpflexRole role) {
     util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
 
-    role_map_t::iterator it = roles.find(role);
+    auto it = roles.find(role);
     if (it == roles.end())
         return NULL;
     if (it->second.curMaster != NULL && it->second.curMaster->isReady())
@@ -406,7 +406,7 @@ size_t OpflexPool::sendToRole(OpflexMessage* message,
     std::vector<OpflexClientConnection*> conns;
 
     util::RecursiveLockGuard guard(&conn_mutex, &conn_mutex_key);
-    role_map_t::iterator it = roles.find(role);
+    auto it = roles.find(role);
     if (it == roles.end())
         return 0;
 

@@ -14,6 +14,7 @@
 #include <set>
 #include <netinet/in.h>
 #include <boost/atomic.hpp>
+#include <boost/thread/mutex.hpp>
 #include <uv.h>
 
 #include "opflex/engine/internal/OpflexServerConnection.h"
@@ -217,6 +218,8 @@ private:
 
     static void* on_new_connection(yajr::Listener* listener,
                                    void* data, int error);
+
+    static boost::mutex serverConnectionMutex;
 
     friend class OpflexServerConnection;
 };

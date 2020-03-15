@@ -36,7 +36,6 @@ using opflex::gbp::PolicyUpdateOp;
 OpflexServerConnection::OpflexServerConnection(OpflexListener* listener_)
     : OpflexConnection(listener_->handlerFactory),
       listener(listener_), peer(NULL) {
-      int rc;
 
       uv_loop_init(&server_loop);
       policy_update_async.data = this;
@@ -45,7 +44,7 @@ OpflexServerConnection::OpflexServerConnection(OpflexListener* listener_)
       uv_async_init(&server_loop, &cleanup_async, on_cleanup_async);
       prr_timer_async.data = this;
       uv_async_init(&server_loop, &prr_timer_async, on_prr_timer_async);
-      rc = uv_thread_create(&server_thread, server_thread_entry, this);
+      int rc = uv_thread_create(&server_thread, server_thread_entry, this);
       if (rc < 0) {
           throw std::runtime_error(string("Could not create policy update thread: ") +
                                    uv_strerror(rc));

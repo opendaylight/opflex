@@ -353,13 +353,13 @@ private:
      */
     class item {
     public:
-        item() : uri(""), expiration(0), details(NULL) {}
+        item() : uri(""), expiration(0), last_xid(0), details(NULL) {}
         item(const item& i) : uri(i.uri), expiration(i.expiration),
                               last_xid(i.last_xid) {
             details = new item_details(*i.details);
         }
         item(const modb::URI& uri_, modb::class_id_t class_id_,
-             uint64_t expiration_, int64_t refresh_rate_,
+             uint64_t expiration_, uint64_t refresh_rate_,
              ItemState state_, bool local_)
             : uri(uri_), expiration(expiration_), last_xid(0) {
             details = new item_details();

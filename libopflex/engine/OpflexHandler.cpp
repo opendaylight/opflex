@@ -24,7 +24,6 @@
 #include "opflex/engine/internal/OpflexConnection.h"
 #include "opflex/engine/internal/OpflexHandler.h"
 #include "opflex/engine/internal/OpflexMessage.h"
-#include "opflex/engine/Processor.h"
 #include "opflex/rpc/JsonRpcConnection.h"
 
 #include "opflex/logging/internal/logging.hpp"

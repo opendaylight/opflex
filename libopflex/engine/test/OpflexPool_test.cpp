@@ -47,7 +47,7 @@ public:
         on_state_change(NULL, this, yajr::StateChange::DELETE, 0);
     }
     virtual bool isReady() { return ready; }
-    virtual std::string& getRemotePeer() {
+    virtual const std::string& getRemotePeer() {
         static std::string dummy("DUMMY");
         return dummy;
     }

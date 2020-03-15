@@ -511,8 +511,8 @@ public:
         : ServerFixture(),
           c4u("/class4/test/"),
           c5u("/class5/test/"),
-          c6u("/class4/test/class6/test2/") {
-
+          c6u("/class4/test/class6/test2/"),
+          rclient(NULL) {
     }
 
     void setup() {
@@ -669,8 +669,8 @@ public:
         : ServerFixture(),
           u1("/"),
           u2("/class2/42/"),
-          u3("/class2/42/class3/12/test/") {
-
+          u3("/class2/42/class3/12/test/"),
+          rclient(NULL){
     }
 
     void setup() {
@@ -747,8 +747,8 @@ public:
         : ServerFixture(),
           c8u("/class8/test/"),
           c9u("/class9/test/"),
-          c10u("/class8/test/class10/test2/") {
-
+          c10u("/class8/test/class10/test2/"),
+          rclient(NULL) {
     }
 
     void setup() {

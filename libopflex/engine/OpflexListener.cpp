@@ -162,6 +162,7 @@ void* OpflexListener::on_new_connection(yajr::Listener* ylistener,
     OpflexListener* listener = (OpflexListener*)data;
     util::RecursiveLockGuard guard(&listener->conn_mutex,
                                    &listener->conn_mutex_key);
+    boost::unique_lock<boost::mutex> serverConnGuard(serverConnectionMutex);
     OpflexServerConnection* conn = new OpflexServerConnection(listener);
     listener->conns.insert(conn);
     return conn;
@@ -235,6 +236,8 @@ bool OpflexListener::isListening() {
     using yajr::comms::internal::Peer;
     return Peer::LoopData::getPeerCount(&server_loop, Peer::LoopData::LISTENING) != 0;
 }
+
+boost::mutex OpflexListener::serverConnectionMutex{};
 
 } /* namespace internal */
 } /* namespace engine */

@@ -18,7 +18,6 @@
 
 #include <boost/foreach.hpp>
 
-#include "opflex/logging/internal/logging.hpp"
 #include "opflex/engine/internal/OpflexMessage.h"
 #include "opflex/engine/internal/InspectorServerHandler.h"
 #include "opflex/engine/Inspector.h"

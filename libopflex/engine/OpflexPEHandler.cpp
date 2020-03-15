@@ -21,7 +21,6 @@
 
 #include <rapidjson/document.h>
 #include <boost/lexical_cast.hpp>
-#include <boost/asio.hpp>
 #include <boost/asio/ip/address_v4.hpp>
 
 #include "opflex/engine/Processor.h"
