@@ -14,14 +14,14 @@
 #  include <config.h>
 #endif
 
-
+#include <boost/atomic.hpp>
 #include "opflex/logging/OFLogHandler.h"
 #include "opflex/logging/StdOutLogHandler.h"
 
 namespace opflex {
 namespace logging {
 
-static OFLogHandler* volatile activeHandler = NULL;
+static boost::atomic<OFLogHandler*> activeHandler(NULL);
 
 OFLogHandler::OFLogHandler(Level logLevel) : logLevel_(logLevel) { };
 OFLogHandler::~OFLogHandler() { }
