@@ -180,6 +180,9 @@ int PacketDecoderLayerField::decode(const unsigned char *buf, std::size_t length
                 if(shouldSave(scratchOffset)) {
                     p.scratchpad[scratchOffset] = value;
                 }
+                if(isMetaField()) {
+                    p.meta[metaSeq-1] = value;
+                }
             } else if(byteLen <= 8) {
                 uint64_t value = 0;
                 unsigned char *ptr = (unsigned char *)&value;
@@ -246,6 +249,15 @@ int PacketDecoderLayerField::decode(const unsigned char *buf, std::size_t length
                 for(uint32_t i=0; i < var_length; i++) {
                     ostr << hex << bytes[i] << " ";
                 }
+            }
+            if(shouldSave(scratchOffset) && (var_length <= 4)) {
+                uint32_t value = 0;
+                unsigned char *ptr = (unsigned char *)&value;
+                for(uint8_t i=0; i<var_length; i++) {
+                    ptr[4-var_length+i] = bytes[i];
+                }
+                value = ntohl(value);
+                p.scratchpad[scratchOffset] = value;
             }
             p.inferredDataLength = 0;
             break;
@@ -318,7 +330,13 @@ int PacketDecoderLayer::decode(const unsigned char *buf, std::size_t length, Par
     }
 
     boost::format fmtStr;
-    getFormatString(fmtStr);
+    auto sptr = getVariant(p);
+    if(sptr) {
+        sptr->reParse(p);
+        sptr->getFormatString(fmtStr);
+    } else {
+        getFormatString(fmtStr);
+    }
     for(unsigned i=1; i<=numOutArgs; i++) {
         fmtStr%p.formattedFields[i-1];
     }
@@ -327,7 +345,21 @@ int PacketDecoderLayer::decode(const unsigned char *buf, std::size_t length, Par
     } catch(boost::io::too_few_args& exc) {
         LOG(ERROR)<< exc.what();
     }
+
     return err;
+}
+
+void PacketDecoder::registerLayer(shared_ptr<PacketDecoderLayerVariant>& decoderLayer) {
+    if(!decoderLayer) {
+        return;
+    }
+    variantLayerIdMap.insert(make_pair(decoderLayer->getId(),decoderLayer));
+    auto baseLayer = getLayerById(decoderLayer->getTypeId());
+    if(baseLayer) {
+        baseLayer->addVariant(decoderLayer->getKey(),decoderLayer);
+        LOG(DEBUG) << "Registered variant layer " << decoderLayer->getName() << " ("
+                    << decoderLayer->getTypeId() << "," << decoderLayer->getKey() << ")";
+    }
 }
 
 void PacketDecoder::registerLayer(shared_ptr<PacketDecoderLayer>& decoderLayer) {
@@ -426,6 +458,10 @@ int PacketDecoder::configure() {
     shared_ptr<PacketDecoderLayer> sptrIPv6(new IPv6Layer());
     sptrIPv6->configure();
     registerLayer(sptrIPv6);
+    shared_ptr<PacketDecoderLayerVariant>
+        sptrGeneveOptTableIdLayerVariant(new GeneveOptTableIdLayerVariant());
+    sptrGeneveOptTableIdLayerVariant->configure();
+    registerLayer(sptrGeneveOptTableIdLayerVariant);
     /*Set the base layer id*/
     baseLayerId = sptrGeneve->getId();
     return 0;

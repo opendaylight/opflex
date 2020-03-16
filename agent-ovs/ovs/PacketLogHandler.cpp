@@ -148,8 +148,16 @@ void UdpServer::handleReceive(const boost::system::error_code& error,
     }
 }
 
+void PacketLogHandler::getDropReason(ParseInfo &p, std::string &dropReason) {
+    std::string bridge = ((p.meta[0] ==1)? "Int-" : ((p.meta[0] ==2)? "Acc-" :""));
+    if((p.meta[0] == 1) && (p.meta[1] < intTableDescMap.size())) {
+        dropReason = bridge + intTableDescMap[p.meta[1]].first;
+    } else if((p.meta[0] == 2) && (p.meta[1] < accTableDescMap.size())) {
+        dropReason = bridge + accTableDescMap[p.meta[1]].first;
+    }
+}
+
 void PacketLogHandler::parseLog(unsigned char *buf , std::size_t length) {
-    std::string parsedLog;
     ParseInfo p(&pktDecoder);
     int ret = pktDecoder.decode(buf, length, p);
     if(ret) {
@@ -164,24 +172,30 @@ void PacketLogHandler::parseLog(unsigned char *buf , std::size_t length) {
         }
         LOG(ERROR) << str.str();
     } else {
-        LOG(INFO) << p.parsedString;
+        std::string dropReason;
+        getDropReason(p, dropReason);
+        p.packetTuple.setField(0, dropReason);
+        LOG(INFO)<< dropReason << " " << p.parsedString;
+        if(!packetEventNotifSock.empty())
         {
-            std::lock_guard<std::mutex> lk(qMutex);
-            if(packetTupleQ.size() < maxOutstandingEvents) {
-                if(throttleActive) {
-                    LOG(ERROR) << "Queueing packet events";
-                    throttleActive = false;
-                }
-                packetTupleQ.push(p.packetTuple);
-                if(packetTupleQ.size()  == maxOutstandingEvents) {
-                    LOG(ERROR) << "Max Event queue size ("
-                               << maxOutstandingEvents
-                               << ") throttling packet events";
-                    throttleActive = true;
+            {
+                std::lock_guard<std::mutex> lk(qMutex);
+                if(packetTupleQ.size() < maxOutstandingEvents) {
+                    if(throttleActive) {
+                        LOG(ERROR) << "Queueing packet events";
+                        throttleActive = false;
+                    }
+                    packetTupleQ.push(p.packetTuple);
+                    if(packetTupleQ.size()  == maxOutstandingEvents) {
+                        LOG(ERROR) << "Max Event queue size ("
+                                   << maxOutstandingEvents
+                                   << ") throttling packet events";
+                        throttleActive = true;
+                    }
                 }
             }
+            cond.notify_one();
         }
-        cond.notify_one();
     }
 }
 

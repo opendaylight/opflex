@@ -19,6 +19,7 @@
 #include <string>
 #include <sstream>
 #include <boost/format.hpp>
+#include <boost/functional/hash.hpp>
 #include <map>
 #include <time.h>
 #include "rapidjson/writer.h"
@@ -145,6 +146,10 @@ struct ParseInfo {
      */
     std::string parsedString;
     /**
+     * Parsed output for current layer
+     */
+    std::string parsedLayerString;
+    /**
      * Field values in the format string of a given layer
      */
     std::vector<std::string> formattedFields;
@@ -176,7 +181,10 @@ struct ParseInfo {
      * Packet Tuple used to generate events
      */
     PacketTuple packetTuple;
-
+    /**
+     * Source Bridge and TableId
+     */
+    uint32_t meta[2];
 };
 
 /* Allowed header field types */
@@ -208,13 +216,13 @@ public:
      * @param printSeq formatted position in the layer output
      * @param tupleSeq_ position in layer packet tuple
      */
-    PacketDecoderLayerField(std::string &name, uint32_t len, uint32_t offset,
-            PacketDecoderLayerFieldType type, bool nextKey=false,
-            bool length=false, int _scratchOffset = -1, int printSeq = 0,
-            int tupleSeq_ = 0):
+    PacketDecoderLayerField(const std::string &name, uint32_t len,
+            uint32_t offset, PacketDecoderLayerFieldType type,
+            bool nextKey=false, bool length=false, int _scratchOffset = -1,
+            int printSeq = 0, int tupleSeq_ = 0, int metaSeq_ = 0):
         fieldType(type), fieldName(name), bitLength(len), bitOffset(offset),
         isNextKey(nextKey), isLength(length), scratchOffset(_scratchOffset),
-        outSeq(printSeq), tupleSeq(tupleSeq_) {}
+        outSeq(printSeq), tupleSeq(tupleSeq_), metaSeq(metaSeq_) {}
     /**
      * Whether matching traffic should be allowed or dropped
      * @return true if this field indicates the length of the containing Layer
@@ -239,13 +247,92 @@ private:
     uint32_t bitLength;
     uint32_t bitOffset;
     bool isNextKey,isLength;
-    int scratchOffset, outSeq, tupleSeq;
+    int scratchOffset, outSeq, tupleSeq, metaSeq;
     std::unordered_map<uint32_t, std::string> kvOutMap;
     bool getIsNextKey() {return isNextKey;}
     bool shouldSave(int &_offset) {_offset=scratchOffset; return (_offset != -1);}
     bool shouldLog() {return (outSeq != 0);}
     bool isTupleField() {return (tupleSeq != 0);}
+    bool isMetaField() {return (metaSeq != 0);}
     void transformLog(uint32_t val, std::stringstream &ostr, ParseInfo &p);
+};
+
+/**
+ * Class to represent a packet layer variant
+ */
+class PacketDecoderLayerVariant {
+public:
+    /**
+     * Constructor for PacketDecoderLayer
+     * @param _layerTypeName name of the base layer type
+     * @param _layerName name of this layer
+     * @param _layerTypeId type Id of the base layer
+     * @param _layerId running number id of this variant layer
+     */
+    PacketDecoderLayerVariant(const std::string &_layerTypeName,
+            const std::string &_layerName, uint32_t _layerTypeId,
+            uint32_t _layerId):
+                layerTypeName(_layerTypeName), layerName(_layerName),
+                layerTypeId(_layerTypeId), layerId(_layerId), hash(0){}
+    /**
+     * Get the format string for this variant's output
+     * @param fmtStr format String for variant output
+     */
+    virtual void getFormatString(boost::format &fmtStr)=0;
+    /**
+     * Configure the variant and contained fields
+     * @return 0 if successfully configured
+     */
+    virtual int configure()=0;
+    /**
+     * Reparse for the variant layer
+     * @param p Parsing Context and output
+     */
+    virtual void reParse(ParseInfo &p) {;}
+    /**
+     * Get the Id of this layer
+     * @return layer id
+     */
+    uint32_t getId() { return layerId; }
+    /**
+     * Get the id of the base layer type
+     * @return base layer type id
+     */
+    uint32_t getTypeId() { return layerTypeId; }
+    /**
+     * Get the variant layer name
+     * @return layer name
+     */
+    const std::string &getName() { return layerName; }
+    /**
+     * Get the key of this layer relative to the base layer type
+     * @return key
+     */
+    std::size_t getKey() {
+        return hash;
+    }
+    /**
+     * Add the list of key values that together
+     * identify this variant when parsing the Record
+     * @param fmtStr format String for variant output
+     */
+    void addKeyData(uint32_t key) {
+        keyData.push_back(key);
+        boost::hash_combine(hash,key);
+    }
+protected:
+    ///@{
+    /** Layer Identifiers as mentioned */
+    std::string layerTypeName,layerName;
+    ///@}
+    ///@{
+    /** Layer Identifiers as mentioned */
+    uint32_t layerTypeId, layerId;
+    ///@}
+    /** Vector of key data */
+    std::vector<uint32_t> keyData;
+    /** Hash of key data */
+    std::size_t hash;
 };
 
 /**
@@ -268,8 +355,12 @@ public:
      * @param optId running number id of option layer
      * @param num_args Number of arguments in the format string
      */
-    PacketDecoderLayer(std::string typeName, uint32_t _key, std::string name,
-            uint32_t len, std::string nextLayer, std::string optionLayer,
+    PacketDecoderLayer(
+            const std::string &typeName,
+            uint32_t _key,
+            const std::string &name, uint32_t len,
+            const std::string &nextLayer,
+            const std::string &optionLayer,
             uint32_t lTypeId, uint32_t lId, uint32_t nLId, uint32_t optTypeId,
             uint32_t optId, uint32_t num_args):
         layerTypeName(typeName), layerName(name), nextTypeName(nextLayer),
@@ -320,8 +411,8 @@ public:
      */
     uint32_t getTypeId() { return layerTypeId; }
     /**
-     * Get the id of the base layer type
-     * @return base layer type id
+     * Get the key of this layer relative to the base layer type
+     * @return key
      */
     uint32_t getKey() { return key; }
     /**
@@ -339,6 +430,15 @@ public:
      * @return option layer id
      */
     uint32_t getOptionLayerId() {return optionLayerId; }
+    /**
+     * Add a specific instance(variant) of this layer
+     * @param key key for this variant
+     * @param sptr variant layer
+     */
+    void addVariant(std::size_t key,
+            std::shared_ptr<PacketDecoderLayerVariant>& sptr) {
+        layerVariants.insert(std::make_pair(key,sptr));
+    }
     /**
      * Extract the field value from the given buffer
      * @param buf buffer to extract bytes from
@@ -380,6 +480,14 @@ public:
      * @param fmtStr format String for layer output
      */
     virtual void getFormatString(boost::format &fmtStr)=0;
+    /**
+     * Get the variant layer from parsed data
+     * @param p Parsing Context and output
+     */
+    virtual std::shared_ptr<PacketDecoderLayerVariant>
+        getVariant(ParseInfo &p) {
+        return nullptr;
+    }
 protected:
     ///@{
     /** Layer Identifiers as mentioned */
@@ -399,6 +507,10 @@ protected:
      */
     std::vector<PacketDecoderLayerField> pktFields;
     /**
+     * Variants in the layer
+     */
+    std::map<std::size_t,std::shared_ptr<PacketDecoderLayerVariant>> layerVariants;
+    /**
      * This is an option header layer
      */
     bool amOptionLayer;
@@ -414,14 +526,15 @@ protected:
      * field will be moved
      * @param printSeq output sequence number in layer format string
      * @param tupleSeq tuple field number as collected in packetTuple
+     * @param metaSeq meta field number
      * @return 0 if no errors
      */
-    int addField(std::string name, uint32_t len, uint32_t offset,
+    int addField(const std::string &name, uint32_t len, uint32_t offset,
             PacketDecoderLayerFieldType fldType, bool nextKey=false,
             bool isLength=false, int scratchOffset=-1, int printSeq = 0,
-            int tupleSeq=0) {
+            int tupleSeq=0, int metaSeq=0) {
         pktFields.push_back(PacketDecoderLayerField(name, len, offset, fldType,
-                nextKey, isLength, scratchOffset, printSeq, tupleSeq));
+                nextKey, isLength, scratchOffset, printSeq, tupleSeq, metaSeq));
         return 0;
     };
 };
@@ -457,7 +570,7 @@ public:
      * @param name layer name
      * @return layer id
      */
-    uint32_t getLayerIdByName(std::string &name) {
+    uint32_t getLayerIdByName(const std::string &name) {
         auto it = layerNameMap.find(name);
         if(it != layerNameMap.end()) {
             return it->second;
@@ -514,8 +627,10 @@ private:
     std::unordered_map<uint32_t, std::unordered_map<uint32_t,
             std::shared_ptr<PacketDecoderLayer>>> decoderMapRegistry;
     std::unordered_map<uint32_t, std::shared_ptr<PacketDecoderLayer>> layerIdMap;
+    std::unordered_map<uint32_t, std::shared_ptr<PacketDecoderLayerVariant>> variantLayerIdMap;
     uint32_t baseLayerId;
     void registerLayer(std::shared_ptr<PacketDecoderLayer>&);
+    void registerLayer(std::shared_ptr<PacketDecoderLayerVariant>&);
 };
 
 }

@@ -50,7 +50,7 @@ public:
  */
 class GeneveLayer: public PacketDecoderLayer {
 public:
-    GeneveLayer():PacketDecoderLayer("IPProto", 6081, "Geneve", 8, "Datalink", "GeneveOpt", 4, 6, 1, 5, 5, 1){};
+    GeneveLayer():PacketDecoderLayer("IPProto", 6081, "Geneve", 8, "Datalink", "GeneveOpt", 4, 6, 1, 5, 5, 0){};
     virtual int configure();
     virtual void getOptionLength(ParseInfo &p);
     virtual void getFormatString(boost::format &fmtStr);
@@ -66,6 +66,19 @@ public:
     virtual uint32_t getVariableDataLength(uint32_t hdrLength);
     virtual uint32_t getVariableHeaderLength(uint32_t fldVal);
     virtual void getFormatString(boost::format &fmtStr);
+    virtual std::shared_ptr<PacketDecoderLayerVariant>
+            getVariant(ParseInfo &p);
+};
+
+/**
+ * Variant implementing TableId
+ */
+class GeneveOptTableIdLayerVariant: public PacketDecoderLayerVariant {
+public:
+    GeneveOptTableIdLayerVariant():PacketDecoderLayerVariant("GeneveOpt", "TableId", 5, 1){};
+    virtual int configure();
+    virtual void getFormatString(boost::format &fmtStr);
+    virtual void reParse(ParseInfo &p);
 };
 
 /**
