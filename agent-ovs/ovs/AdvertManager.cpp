@@ -57,7 +57,9 @@ static const address_v6 ALL_NODES_IP(address_v6::from_string("ff02::1"));
 AdvertManager::AdvertManager(Agent& agent_,
                              IntFlowManager& intFlowManager_)
     : urng(rng()), all_ep_dis(300,600), repeat_dis(3000,5000),
-      sendRouterAdv(false), sendEndpointAdv(EPADV_DISABLED),
+      sendRouterAdv(false), initialRouterAdvs(0),
+      sendEndpointAdv(EPADV_DISABLED), tunnelEndpointAdv(EPADV_DISABLED),
+      tunnelEpAdvInterval(300),
       agent(agent_), intFlowManager(intFlowManager_),
       portMapper(NULL), switchConnection(NULL),
       ioService(&agent.getAgentIOService()),
@@ -128,7 +130,7 @@ void AdvertManager::doScheduleEpAdv(uint64_t time) {
 }
 
 void AdvertManager::scheduleEndpointAdv(const std::string& uuid) {
-    lock_guard<recursive_mutex> guard(timer_mutex);
+    lock_guard<recursive_mutex> timerGuard(timer_mutex);
     if (endpointAdvTimer) {
         unique_lock<mutex> guard(ep_mutex);
         pendingEps[uuid] = 5;
@@ -138,7 +140,7 @@ void AdvertManager::scheduleEndpointAdv(const std::string& uuid) {
 }
 
 void AdvertManager::scheduleServiceAdv(const std::string& uuid) {
-    lock_guard<recursive_mutex> guard(timer_mutex);
+    lock_guard<recursive_mutex> timerGuard(timer_mutex);
     if (endpointAdvTimer) {
         unique_lock<mutex> guard(ep_mutex);
         pendingServices[uuid] = 5;
@@ -153,8 +155,8 @@ static int send_packet_out(SwitchConnection* conn,
                            IntFlowManager::EncapType encapType =
                            IntFlowManager::ENCAP_NONE,
                            uint32_t vnid = 0,
-                           address tunDst = address()) {
-    struct ofputil_packet_out po;
+                           const address& tunDst = address()) {
+    struct ofputil_packet_out po{};
     po.buffer_id = UINT32_MAX;
     po.packet = b.data();
     po.packet_len = b.size();
@@ -266,7 +268,7 @@ static void doSendEpAdv(PolicyManager& policyManager,
                         unordered_set<uint32_t>& out_ports,
                         AdvertManager::EndpointAdvMode mode,
                         IntFlowManager::EncapType encapType,
-                        address tunDst) {
+                        const address& tunDst) {
     boost::system::error_code ec;
     address addr = address::from_string(ip, ec);
     if (ec) {
@@ -532,7 +534,7 @@ void AdvertManager::sendServiceAdvs(const string& uuid) {
     svc->getServiceMAC().get().toUIntArray(svcMac);
     const uint8_t* routerMac = intFlowManager.getRouterMacAddr();
 
-    uint8_t vnid = 0;
+    uint16_t vnid = 0;
     IntFlowManager::EncapType encapType = IntFlowManager::ENCAP_NONE;
     if (svc->getIfaceVlan()) {
         vnid = svc->getIfaceVlan().get();
@@ -618,10 +620,10 @@ void AdvertManager::sendTunnelEpAdvs(const string& uuid) {
     uint8_t tunnelMacBytes[ETH_ALEN];
     opMac.toUIntArray(tunnelMacBytes);
     unsigned char buf[46];
-    ifreq ifReq;
-    struct sockaddr_ll sa_ll;
     int sockfd;
+    ifreq ifReq;
     memset(&ifReq, 0, sizeof(ifReq));
+    struct sockaddr_ll sa_ll;
     memset(&sa_ll, 0, sizeof(sa_ll));
     memset(buf, 0, 46);
     struct arp::arp_hdr *arp_ptr = (struct arp::arp_hdr *) buf;
@@ -682,7 +684,7 @@ void AdvertManager::sendTunnelEpAdvs(const string& uuid) {
         memcpy(ptr, tunnelMacBytes, ETH_ALEN);
     }
 
-    int error = sendto(sockfd, buf, 46 , htonl(SO_BROADCAST),
+    ssize_t error = sendto(sockfd, buf, 46 , htonl(SO_BROADCAST),
             (struct sockaddr*)&sa_ll, sizeof(struct sockaddr_ll));
     if (error < 0) {
         LOG(ERROR) << "Could not send tunnel advertisement: "
