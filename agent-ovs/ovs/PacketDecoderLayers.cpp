@@ -72,7 +72,7 @@ int GeneveLayer::configure() {
     addField("criticalOption", 1, 9, PDF::FLDTYPE_BITFIELD, 0, 0, -1, 0, 0);
     addField("rsvd", 6, 10, PDF::FLDTYPE_BITFIELD, 0, 0, -1, 0, 0);
     addField("eType", 16, 16, PDF::FLDTYPE_BYTES, 1, 0, -1, 0, 0);
-    addField("vni", 24, 32, PDF::FLDTYPE_BYTES, 0, 0, -1, 1, 0);
+    addField("vni", 24, 32, PDF::FLDTYPE_BYTES, 0, 0, -1, 0, 0, 1);
     addField("rsvd1", 8, 56, PDF::FLDTYPE_BYTES, 0, 0, -1, 0, 0);
     return 0;
 }
@@ -83,15 +83,15 @@ void GeneveLayer::getOptionLength(ParseInfo &p) {
 
 void GeneveLayer::getFormatString(boost::format &fmtStr) {
     //Format string to print the layer goes here
-    fmtStr = boost::format(" BR=%1%");
+    fmtStr = boost::format("");
 }
 
 int GeneveOptLayer::configure() {
-    addField("class", 16, 0, PDF::FLDTYPE_BYTES, 0, 0, -1, 0, 0);
-    addField("type", 8, 16, PDF::FLDTYPE_BYTES, 0, 0, -1, 0, 0);
+    addField("class", 16, 0, PDF::FLDTYPE_BYTES, 0, 0, 1, 0, 0);
+    addField("type", 8, 16, PDF::FLDTYPE_BYTES, 0, 0, 2, 0, 0);
     addField("flags", 3, 24, PDF::FLDTYPE_BITFIELD, 0, 0, -1, 0, 0);
     addField("length", 5, 27, PDF::FLDTYPE_BITFIELD, 0, 1, -1, 0, 0);
-    addField("data", 0, 32, PDF::FLDTYPE_VARBYTES, 0, 0, -1, 0, 0);
+    addField("data", 0, 32, PDF::FLDTYPE_VARBYTES, 0, 0, 3, 0, 0);
     return 0;
 }
 
@@ -110,6 +110,33 @@ uint32_t GeneveOptLayer::getVariableHeaderLength(uint32_t fldVal) {
 void GeneveOptLayer::getFormatString(boost::format &fmtStr) {
     //Format string to print the layer goes here
     fmtStr = boost::format("");
+}
+
+std::shared_ptr<PacketDecoderLayerVariant>
+    GeneveOptLayer::getVariant(ParseInfo &p) {
+    std::size_t hash = 0;
+    boost::hash_combine(hash,p.scratchpad[1]);
+    boost::hash_combine(hash,p.scratchpad[2]);
+    auto it = layerVariants.find(hash);
+    if(it != layerVariants.end()) {
+        return it->second;
+    }
+    return nullptr;
+}
+
+int GeneveOptTableIdLayerVariant::configure() {
+    addKeyData(65535);
+    addKeyData(12);
+    return 0;
+}
+
+void GeneveOptTableIdLayerVariant::getFormatString(boost::format &fmtStr) {
+    //Format string to print the layer goes here
+    fmtStr = boost::format("");
+}
+
+void GeneveOptTableIdLayerVariant::reParse(ParseInfo &p) {
+    p.meta[1] = p.scratchpad[3];
 }
 
 int ARPLayer::configure() {

@@ -279,7 +279,7 @@ ActionBuilder& ActionBuilder::dropLog(uint32_t table_id) {
     this->regMove(MFF_CT_LABEL, MFF_TUN_METADATA11, 0, 0, 128);
     //TBD: loading value fails unless TLV option is set in ovsdb
     //Find a way to set this in automated tests.
-    //this->reg(MFF_TUN_METADATA12, table_id);
+    this->reg(MFF_TUN_METADATA12, table_id);
     return *this;
 }
 

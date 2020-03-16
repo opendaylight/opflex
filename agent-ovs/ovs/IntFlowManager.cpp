@@ -128,6 +128,8 @@ void IntFlowManager::populateTableDescriptionMap() {
     TABLE_DESC(LEARN_TABLE_ID, "LEARN_TABLE", "Learn table drop")
     TABLE_DESC(SERVICE_DST_TABLE_ID, "SERVICE_DST_TABLE",
             "Service destination missing/incorrect")
+    TABLE_DESC(POL_TABLE_ID, "POLICY_TABLE",
+                "Contract missing/incorrect")
     TABLE_DESC(STATS_TABLE_ID, "STATS_TABLE", "Stats Table drop")
     TABLE_DESC(OUT_TABLE_ID, "OUT_TABLE",
             "Derived output port missing/incorrect")
@@ -3305,9 +3307,10 @@ void IntFlowManager::createStaticFlows() {
     {
         TlvEntryList tlvFlows;
         for(int i = 0; i <= 10; i++) {
-            FlowBuilder().tlv(0xffff, i, 8, i).buildTlv(tlvFlows);
+            FlowBuilder().tlv(0xffff, i, 4, i).buildTlv(tlvFlows);
         }
-        FlowBuilder().tlv(0xffff, 11, 20, 11).buildTlv(tlvFlows);
+        FlowBuilder().tlv(0xffff, 11, 16, 11).buildTlv(tlvFlows);
+        FlowBuilder().tlv(0xffff, 12, 4, 12).buildTlv(tlvFlows);
         switchManager.writeTlv("DropLogStatic", tlvFlows);
     }
     {
