@@ -5,16 +5,16 @@ set -x
 
 pushd libopflex
 ./autogen.sh
-./configure --enable-tsan
+./configure --enable-tsan &> /dev/null
 make -j2
 make check
 sudo make install
 popd
 
 pushd genie
-mvn compile exec:java
+mvn compile exec:java &> /dev/null
 pushd target/libmodelgbp
-bash autogen.sh
+bash autogen.sh &> /dev/null
 ./configure &> /dev/null
 make &> /dev/null
 sudo make install &> /dev/null
@@ -23,10 +23,10 @@ popd
 
 git clone https://github.com/openvswitch/ovs.git --branch v2.12.0 --depth 1
 pushd ovs
-./boot.sh
+./boot.sh &> /dev/null
 ./configure  --enable-shared &> /dev/null
 make -j2 &> /dev/null
-sudo make install
+sudo make install &> /dev/null
 sudo mkdir -p /usr/local/include/openvswitch/openvswitch
 sudo mv /usr/local/include/openvswitch/*.h /usr/local/include/openvswitch/openvswitch
 sudo mv /usr/local/include/openflow /usr/local/include/openvswitch
@@ -35,8 +35,8 @@ sudo find lib -name "*.h" -exec cp --parents -t "/usr/local/include/openvswitch/
 popd
 
 pushd agent-ovs
-./autogen.sh
-./configure --enable-tsan
+./autogen.sh &> /dev/null
+./configure --enable-tsan &> /dev/null
 make -j2
 make check
 
