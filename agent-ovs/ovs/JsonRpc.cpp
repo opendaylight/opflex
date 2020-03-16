@@ -663,12 +663,12 @@ using boost::uuids::basic_random_generator;
             }
             auto ver = options.find("erspan_ver");
             if (ver != options.end()) {
-                if (ver->second.compare("1") == 0) {
+                if (ver->second == "1") {
                     pIfc.reset(new erspan_ifc_v1);
                     if (options.find("erspan_idx") != options.end())
                         static_pointer_cast<erspan_ifc_v1>(pIfc)->erspan_idx
                             = stoi(options["erspan_idx"]);
-                } else  if (ver->second.compare("2") == 0) {
+                } else  if (ver->second == "2") {
                     pIfc.reset(new erspan_ifc_v2);
                     if (options.find("erspan_hwid") != options.end())
                         static_pointer_cast<erspan_ifc_v2>(pIfc)->erspan_hw_id
@@ -1152,19 +1152,16 @@ void getValue(const Document& val, const list<string>& idx, Value& result) {
     }
     // if string is a number, treat it as index array.
     // otherwise its an object name.
-    int index;
     tmpVal.CopyFrom(val, alloc);
-    for (auto itr=idx.begin(); itr != idx.end();
-            itr++) {
-        LOG(DEBUG) << "index " << *itr;
+    for (const auto& itr : idx) {
+        LOG(DEBUG) << "index " << itr;
         bool isArr = false;
+        int index = 0;
         try {
-            index = stoi(*itr);
+            index = stoi(itr);
             isArr = true;
-            LOG(DEBUG) << "Is array";
         } catch (const invalid_argument& e) {
             // must be object name.
-            LOG(DEBUG) << "Is not array";
         }
 
         if (isArr) {
@@ -1179,9 +1176,9 @@ void getValue(const Document& val, const list<string>& idx, Value& result) {
             }
             tmpVal = tmpVal[index];
         } else if (tmpVal.IsObject()) {
-            if (tmpVal.HasMember((*itr).c_str())) {
+            if (tmpVal.HasMember(itr.c_str())) {
                 Value::ConstMemberIterator itrMem =
-                        tmpVal.FindMember((*itr).c_str());
+                        tmpVal.FindMember(itr.c_str());
                 if (itrMem != tmpVal.MemberEnd()) {
                     LOG(DEBUG) << "obj name << " << itrMem->name.GetString();
                     tmpVal.CopyFrom(itrMem->value, alloc);
