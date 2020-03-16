@@ -300,12 +300,12 @@ static void verify_epadv(ofpbuf* msg, unordered_set<string>& found,
 }
 
 void AdvertManagerFixture::testEpAdvert(AdvertManager::EndpointAdvMode mode) {
-    WAIT_FOR(conn->sentMsgs.size() == 11, 1000);
-    BOOST_CHECK_EQUAL(11, conn->sentMsgs.size());
+    WAIT_FOR(conn->getSentMsgCount() == 11, 1000);
+    BOOST_CHECK_EQUAL(11, conn->getSentMsgCount());
     // allow fallback to grat broadcast for service IPs
     unordered_set<string> fallback { "2002:db8::2" };
     unordered_set<string> found;
-    for (auto& msg : conn->sentMsgs) {
+    for (auto& msg : conn->getSentMsgs()) {
         verify_epadv(msg.get(), found, mode, fallback);
     }
 
@@ -340,11 +340,11 @@ BOOST_FIXTURE_TEST_CASE(endpointAdvertGB, EpAdvertFixtureGB) {
 }
 
 BOOST_FIXTURE_TEST_CASE(routerAdvert, RouterAdvertFixture) {
-    WAIT_FOR(conn->sentMsgs.size() == 1, 1000);
-    BOOST_CHECK_EQUAL(1, conn->sentMsgs.size());
+    WAIT_FOR(conn->getSentMsgCount() == 1, 1000);
+    BOOST_CHECK_EQUAL(1, conn->getSentMsgCount());
 
     unordered_set<string> found;
-    for (auto& msg : conn->sentMsgs) {
+    for (auto& msg : conn->getSentMsgs()) {
         struct ofputil_packet_out po;
         uint64_t ofpacts_stub[1024 / 8];
         struct ofpbuf ofpact;

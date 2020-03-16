@@ -28,6 +28,7 @@ public:
     }
 
     virtual void clear() {
+        std::lock_guard<std::mutex> guard(sentMsgMutex);
         sentMsgs.clear();
     }
 
@@ -40,6 +41,7 @@ public:
     virtual int GetProtocolVersion() { return OFP13_VERSION; }
 
     virtual int SendMessage(OfpBuf& msg) {
+        std::lock_guard<std::mutex> guard(sentMsgMutex);
         sentMsgs.push_back(std::move(msg));
         return 0;
     }
@@ -47,7 +49,25 @@ public:
     virtual bool IsConnected() { return connected; }
 
     bool connected;
+
+    int getSentMsgCount() {
+        std::lock_guard<std::mutex> guard(sentMsgMutex);
+        return sentMsgs.size();
+    }
+
+    const OfpBuf& getSentMsg(int index) {
+        std::lock_guard<std::mutex> guard(sentMsgMutex);
+        return sentMsgs[index];
+    }
+
+    const std::vector<OfpBuf>& getSentMsgs() {
+        std::lock_guard<std::mutex> guard(sentMsgMutex);
+        return sentMsgs;
+    }
+
+private:
     std::vector<OfpBuf> sentMsgs;
+    std::mutex sentMsgMutex;
 };
 
 } // namespace opflexagent

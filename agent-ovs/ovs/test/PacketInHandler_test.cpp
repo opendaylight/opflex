@@ -401,7 +401,7 @@ static void init_packet_in(ofputil_packet_in_private& pin,
     match_set_metadata(&pin.base.flow_metadata, metadata);
 }
 
-static void verify_dhcpv4(OfpBuf& msg, uint8_t message_type) {
+static void verify_dhcpv4(const OfpBuf& msg, uint8_t message_type) {
     using namespace dhcp;
     using namespace udp;
 
@@ -510,7 +510,7 @@ enum ReplyType {
     RAPID_PERM
 };
 
-static void verify_dhcpv6(OfpBuf& msg, uint8_t message_type,
+static void verify_dhcpv6(const OfpBuf& msg, uint8_t message_type,
                           ReplyType rt = PERM) {
     using namespace dhcp6;
     using namespace udp;
@@ -616,7 +616,7 @@ static void verify_dhcpv6(OfpBuf& msg, uint8_t message_type,
 #undef CONTAINS
 }
 
-static void verify_icmpv4_err(OfpBuf& msg) {
+static void verify_icmpv4_err(const OfpBuf& msg) {
     struct ofputil_packet_out po;
     uint64_t ofpacts_stub[1024 / 8];
     struct ofpbuf ofpact;
@@ -659,7 +659,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_noconfig, PacketInHandlerFixture) {
                                               OFPUTIL_PACKET_IN_NXT));
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
 
-    BOOST_CHECK_EQUAL(0, intConn.sentMsgs.size());
+    BOOST_CHECK_EQUAL(0, intConn.getSentMsgCount());
 }
 
 void PacketInHandlerFixture::testDhcpv4Discover(MockSwitchConnection& tconn) {
@@ -675,9 +675,9 @@ void PacketInHandlerFixture::testDhcpv4Discover(MockSwitchConnection& tconn) {
                                               OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
-    BOOST_REQUIRE_EQUAL(1, tconn.sentMsgs.size());
+    BOOST_REQUIRE_EQUAL(1, tconn.getSentMsgCount());
 
-    verify_dhcpv4(tconn.sentMsgs[0], opflexagent::dhcp::message_type::OFFER);
+    verify_dhcpv4(tconn.getSentMsg(0), opflexagent::dhcp::message_type::OFFER);
 }
 
 BOOST_FIXTURE_TEST_CASE(dhcpv4_discover_acc, PacketInHandlerFixture) {
@@ -705,9 +705,9 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_request, PacketInHandlerFixture) {
                                               OFPUTIL_PACKET_IN_NXT));
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
 
-    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
+    BOOST_REQUIRE_EQUAL(1, intConn.getSentMsgCount());
 
-    verify_dhcpv4(intConn.sentMsgs[0], opflexagent::dhcp::message_type::ACK);
+    verify_dhcpv4(intConn.getSentMsg(0), opflexagent::dhcp::message_type::ACK);
 }
 
 BOOST_FIXTURE_TEST_CASE(dhcpv4_request_inv, PacketInHandlerFixture) {
@@ -730,9 +730,9 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_request_inv, PacketInHandlerFixture) {
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
     free(buf);
 
-    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
+    BOOST_REQUIRE_EQUAL(1, intConn.getSentMsgCount());
 
-    verify_dhcpv4(intConn.sentMsgs[0], opflexagent::dhcp::message_type::NAK);
+    verify_dhcpv4(intConn.getSentMsg(0), opflexagent::dhcp::message_type::NAK);
 }
 
 BOOST_FIXTURE_TEST_CASE(dhcpv6_noconfig, PacketInHandlerFixture) {
@@ -746,7 +746,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_noconfig, PacketInHandlerFixture) {
                                               OFPUTIL_PACKET_IN_NXT));
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
 
-    BOOST_CHECK_EQUAL(0, intConn.sentMsgs.size());
+    BOOST_CHECK_EQUAL(0, intConn.getSentMsgCount());
 }
 
 BOOST_FIXTURE_TEST_CASE(dhcpv6_solicit, PacketInHandlerFixture) {
@@ -762,9 +762,9 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_solicit, PacketInHandlerFixture) {
                                               OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
-    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
+    BOOST_REQUIRE_EQUAL(1, intConn.getSentMsgCount());
 
-    verify_dhcpv6(intConn.sentMsgs[0], opflexagent::dhcp6::message_type::ADVERTISE);
+    verify_dhcpv6(intConn.getSentMsg(0), opflexagent::dhcp6::message_type::ADVERTISE);
 }
 
 BOOST_FIXTURE_TEST_CASE(dhcpv6_solicit_rapid, PacketInHandlerFixture) {
@@ -781,9 +781,9 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_solicit_rapid, PacketInHandlerFixture) {
                                               OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
-    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
+    BOOST_REQUIRE_EQUAL(1, intConn.getSentMsgCount());
 
-    verify_dhcpv6(intConn.sentMsgs[0], opflexagent::dhcp6::message_type::REPLY,
+    verify_dhcpv6(intConn.getSentMsg(0), opflexagent::dhcp6::message_type::REPLY,
                   RAPID_PERM);
 }
 
@@ -800,9 +800,9 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_request, PacketInHandlerFixture) {
                                               OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
-    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
+    BOOST_REQUIRE_EQUAL(1, intConn.getSentMsgCount());
 
-    verify_dhcpv6(intConn.sentMsgs[0], opflexagent::dhcp6::message_type::REPLY);
+    verify_dhcpv6(intConn.getSentMsg(0), opflexagent::dhcp6::message_type::REPLY);
 }
 
 BOOST_FIXTURE_TEST_CASE(dhcpv6_request_tmp, PacketInHandlerFixture) {
@@ -818,9 +818,9 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_request_tmp, PacketInHandlerFixture) {
                                               OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
-    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
+    BOOST_REQUIRE_EQUAL(1, intConn.getSentMsgCount());
 
-    verify_dhcpv6(intConn.sentMsgs[0], opflexagent::dhcp6::message_type::REPLY,
+    verify_dhcpv6(intConn.getSentMsg(0), opflexagent::dhcp6::message_type::REPLY,
                   TEMP);
 }
 
@@ -837,9 +837,9 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_confirm, PacketInHandlerFixture) {
                                               OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
-    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
+    BOOST_REQUIRE_EQUAL(1, intConn.getSentMsgCount());
 
-    verify_dhcpv6(intConn.sentMsgs[0], opflexagent::dhcp6::message_type::REPLY);
+    verify_dhcpv6(intConn.getSentMsg(0), opflexagent::dhcp6::message_type::REPLY);
 }
 
 BOOST_FIXTURE_TEST_CASE(dhcpv6_renew, PacketInHandlerFixture) {
@@ -855,9 +855,9 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_renew, PacketInHandlerFixture) {
                                               OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
-    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
+    BOOST_REQUIRE_EQUAL(1, intConn.getSentMsgCount());
 
-    verify_dhcpv6(intConn.sentMsgs[0], opflexagent::dhcp6::message_type::REPLY);
+    verify_dhcpv6(intConn.getSentMsg(0), opflexagent::dhcp6::message_type::REPLY);
 }
 
 BOOST_FIXTURE_TEST_CASE(dhcpv6_info_req, PacketInHandlerFixture) {
@@ -873,9 +873,9 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_info_req, PacketInHandlerFixture) {
                                               OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
-    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
+    BOOST_REQUIRE_EQUAL(1, intConn.getSentMsgCount());
 
-    verify_dhcpv6(intConn.sentMsgs[0], opflexagent::dhcp6::message_type::REPLY,
+    verify_dhcpv6(intConn.getSentMsg(0), opflexagent::dhcp6::message_type::REPLY,
                   INFO);
 }
 
@@ -890,9 +890,9 @@ void PacketInHandlerFixture::testIcmpv4Error(MockSwitchConnection& tconn) {
                                               OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
-    BOOST_REQUIRE_EQUAL(1, tconn.sentMsgs.size());
+    BOOST_REQUIRE_EQUAL(1, tconn.getSentMsgCount());
 
-    verify_icmpv4_err(tconn.sentMsgs[0]);
+    verify_icmpv4_err(tconn.getSentMsg(0));
 }
 
 BOOST_FIXTURE_TEST_CASE(icmpv4_error, PacketInHandlerFixture) {
@@ -922,14 +922,14 @@ void PacketInHandlerFixture::testIcmpEcho(bool v4) {
                                               OFPUTIL_PACKET_IN_NXT));
 
     pktInHandler.Handle(&intConn, OFPTYPE_PACKET_IN, b.get());
-    BOOST_REQUIRE_EQUAL(1, intConn.sentMsgs.size());
+    BOOST_REQUIRE_EQUAL(1, intConn.getSentMsgCount());
 
     struct ofputil_packet_out po;
     uint64_t ofpacts_stub[1024 / 8];
     struct ofpbuf ofpact;
     ofpbuf_use_stub(&ofpact, ofpacts_stub, sizeof ofpacts_stub);
     ofputil_decode_packet_out(&po,
-                              (ofp_header*)intConn.sentMsgs[0]->data,
+                              (ofp_header*)intConn.getSentMsg(0)->data,
                               NULL,
                               &ofpact);
 
