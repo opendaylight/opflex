@@ -239,6 +239,12 @@ extern "C" {
                            uint8_t table);
 
     /**
+     * Load value to tunnel metadata register
+     */
+    void act_tun_metadata_load(struct ofpbuf* buf,
+            int regId, const void* regValue, const void* mask);
+
+    /**
      * Get the value of the output reg action
      */
     uint32_t get_output_reg_value(const struct ofpact* ofpacts,
