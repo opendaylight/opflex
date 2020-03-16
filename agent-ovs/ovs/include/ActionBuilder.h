@@ -403,6 +403,14 @@ public:
     ActionBuilder& dropLog(uint32_t table_id);
 
     /**
+     * Load the given four bytes into the given tunnel metadata register
+     * @param regId the tunnel metadata register to load
+     * @param regValue the value to load
+     * @return this action builder for chaining
+     */
+    ActionBuilder& tunMetadata(mf_field_id regId, uint32_t regValue);
+
+    /**
      * Extract and return an array of flow actions from a buffer used
      * for constructing those actions.
      *

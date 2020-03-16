@@ -150,10 +150,30 @@ public:
      */
     void setNotifSock(const std::string &sockfilePath)
     { packetEventNotifSock = sockfilePath; }
+
+    /**
+     * Map of table_id to (Table name, Drop Reason) for use by
+     * table drop counters. Redefining here as the original definition
+     * is in a datapath specific include file
+     */
+    typedef std::unordered_map<unsigned, std::pair<std::string,std::string>>
+                TableDescriptionMap;
+    /**
+     * Set Integration bridge table description map
+     * @param tableDesc table description map
+     */
+    void setIntBridgeTableDescription(TableDescriptionMap &tableDesc)
+    { intTableDescMap = tableDesc; }
+    /**
+     * Set Access bridge table description map
+     * @param tableDesc table description map
+     */
+    void setAccBridgeTableDescription(TableDescriptionMap &tableDesc)
+    { accTableDescMap = tableDesc; }
     /**
      * Start packet logging
      */
-    bool startListener();
+    virtual bool startListener();
     /**
      * Start exporter
      */
@@ -167,13 +187,19 @@ public:
      */
     void stopExporter();
     /**
+     * extract drop reason from parsedInfo
+     * @param p Parsing context
+     * @param dropReason extracted drop reason
+     */
+    void getDropReason(ParseInfo &p, std::string &dropReason);
+    /**
      * Call packet decoder as an async callback
      * @param buf packet buffer
      * @param length total length of packet
      */
     void parseLog(unsigned char *buf , std::size_t length);
 
-private:
+protected:
     boost::asio::io_service &server_io;
     boost::asio::io_service &client_io;
     std::unique_ptr<UdpServer> socketListener;
@@ -187,6 +213,7 @@ private:
     std::condition_variable cond;
     std::queue<PacketTuple> packetTupleQ;
     bool throttleActive;
+    TableDescriptionMap intTableDescMap, accTableDescMap;
     static const unsigned maxOutstandingEvents=30;
     friend UdpServer;
     friend LocalClient;

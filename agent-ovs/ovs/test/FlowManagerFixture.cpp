@@ -237,12 +237,10 @@ Bldr& Bldr::dropLog(uint32_t table_id) {
     a("move", "NXM_NX_CT_ZONE[]->NXM_NX_TUN_METADATA9[0..15]");
     a("move", "NXM_NX_CT_MARK[]->NXM_NX_TUN_METADATA10[0..31]");
     a("move", "NXM_NX_CT_LABEL[]->NXM_NX_TUN_METADATA11[0..127]");
-    /*
-    char buf[32];
-    std::snprintf(buf, 32,"%d->NXM_NX_TUN_METADATA12[0..31]",table_id);
+    char buf[64];
+    std::snprintf(buf, 64,"0x%x->NXM_NX_TUN_METADATA12[960..991]",table_id);
     string s(buf);
     a("load", s );
-    */
     return *this;
 }
 

@@ -247,7 +247,6 @@ void OVSRenderer::start() {
             }
             return;
         }
-        setsid();
         int chdir_ret = chdir("/");
         if(chdir_ret) {
             LOG(ERROR) << "PacketLogger: Failed to chdir to /";
@@ -285,6 +284,11 @@ void OVSRenderer::start() {
         }
         pktLogger.setAddress(addr, dropLogRemotePort);
         pktLogger.setNotifSock(getAgent().getPacketEventNotifSock());
+        PacketLogHandler::TableDescriptionMap tblDescMap;
+        intSwitchManager.getForwardingTableList(tblDescMap);
+        pktLogger.setIntBridgeTableDescription(tblDescMap);
+        accessSwitchManager.getForwardingTableList(tblDescMap);
+        pktLogger.setAccBridgeTableDescription(tblDescMap);
         if(!pktLogger.startListener()) {
             LOG(ERROR) << "PacketLogger: Failed to bind socket:" << errno;
             exit(1);
