@@ -12,6 +12,21 @@ module[observer]
         root
     }
 
+    # Universe containing service related statistics
+    class[SvcStatUniverse;
+          super=observer/Universe;
+          concrete;
+          ]
+    {
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=svcStat;]
+            }
+        }
+    }
+
     # Universe containing endpoint statistics
     class[EpStatUniverse;
           super=observer/Universe;

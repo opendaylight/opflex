@@ -37,7 +37,7 @@ using std::shared_ptr;
 using std::string;
 using namespace modelgbp::gbp;
 using namespace modelgbp::gbpe;
-using modelgbp::observer::PolicyStatUniverse;
+using modelgbp::observer::SvcStatUniverse;
 
 namespace opflexagent {
 
@@ -528,8 +528,8 @@ PodSvcStatsManagerFixture::checkObjectStats (const std::string& epToSvcUuid,
                                             uint32_t byte_count)
 {
 
-    optional<shared_ptr<PolicyStatUniverse> > su =
-        PolicyStatUniverse::resolve(agent.getFramework());
+    optional<shared_ptr<SvcStatUniverse> > su =
+        SvcStatUniverse::resolve(agent.getFramework());
 
     auto aUuid =
         boost::lexical_cast<std::string>(agent.getUuid());
@@ -594,8 +594,8 @@ void PodSvcStatsManagerFixture::checkPodSvcObsObj (bool add)
     auto epToSvcUuid = "eptosvc:"+epSvcUuid;
     auto svcToEpUuid = "svctoep:"+epSvcUuid;
 
-    optional<shared_ptr<PolicyStatUniverse> > su =
-        PolicyStatUniverse::resolve(agent.getFramework());
+    optional<shared_ptr<SvcStatUniverse> > su =
+        SvcStatUniverse::resolve(agent.getFramework());
 
     auto aUuid =
         boost::lexical_cast<std::string>(agent.getUuid());

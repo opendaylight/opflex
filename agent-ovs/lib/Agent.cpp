@@ -544,6 +544,7 @@ void Agent::start() {
     root->addEpdrL3Discovered();
     root->addGbpeVMUniverse();
     root->addObserverEpStatUniverse();
+    root->addObserverSvcStatUniverse();
     root->addObserverPolicyStatUniverse();
     root->addObserverDropFlowConfigUniverse();
     root->addSpanUniverse();

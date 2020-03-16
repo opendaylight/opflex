@@ -1849,8 +1849,8 @@ void PrometheusManager::addNUpdatePodSvcCounter (bool isEpToSvc,
 
     const lock_guard<mutex> lock(podsvc_counter_mutex);
     Mutator mutator(framework, "policyelement");
-    optional<shared_ptr<PolicyStatUniverse> > su =
-                            PolicyStatUniverse::resolve(framework);
+    optional<shared_ptr<SvcStatUniverse> > su =
+                            SvcStatUniverse::resolve(framework);
     if (!su)
         return;
 

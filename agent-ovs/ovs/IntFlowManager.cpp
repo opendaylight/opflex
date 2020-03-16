@@ -28,7 +28,7 @@
 #include <modelgbp/gbp/EnforcementPreferenceTypeEnumT.hpp>
 #include <modelgbp/gbpe/SvcToEpCounter.hpp>
 #include <modelgbp/gbpe/EpToSvcCounter.hpp>
-#include <modelgbp/observer/PolicyStatUniverse.hpp>
+#include <modelgbp/observer/SvcStatUniverse.hpp>
 #include <modelgbp/fault/SeverityEnumT.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
@@ -79,7 +79,7 @@ using std::mutex;
 using opflex::modb::URI;
 using opflex::modb::MAC;
 using opflex::modb::class_id_t;
-using modelgbp::observer::PolicyStatUniverse;
+using modelgbp::observer::SvcStatUniverse;
 
 namespace pt = boost::property_tree;
 using namespace modelgbp::gbp;
@@ -2152,8 +2152,8 @@ updatePodSvcStatsCounters (const uint64_t &cookie,
                              "eptosvc")?true:false;
 
     Mutator mutator(agent.getFramework(), "policyelement");
-    optional<shared_ptr<PolicyStatUniverse> > su =
-        PolicyStatUniverse::resolve(agent.getFramework());
+    optional<shared_ptr<SvcStatUniverse> > su =
+        SvcStatUniverse::resolve(agent.getFramework());
     if (su) {
         if (isEpToSvc) {
             auto pEpToSvc = su.get()->resolveGbpeEpToSvcCounter(

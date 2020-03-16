@@ -325,7 +325,7 @@ module[gbpe]
     {
         contained
         {
-            parent[class=observer/PolicyStatUniverse]
+            parent[class=observer/SvcStatUniverse]
         }
         named
         {
@@ -374,7 +374,7 @@ module[gbpe]
     {
         contained
         {
-            parent[class=observer/PolicyStatUniverse]
+            parent[class=observer/SvcStatUniverse]
         }
         named
         {
@@ -413,6 +413,50 @@ module[gbpe]
         # number of bytes sent from ep to svc
         member[bytes; type=scalar/UInt64]
 
+    }
+
+    # Counter for showing service Rx and Tx statistics
+    class[SvcCounter;
+          super=observer/Observable;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=observer/SvcStatUniverse]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
+
+        # A unique svc identifer
+        member[uuid; type=reference/UUID]
+
+        # name of the svc: taken from attr for k8s OR intf-name for openstack
+        member[name; type=ascii/String]
+
+        # name of the svc namespace; only populated in k8s
+        member[namespace; type=ascii/String]
+
+        # name of the svc scope; only populated in k8s
+        # host-agent can set this as cluster, ext or nodeport or anything else in future
+        member[svcScope; type=ascii/String]
+
+        # number of packets received by the service
+        member[rxpackets; type=scalar/UInt64]
+
+        # number of bytes received by the service
+        member[rxbytes; type=scalar/UInt64]
+
+        # number of packets sent from the service
+        member[txpackets; type=scalar/UInt64]
+
+        # number of bytes sent from the service
+        member[txbytes; type=scalar/UInt64]
     }
 
     class[SecGrpClassifierCounter;
