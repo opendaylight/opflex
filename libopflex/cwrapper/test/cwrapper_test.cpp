@@ -62,9 +62,32 @@ public:
         opflexServer.stop();
     }
 
+    void setPeerStatus(int status) {
+        boost::lock_guard<boost::mutex> guard(fixtureMutex);
+        peerStatus = status;
+    }
+
+    int getPeerStatus() {
+        boost::lock_guard<boost::mutex> guard(fixtureMutex);
+        return peerStatus;
+    }
+
+    void setPoolHealth(int health) {
+        boost::lock_guard<boost::mutex> guard(fixtureMutex);
+        poolHealth = health;
+    }
+
+    int getPoolHealth() {
+        boost::lock_guard<boost::mutex> guard(fixtureMutex);
+        return poolHealth;
+    }
+
     GbpOpflexServerImpl opflexServer;
+
+private:
     int peerStatus;
     int poolHealth;
+    boost::mutex fixtureMutex;
 };
 
 void handler(const char* file, int line, 
@@ -80,13 +103,13 @@ void peerstatus_peer(void* user_data,
                      int port, 
                      int status) {
     LOG(INFO) << peerhostname << ":" << port << status;
-    ((ServerFixture*)user_data)->peerStatus = status;
+    ((ServerFixture*)user_data)->setPeerStatus(status);
 }
 
 void peerstatus_health(void* user_data, 
                        int health) {
     LOG(INFO) << health;
-    ((ServerFixture*)user_data)->poolHealth = health;
+    ((ServerFixture*)user_data)->setPoolHealth(health);
 }
 
 BOOST_FIXTURE_TEST_CASE( init, ServerFixture ) {
@@ -106,8 +129,8 @@ BOOST_FIXTURE_TEST_CASE( init, ServerFixture ) {
     BOOST_CHECK(OF_IS_SUCCESS(offramework_set_opflex_identity(framework, "dummy", "test")));
     BOOST_CHECK(OF_IS_SUCCESS(offramework_start(framework)));
     BOOST_CHECK(OF_IS_SUCCESS(offramework_add_peer(framework, LOCALHOST, 8009)));
-    WAIT_FOR(peerStatus == OF_PEERSTATUS_READY, 1000)
-    WAIT_FOR(poolHealth == OF_POOLHEALTH_HEALTHY, 1000)
+    WAIT_FOR(getPeerStatus() == OF_PEERSTATUS_READY, 1000)
+    WAIT_FOR(getPoolHealth() == OF_POOLHEALTH_HEALTHY, 1000)
 
     BOOST_CHECK(OF_IS_SUCCESS(offramework_stop(framework)));
     BOOST_CHECK(OF_IS_SUCCESS(offramework_destroy(&framework)));
