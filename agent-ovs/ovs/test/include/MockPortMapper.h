@@ -21,14 +21,34 @@ namespace opflexagent {
 class MockPortMapper : public PortMapper {
 public:
     virtual uint32_t FindPort(const std::string& name) {
+        std::lock_guard<std::mutex> guard(portsMutex);
         return ports.find(name) != ports.end() ? ports[name] : OFPP_NONE;
     }
+
+    virtual void setPort(const std::string& name, uint32_t of_port_no) {
+        std::lock_guard<std::mutex> guard(portsMutex);
+        ports[name] = of_port_no;
+    }
+
+    virtual void erasePort(const std::string& port) {
+        std::lock_guard<std::mutex> guard(portsMutex);
+        ports.erase(port);
+    }
+
     virtual const std::string& FindPort(uint32_t of_port_no) {
+        std::lock_guard<std::mutex> guard(portsMutex);
         return RPortMap.at(of_port_no);
     }
 
+    virtual void setPort(int of_port_no, const std::string& port) {
+        std::lock_guard<std::mutex> guard(portsMutex);
+        RPortMap[of_port_no] = port;
+    }
+
+private:
     std::unordered_map<std::string, uint32_t> ports;
     std::unordered_map<uint32_t, std::string> RPortMap;
+    std::mutex portsMutex;
 };
 
 } // namespace opflexagent

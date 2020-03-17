@@ -77,10 +77,10 @@ public:
         intFlowManager.setTunnel("10.11.12.13", 4789);
         intFlowManager.setVirtualRouter(true, true, "aa:bb:cc:dd:ee:ff");
         intFlowManager.setVirtualDHCP(true, "aa:bb:cc:dd:ee:ff");
-        portmapper.ports[uplinkIf] = 1024;
-        portmapper.ports[tunIf] = 2048;
-        portmapper.RPortMap[2048] = tunIf;
-        portmapper.RPortMap[1024] = uplinkIf;
+        portmapper.setPort(uplinkIf, 1024);
+        portmapper.setPort(tunIf, 2048);
+        portmapper.setPort(2048, tunIf);
+        portmapper.setPort(1024, uplinkIf);
         tun_port_new = 4096;
 
         switchManager.registerStateHandler(&intFlowManager);
@@ -214,8 +214,8 @@ public:
     IntFlowManagerFixture() : BaseIntFlowManagerFixture() {
         createObjects();
 
-        portmapper.ports[ep0->getInterfaceName().get()] = 80;
-        portmapper.RPortMap[80] = ep0->getInterfaceName().get();
+        portmapper.setPort(ep0->getInterfaceName().get(), 80);
+        portmapper.setPort(80, ep0->getInterfaceName().get());
 
         WAIT_FOR(policyMgr.groupExists(epg0->getURI()), 500);
         WAIT_FOR(policyMgr.getBDForGroup(epg0->getURI()) != boost::none, 500);
@@ -563,7 +563,7 @@ BOOST_FIXTURE_TEST_CASE(localEp, VxlanIntFlowManagerFixture) {
     WAIT_FOR_TABLES("change epg back", 500);
 
     /* port-mapping change */
-    portmapper.ports[ep0->getInterfaceName().get()] = 180;
+    portmapper.setPort(ep0->getInterfaceName().get(), 180);
     intFlowManager.portStatusUpdate(ep0->getInterfaceName().get(),
                                  180, false);
 
@@ -604,8 +604,8 @@ void BaseIntFlowManagerFixture::fdTest() {
     setConnected();
 
     /* create */
-    portmapper.ports[ep2->getInterfaceName().get()] = ep2_port;
-    portmapper.ports[ep4->getInterfaceName().get()] = ep4_port;
+    portmapper.setPort(ep2->getInterfaceName().get(), ep2_port);
+    portmapper.setPort(ep4->getInterfaceName().get(), ep4_port);
     intFlowManager.endpointUpdated(ep0->getUUID());
     intFlowManager.endpointUpdated(ep2->getUUID());
 
@@ -651,7 +651,7 @@ void BaseIntFlowManagerFixture::fdTest() {
     WAIT_FOR_TABLES("ep2", 500);
 
     /* remove port-mapping for ep2 */
-    portmapper.ports.erase(ep2->getInterfaceName().get());
+    portmapper.erasePort(ep2->getInterfaceName().get());
     exec.Clear();
     exec.ExpectGroup(FlowEdit::MOD, ge_fd0 + ge_bkt_ep0 + ge_bkt_tun);
     intFlowManager.endpointUpdated(ep2->getUUID());
@@ -685,7 +685,7 @@ void BaseIntFlowManagerFixture::fdTest() {
     /* group changes on tunnel port change */
     exec.Clear();
     exec.ExpectGroup(FlowEdit::MOD, ge_fd1 + ge_bkt_ep4 + ge_bkt_tun_new);
-    portmapper.ports[tunIf] = tun_port_new;
+    portmapper.setPort(tunIf, tun_port_new);
     intFlowManager.portStatusUpdate(tunIf, tun_port_new, false);
     WAIT_FOR(exec.IsGroupEmpty(), 500);
 
@@ -710,7 +710,7 @@ void BaseIntFlowManagerFixture::groupFloodTest() {
     setConnected();
 
     /* "create" local endpoints ep0 and ep2 */
-    portmapper.ports[ep2->getInterfaceName().get()] = ep2_port;
+    portmapper.setPort(ep2->getInterfaceName().get(), ep2_port);
     intFlowManager.endpointUpdated(ep0->getUUID());
     intFlowManager.endpointUpdated(ep2->getUUID());
 
@@ -902,7 +902,7 @@ void BaseIntFlowManagerFixture::portStatusTest() {
     epgURIs.clear();
     WAIT_FOR_DO(epgURIs.size() == 1, 500,
                 epgURIs.clear(); policyMgr.getGroups(epgURIs));
-    portmapper.ports[tunIf] = tun_port_new;
+    portmapper.setPort(tunIf, tun_port_new);
     for (const URI& u : epgURIs) {
         intFlowManager.egDomainUpdated(u);
     }
@@ -918,7 +918,7 @@ void BaseIntFlowManagerFixture::portStatusTest() {
     WAIT_FOR_TABLES("update", 500);
 
     /* remove mapping for tunnel port */
-    portmapper.ports.erase(tunIf);
+    portmapper.erasePort(tunIf);
     intFlowManager.portStatusUpdate(tunIf, tun_port_new, false);
 
     clearExpFlowTables();
@@ -1142,8 +1142,8 @@ BOOST_FIXTURE_TEST_CASE(ipMapping, VxlanIntFlowManagerFixture) {
     WAIT_FOR_TABLES("natmapping", 500);
 
     // Add next hop for mapping
-    portmapper.ports["nexthop"] = 42;
-    portmapper.RPortMap[42] = "nexthop";
+    portmapper.setPort("nexthop", 42);
+    portmapper.setPort(42, "nexthop");
     ep0->clearIPAddressMappings();
     ipm4.setNextHopIf("nexthop");
     ipm4.setNextHopMAC(MAC("42:00:42:42:42:42"));
@@ -1324,8 +1324,8 @@ BOOST_FIXTURE_TEST_CASE(anycastService, VxlanIntFlowManagerFixture) {
     setConnected();
     intFlowManager.egDomainUpdated(epg0->getURI());
     intFlowManager.domainUpdated(RoutingDomain::CLASS_ID, rd0->getURI());
-    portmapper.ports["service-iface"] = 17;
-    portmapper.RPortMap[17] = "service-iface";
+    portmapper.setPort("service-iface", 17);
+    portmapper.setPort(17, "service-iface");
 
     Service as;
     as.setUUID("ed84daef-1696-4b98-8c80-6b22d85f4dc2");
@@ -1492,8 +1492,8 @@ void BaseIntFlowManagerFixture::loadBalancedServiceTest() {
     initExpLBService(true);
     WAIT_FOR_TABLES("conntrack", 500);
 
-    portmapper.ports["service-iface"] = 17;
-    portmapper.RPortMap[17] = "service-iface";
+    portmapper.setPort("service-iface", 17);
+    portmapper.setPort(17, "service-iface");
     as1.setServiceMAC(MAC("13:37:13:37:13:37"));
     as1.setInterfaceName("service-iface");
     as1.setIfaceIP("1.1.1.1");
@@ -1637,12 +1637,12 @@ BOOST_FIXTURE_TEST_CASE(learningBridge, BaseIntFlowManagerFixture) {
     intFlowManager.start();
     setConnected();
 
-    portmapper.ports["eth0"] = 100;
-    portmapper.RPortMap[100] = "eth0";
-    portmapper.ports["eth1"] = 101;
-    portmapper.RPortMap[101] = "eth1";
-    portmapper.ports["eth2"] = 102;
-    portmapper.RPortMap[102] = "eth2";
+    portmapper.setPort("eth0", 100);
+    portmapper.setPort(100, "eth0");
+    portmapper.setPort("eth1", 101);
+    portmapper.setPort(101, "eth1");
+    portmapper.setPort("eth2", 102);
+    portmapper.setPort(102, "eth2");
 
     agent.getLearningBridgeManager().registerListener(&intFlowManager);
 
@@ -3494,8 +3494,8 @@ BOOST_FIXTURE_TEST_CASE(extSvi, VxlanIntFlowManagerFixture) {
     setConnected();
     URI extSVIBD("/tenant0/extSvi1");
     intFlowManager.localExternalDomainUpdated(extSVIBD);
-    portmapper.ports[ep5->getInterfaceName().get()] = 105;
-    portmapper.RPortMap[105] = ep5->getInterfaceName().get();
+    portmapper.setPort(ep5->getInterfaceName().get(), 105);
+    portmapper.setPort(105, ep5->getInterfaceName().get());
     initExpStatic();
     initExpSviBD(extSVIBD,1,1);
     initExpFd(1);

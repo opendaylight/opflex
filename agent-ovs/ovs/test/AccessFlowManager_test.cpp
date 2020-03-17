@@ -81,10 +81,10 @@ BOOST_FIXTURE_TEST_CASE(endpoint, AccessFlowManagerFixture) {
     ep0.reset(new Endpoint("0-0-0-0"));
     ep0->setAccessInterface("ep0-access");
     ep0->setAccessUplinkInterface("ep0-uplink");
-    portmapper.ports[ep0->getAccessInterface().get()] = 42;
-    portmapper.ports[ep0->getAccessUplinkInterface().get()] = 24;
-    portmapper.RPortMap[42] = ep0->getAccessInterface().get();
-    portmapper.RPortMap[24] = ep0->getAccessUplinkInterface().get();
+    portmapper.setPort(ep0->getAccessInterface().get(), 42);
+    portmapper.setPort(ep0->getAccessUplinkInterface().get(), 24);
+    portmapper.setPort(42, ep0->getAccessInterface().get());
+    portmapper.setPort(24, ep0->getAccessUplinkInterface().get());
     epSrc.updateEndpoint(*ep0);
 
     initExpStatic();
@@ -93,8 +93,8 @@ BOOST_FIXTURE_TEST_CASE(endpoint, AccessFlowManagerFixture) {
 
     ep1.reset(new Endpoint("0-0-0-1"));
     ep1->setAccessInterface("ep1-access");
-    portmapper.ports[ep1->getAccessInterface().get()] = 17;
-    portmapper.RPortMap[17] = ep1->getAccessInterface().get();
+    portmapper.setPort(ep1->getAccessInterface().get(), 17);
+    portmapper.setPort(17, ep1->getAccessInterface().get());
     epSrc.updateEndpoint(*ep1);
     epSrc.removeEndpoint(ep0->getUUID());
 
@@ -103,8 +103,8 @@ BOOST_FIXTURE_TEST_CASE(endpoint, AccessFlowManagerFixture) {
     WAIT_FOR_TABLES("remove", 500);
 
     ep1->setAccessUplinkInterface("ep1-uplink");
-    portmapper.ports[ep1->getAccessUplinkInterface().get()] = 18;
-    portmapper.RPortMap[18] = ep1->getAccessUplinkInterface().get();
+    portmapper.setPort(ep1->getAccessUplinkInterface().get(), 18);
+    portmapper.setPort(18, ep1->getAccessUplinkInterface().get());
     epSrc.updateEndpoint(*ep1);
 
     clearExpFlowTables();
@@ -124,10 +124,10 @@ BOOST_FIXTURE_TEST_CASE(endpoint, AccessFlowManagerFixture) {
     initExpEp(ep0);
     WAIT_FOR_TABLES("missing-portmap", 500);
 
-    portmapper.ports[ep1->getAccessInterface().get()] = 91;
-    portmapper.ports[ep1->getAccessUplinkInterface().get()] = 92;
-    portmapper.RPortMap[91] = ep1->getAccessInterface().get();
-    portmapper.RPortMap[92] = ep1->getAccessUplinkInterface().get();
+    portmapper.setPort(ep1->getAccessInterface().get(), 91);
+    portmapper.setPort(ep1->getAccessUplinkInterface().get(), 92);
+    portmapper.setPort(91, ep1->getAccessInterface().get());
+    portmapper.setPort(92, ep1->getAccessUplinkInterface().get());
     accessFlowManager.portStatusUpdate("ep2-access", 91, false);
 
     clearExpFlowTables();
@@ -165,10 +165,10 @@ BOOST_FIXTURE_TEST_CASE(learningBridge, AccessFlowManagerFixture) {
     ep0->setInterfaceName("ep0-int");
     ep0->setAccessInterface("ep0-access");
     ep0->setAccessUplinkInterface("ep0-uplink");
-    portmapper.ports[ep0->getAccessInterface().get()] = 42;
-    portmapper.ports[ep0->getAccessUplinkInterface().get()] = 24;
-    portmapper.RPortMap[42] = ep0->getAccessInterface().get();
-    portmapper.RPortMap[24] = ep0->getAccessUplinkInterface().get();
+    portmapper.setPort(ep0->getAccessInterface().get(), 42);
+    portmapper.setPort(ep0->getAccessUplinkInterface().get(), 24);
+    portmapper.setPort(42, ep0->getAccessInterface().get());
+    portmapper.setPort(24, ep0->getAccessUplinkInterface().get());
     epSrc.updateEndpoint(*ep0);
 
     LearningBridgeSource lbSource(&agent.getLearningBridgeManager());

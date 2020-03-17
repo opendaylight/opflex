@@ -97,12 +97,12 @@ public:
         advertManager.setPortMapper(&portMapper);
         advertManager.setIOService(&agent.getAgentIOService());
 
-        portMapper.ports["br0_vxlan0"] = 2048;
-        portMapper.RPortMap[2048] = "br0_vxlan0";
-        portMapper.ports[ep0->getInterfaceName().get()] = 80;
-        portMapper.RPortMap[80] = ep0->getInterfaceName().get();
-        portMapper.ports["eth0"] = 42;
-        portMapper.RPortMap[42] = "eth0";
+        portMapper.setPort("br0_vxlan0", 2048);
+        portMapper.setPort(2048, "br0_vxlan0");
+        portMapper.setPort(ep0->getInterfaceName().get(), 80);
+        portMapper.setPort(80, ep0->getInterfaceName().get());
+        portMapper.setPort("eth0", 42);
+        portMapper.setPort(42, "eth0");
 
         ep1->addIP("10.20.54.11");
         epSrc.updateEndpoint(*ep1);

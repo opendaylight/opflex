@@ -50,12 +50,12 @@ public:
         intFlowManager.setVirtualRouter(true, true, "aa:bb:cc:dd:ee:ff");
         intFlowManager.setVirtualDHCP(true, "00:22:bd:f8:19:ff");
 
-        intPortMapper.ports[ep0->getInterfaceName().get()] = 80;
-        intPortMapper.RPortMap[80] = ep0->getInterfaceName().get();
-        accPortMapper.ports["access"] = 500;
-        accPortMapper.RPortMap[500] = "access";
-        accPortMapper.ports["accessUplink"] = 501;
-        accPortMapper.RPortMap[501] = "accessUplink";
+        intPortMapper.setPort(ep0->getInterfaceName().get(), 80);
+        intPortMapper.setPort(80, ep0->getInterfaceName().get());
+        accPortMapper.setPort("access", 500);
+        accPortMapper.setPort(500, "access");
+        accPortMapper.setPort("accessUplink", 501);
+        accPortMapper.setPort(501, "accessUplink");
         pktInHandler.setPortMapper(&intPortMapper, &accPortMapper);
     }
 

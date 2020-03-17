@@ -39,17 +39,17 @@ public:
         ep1.reset(new Endpoint("0-0-0-1"));
         ep1->setAccessInterface("ep1-acc");
 
-        accessPortMapper.ports[ep0->getAccessInterface().get()] = 1;
-        accessPortMapper.RPortMap[1] = ep0->getAccessInterface().get();
-        accessPortMapper.ports[ep1->getAccessInterface().get()] = 2;
-        accessPortMapper.RPortMap[2] = ep1->getAccessInterface().get();
+        accessPortMapper.setPort(ep0->getAccessInterface().get(), 1);
+        accessPortMapper.setPort(1, ep0->getAccessInterface().get());
+        accessPortMapper.setPort(ep1->getAccessInterface().get(), 2);
+        accessPortMapper.setPort(2, ep1->getAccessInterface().get());
 
         ep0->setInterfaceName("ep0-int");
         ep1->setInterfaceName("ep1-int");
-        intPortMapper.ports[ep0->getInterfaceName().get()] = 1;
-        intPortMapper.RPortMap[1] = ep0->getInterfaceName().get();
-        intPortMapper.ports[ep1->getInterfaceName().get()] = 2;
-        intPortMapper.RPortMap[2] = ep1->getInterfaceName().get();
+        intPortMapper.setPort(ep0->getInterfaceName().get(), 1);
+        intPortMapper.setPort(1, ep0->getInterfaceName().get());
+        intPortMapper.setPort(ep1->getInterfaceName().get(), 2);
+        intPortMapper.setPort(2, ep1->getInterfaceName().get());
 
         epSrc.updateEndpoint(*ep0);
         epSrc.updateEndpoint(*ep1);
