@@ -12,6 +12,7 @@
 #define OPFLEXAGENT_TEST_MODBFIXTURE_H_
 
 #include "BaseFixture.h"
+#include "MockEndpointSource.h"
 #include <opflexagent/EndpointSource.h>
 #include <opflexagent/ServiceSource.h>
 #include <opflexagent/EndpointManager.h>
@@ -27,19 +28,6 @@
 #include <memory>
 
 namespace opflexagent {
-
-/**
- * A dummy endpoint source for testing
- */
-class DummyEpSrc : public EndpointSource {
-public:
-    /**
-     * Construct a dummy endpoint source
-     */
-    DummyEpSrc(EndpointManager *manager)
-        : EndpointSource(manager) { }
-    virtual ~DummyEpSrc() { }
-};
 
 /**
  * A dummy service source for testing
@@ -75,7 +63,7 @@ public:
     virtual ~ModbFixture() {
     }
 
-    DummyEpSrc epSrc;
+    MockEndpointSource epSrc;
     DummyServiceSrc servSrc;
     std::shared_ptr<modelgbp::policy::Universe> universe;
     std::shared_ptr<modelgbp::policy::Space> space;

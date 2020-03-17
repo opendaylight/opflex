@@ -391,6 +391,7 @@ endif
 agent_test_includedir = $(includedir)/opflexagent/test
 agent_test_include_HEADERS = \
 	lib/include/opflexagent/test/BaseFixture.h \
+	lib/include/opflexagent/test/MockEndpointSource.h \
 	lib/include/opflexagent/test/ModbFixture.h
 
 agent_test_SOURCES = \
