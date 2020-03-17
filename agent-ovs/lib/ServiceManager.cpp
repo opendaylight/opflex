@@ -16,6 +16,7 @@
 #include <modelgbp/svc/ServiceModeEnumT.hpp>
 #include <modelgbp/svc/ConnTrackEnumT.hpp>
 #include <modelgbp/gbpe/EncapTypeEnumT.hpp>
+#include <modelgbp/observer/SvcStatUniverse.hpp>
 
 namespace opflexagent {
 
@@ -88,9 +89,64 @@ void ServiceManager::removeDomains(const Service& service) {
     }
 }
 
-/* Populate MODB with services, service mappings and attributes */
+/* Populate MODB with service observer */
 void
-ServiceManager::updateMoDB (const opflexagent::Service& service, bool add)
+ServiceManager::updateObserverMoDB (const opflexagent::Service& service, bool add)
+{
+    using namespace modelgbp::gbpe;
+    using namespace opflex::modb;
+    using modelgbp::observer::SvcStatUniverse;
+
+    Mutator mutator(framework, "policyelement");
+
+    optional<shared_ptr<SvcStatUniverse> > ssu =
+                          SvcStatUniverse::resolve(framework);
+    if (!ssu)
+        return;
+
+    LOG(DEBUG) << "Updating obs modb for service: " << service.getUUID()
+               << " add: " << add;
+
+    optional<shared_ptr<SvcCounter> > opService =
+                    ssu.get()->resolveGbpeSvcCounter(service.getUUID());
+    if (add) {
+        shared_ptr<SvcCounter> pService = nullptr;
+        if (opService)
+            pService = opService.get();
+        else
+            pService = ssu.get()->addGbpeSvcCounter(service.getUUID());
+
+        const Service::attr_map_t& svcAttr = service.getAttributes();
+
+        auto nameItr = svcAttr.find("name");
+        if (nameItr != svcAttr.end())
+            pService->setName(nameItr->second);
+        else
+            pService->unsetName();
+
+        auto nsItr = svcAttr.find("namespace");
+        if (nsItr != svcAttr.end())
+            pService->setNamespace(nsItr->second);
+        else
+            pService->unsetNamespace();
+
+        auto scopeItr = svcAttr.find("scope");
+        if (scopeItr != svcAttr.end())
+            pService->setScope(scopeItr->second);
+        else
+            pService->unsetScope();
+
+    } else {
+        if (opService)
+            opService.get()->remove();
+    }
+
+    mutator.commit();
+}
+
+/* Populate MODB with configs of services, service mappings and attributes */
+void
+ServiceManager::updateConfigMoDB (const opflexagent::Service& service, bool add)
 {
     using namespace modelgbp::svc;
     using namespace modelgbp::gbpe;
@@ -102,7 +158,7 @@ ServiceManager::updateMoDB (const opflexagent::Service& service, bool add)
     if (!su)
         return;
 
-    LOG(DEBUG) << "Updating modb for service: " << service.getUUID()
+    LOG(DEBUG) << "Updating cfg modb for service: " << service.getUUID()
                << " add: " << add;
     optional<shared_ptr<modelgbp::svc::Service> > opService =
                     su.get()->resolveSvcService(service.getUUID());
@@ -238,8 +294,10 @@ void ServiceManager::updateService(const Service& service) {
     // state by doing a delete/readd of the service object.
     // We can keep a rolling hash to detect MoDB update, but considering that the service files
     // are never updated today, we can revisit hashing changes later.
-    updateMoDB(service, false);
-    updateMoDB(service, true);
+    updateConfigMoDB(service, false);
+    updateConfigMoDB(service, true);
+
+    updateObserverMoDB(service, true);
 
     guard.unlock();
     notifyListeners(uuid);
@@ -251,7 +309,8 @@ void ServiceManager::removeService(const std::string& uuid) {
     if (it != aserv_map.end()) {
         // update interface name to service mapping
         ServiceState& as = it->second;
-        updateMoDB(*as.service, false);
+        updateObserverMoDB(*as.service, false);
+        updateConfigMoDB(*as.service, false);
         removeIfaces(*as.service);
         removeDomains(*as.service);
 
