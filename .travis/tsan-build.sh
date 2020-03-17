@@ -39,4 +39,4 @@ pushd agent-ovs
 ./configure --enable-tsan &> /dev/null
 make -j2
 make check
-
+popd
