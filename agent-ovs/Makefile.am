@@ -433,6 +433,7 @@ if RENDERER_OVS
 	ovs/test/include/MockSwitchManager.h \
 	ovs/test/include/FlowManagerFixture.h \
 	ovs/test/include/PolicyStatsManagerFixture.h \
+	ovs/test/include/MockPacketLogHandler.h \
 	ovs/test/MockFlowExecutor.cpp \
 	ovs/test/FlowManagerFixture.cpp \
 	ovs/test/IntFlowManager_test.cpp \
