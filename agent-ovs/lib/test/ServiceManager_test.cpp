@@ -16,6 +16,7 @@
 #include <opflexagent/logging.h>
 #include <modelgbp/svc/ServiceUniverse.hpp>
 #include <modelgbp/svc/ServiceModeEnumT.hpp>
+#include <modelgbp/observer/SvcStatUniverse.hpp>
 
 namespace opflexagent {
 
@@ -26,6 +27,7 @@ using namespace modelgbp::gbp;
 using namespace modelgbp::gbpe;
 using namespace modelgbp::svc;
 using namespace opflex::modb;
+using modelgbp::observer::SvcStatUniverse;
 
 class ServiceManagerFixture : public ModbFixture {
     typedef opflex::ofcore::OFConstants::OpflexElementMode opflex_elem_t;
@@ -44,6 +46,7 @@ public:
     void removeServiceObjects(void);
     void updateServices(void);
     void checkServiceState(bool isCreate);
+    void checkServiceExists(bool isCreate);
     Service as;
 private:
     Service::ServiceMapping sm1;
@@ -117,6 +120,7 @@ void ServiceManagerFixture::updateServices (void)
     servSrc.updateService(as);
 }
 
+// Check service state during create vs update
 void ServiceManagerFixture::checkServiceState (bool isCreate)
 {
     optional<shared_ptr<ServiceUniverse> > su =
@@ -195,35 +199,74 @@ void ServiceManagerFixture::checkServiceState (bool isCreate)
         BOOST_CHECK_EQUAL(as.getAttributes().size(), 1);
     }
 
+    // Check observer stats object
+    optional<shared_ptr<SvcStatUniverse> > ssu =
+                          SvcStatUniverse::resolve(framework);
+    BOOST_CHECK(ssu);
+    optional<shared_ptr<SvcCounter> > opServiceCntr =
+                    ssu.get()->resolveGbpeSvcCounter(as.getUUID());
+    BOOST_CHECK(opServiceCntr);
+    shared_ptr<SvcCounter> pServiceCntr = opServiceCntr.get();
+
+    const Service::attr_map_t& svcAttr = as.getAttributes();
+
+    auto nameItr = svcAttr.find("name");
+    if (nameItr != svcAttr.end()) {
+        BOOST_CHECK_EQUAL(pServiceCntr->getName(""),
+                          nameItr->second);
+    }
+
+    auto nsItr = svcAttr.find("namespace");
+    if (nsItr != svcAttr.end()) {
+        BOOST_CHECK_EQUAL(pServiceCntr->getNamespace(""),
+                          nsItr->second);
+    }
+
+    auto scopeItr = svcAttr.find("scope");
+    if (scopeItr != svcAttr.end()) {
+        BOOST_CHECK_EQUAL(pServiceCntr->getScope(""),
+                          scopeItr->second);
+    }
+}
+
+// Check service presence during create vs delete
+void ServiceManagerFixture::checkServiceExists (bool isCreate)
+{
+    optional<shared_ptr<ServiceUniverse> > su =
+        ServiceUniverse::resolve(agent.getFramework());
+    BOOST_CHECK(su);
+
+    optional<shared_ptr<SvcStatUniverse> > ssu =
+                          SvcStatUniverse::resolve(framework);
+    if (isCreate) {
+        WAIT_FOR_DO_ONFAIL(su.get()->resolveSvcService(as.getUUID()),
+                           500,,
+                           LOG(ERROR) << "Service cfg Obj not resolved";);
+        WAIT_FOR_DO_ONFAIL(ssu.get()->resolveGbpeSvcCounter(as.getUUID()),
+                           500,,
+                           LOG(ERROR) << "Service obs Obj not resolved";);
+    } else {
+        WAIT_FOR_DO_ONFAIL(!su.get()->resolveSvcService(as.getUUID()),
+                           500,,
+                           LOG(ERROR) << "Service cfg Obj still present";);
+        WAIT_FOR_DO_ONFAIL(!ssu.get()->resolveGbpeSvcCounter(as.getUUID()),
+                           500,,
+                           LOG(ERROR) << "Service obs Obj still present";);
+    }
 }
 
 BOOST_AUTO_TEST_SUITE(ServiceManager_test)
 
 BOOST_FIXTURE_TEST_CASE(testCreate, ServiceManagerFixture) {
     LOG(DEBUG) << "############# SERVICE CREATE CHECK START ############";
-    optional<shared_ptr<ServiceUniverse> > su =
-        ServiceUniverse::resolve(agent.getFramework());
-    BOOST_CHECK(su);
-    WAIT_FOR_DO_ONFAIL(su.get()->resolveSvcService(as.getUUID()),
-                        500,,
-                        LOG(ERROR) << "Service Obj not resolved";);
-    optional<shared_ptr<modelgbp::svc::Service> > opService =
-                        su.get()->resolveSvcService(as.getUUID());
+    checkServiceExists(true);
     checkServiceState(true);
     LOG(DEBUG) << "############# SERVICE CREATE CHECK END ############";
 }
 
 BOOST_FIXTURE_TEST_CASE(testUpdate, ServiceManagerFixture) {
     LOG(DEBUG) << "############# SERVICE UPDATE START ############";
-    optional<shared_ptr<ServiceUniverse> > su =
-        ServiceUniverse::resolve(agent.getFramework());
-    BOOST_CHECK(su);
-    WAIT_FOR_DO_ONFAIL(su.get()->resolveSvcService(as.getUUID()),
-                        500,,
-                        LOG(ERROR) << "Service Obj not resolved";);
-    optional<shared_ptr<modelgbp::svc::Service> > opService =
-                        su.get()->resolveSvcService(as.getUUID());
-    shared_ptr<modelgbp::svc::Service> pService = opService.get();
+    checkServiceExists(true);
     updateServices();
     checkServiceState(false);
     LOG(DEBUG) << "############# SERVICE UPDATE END ############";
@@ -231,16 +274,9 @@ BOOST_FIXTURE_TEST_CASE(testUpdate, ServiceManagerFixture) {
 
 BOOST_FIXTURE_TEST_CASE(testDelete, ServiceManagerFixture) {
     LOG(DEBUG) << "############# SERVICE DELETE START ############";
-    optional<shared_ptr<ServiceUniverse> > su =
-        ServiceUniverse::resolve(agent.getFramework());
-    BOOST_CHECK(su);
-    WAIT_FOR_DO_ONFAIL(su.get()->resolveSvcService(as.getUUID()),
-                        500,,
-                        LOG(ERROR) << "Service Obj not resolved";);
+    checkServiceExists(true);
     removeServiceObjects();
-    WAIT_FOR_DO_ONFAIL(!su.get()->resolveSvcService(as.getUUID()),
-                        500,,
-                        LOG(ERROR) << "Service Obj still present";);
+    checkServiceExists(false);
     LOG(DEBUG) << "############# SERVICE DELETE END ############";
 }
 

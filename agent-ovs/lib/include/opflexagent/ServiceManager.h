@@ -113,12 +113,20 @@ private:
     void removeService(const std::string& uuid);
 
     /**
-     * Update modb with service related information
+     * Update service config in modb
      *
      * @param service  the state of service
      * @param add      indicates if service is added or removed
      */
-    void updateMoDB(const Service& service, bool add);
+    void updateConfigMoDB(const Service& service, bool add);
+
+    /**
+     * Update service observer in modb
+     *
+     * @param service  the state of service
+     * @param add      indicates if service is added or removed
+     */
+    void updateObserverMoDB(const Service& service, bool add);
 
     // reference to opflex agent
     Agent& agent;

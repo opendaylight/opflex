@@ -444,7 +444,7 @@ module[gbpe]
 
         # name of the svc scope; only populated in k8s
         # host-agent can set this as cluster, ext or nodeport or anything else in future
-        member[svcScope; type=ascii/String]
+        member[scope; type=ascii/String]
 
         # number of packets received by the service
         member[rxpackets; type=scalar/UInt64]
