@@ -20,6 +20,7 @@
 #include <opflexagent/logging.h>
 
 #include <opflexagent/test/BaseFixture.h>
+#include <opflexagent/test/MockEndpointSource.h>
 
 namespace opflexagent {
 
@@ -42,19 +43,6 @@ using namespace modelgbp::epr;
 using namespace modelgbp::gbp;
 using namespace modelgbp::gbpe;
 using namespace modelgbp::ascii;
-
-class MockEndpointSource : public EndpointSource {
-public:
-    MockEndpointSource(EndpointManager* manager)
-        : EndpointSource(manager) {
-
-    }
-
-    virtual ~MockEndpointSource() { }
-
-    virtual void start() { }
-    virtual void stop() { }
-};
 
 class EndpointFixture : public BaseFixture, public ObjectListener {
 public:

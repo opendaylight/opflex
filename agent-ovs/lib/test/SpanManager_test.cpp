@@ -17,6 +17,7 @@
 
 #include <opflexagent/logging.h>
 #include <opflexagent/test/BaseFixture.h>
+#include <opflexagent/test/MockEndpointSource.h>
 #include "Policies.h"
 #include <modelgbp/span/Universe.hpp>
 #include <opflexagent/SpanSessionState.h>
@@ -27,19 +28,6 @@ namespace opflexagent {
 using std::shared_ptr;
 using namespace modelgbp;
 using namespace modelgbp::gbp;
-
-class MockEndpointSource : public EndpointSource {
-public:
-    MockEndpointSource(EndpointManager* manager)
-        : EndpointSource(manager) {
-
-    }
-
-    virtual ~MockEndpointSource() { }
-
-    virtual void start() { }
-    virtual void stop() { }
-};
 
 class SpanFixture : public BaseFixture {
 
@@ -173,12 +161,12 @@ static bool checkSrcEps(boost::optional<shared_ptr<SessionState>> pSess,
     if (srcEps.size() != 2) {
         return false;
     }
-    SessionState::srcEpSet::iterator it = srcEps.begin();
+    auto it = srcEps.begin();
     for (; it != srcEps.end(); it++) {
         bool retVal = true;
         if (srcMem->getDir().get() != (*it)->getDirection())
             retVal = false;
-        if (l2e->getInterfaceName().get().compare((*it)->getPort()) != 0)
+        if (l2e->getInterfaceName().get() != (*it)->getPort())
             retVal = false;
         if (retVal)
             return true;
@@ -199,8 +187,7 @@ static bool checkDst(boost::optional<shared_ptr<SessionState>> pSess,
     it = dstMap.find(dstSumm1->getURI());
     if (it == dstMap.end())
         return false;
-    if (it->second->getAddress().to_string().
-            compare(dstSumm1->getDest().get()) != 0)
+    if (it->second->getAddress().to_string() != dstSumm1->getDest().get())
         return false;
     return true;
 }
