@@ -136,6 +136,17 @@ public:
     void addNUpdateOFPeerStats(void);
 
 
+    /* SvcCounter related APIs */
+    /**
+     * Increment svc count
+     */
+    void incSvcCounter(void);
+    /**
+     * Decrement svc count
+     */
+    void decSvcCounter(void);
+
+
     /* RemoteEp related APIs */
     /**
      * Create RemoteEp metric family if its not present.
@@ -399,6 +410,50 @@ private:
     // Maximum number of labels that can be used for annotating a metric
     static int max_metric_attr_count;
     /* End of EpCounter related apis and state */
+
+
+    /* Start of SvcCounter related apis and state */
+    // Lock to safe guard SvcCounter related state
+    mutex svc_counter_mutex;
+
+    // Counter family to track all SvcCounter creates
+    Family<Counter>    *counter_svc_create_family_ptr;
+    // Counter family to track all SvcCounter removes
+    Family<Counter>    *counter_svc_remove_family_ptr;
+    // Gauge family to track the  total # of SvcCounters
+    Family<Gauge>      *gauge_svc_total_family_ptr;
+    // Counter to track svc creates
+    Counter            *counter_svc_create_ptr;
+    // Counter to track svc removes
+    Counter            *counter_svc_remove_ptr;
+    // Gauge to track total SVCs
+    Gauge              *gauge_svc_total_ptr;
+    // Actual svc total count
+    double              gauge_svc_total;
+
+    // func to increment SvcCounter create
+    void incStaticCounterSvcCreate(void);
+    // func to decrement SvcCounter remove
+    void incStaticCounterSvcRemove(void);
+    // func to set total SvcCounter
+    void updateStaticGaugeSvcTotal(bool add);
+    // create any svc gauge metric families during start
+    void createStaticGaugeFamiliesSvc(void);
+    // remove any svc gauge metric families during stop
+    void removeStaticGaugeFamiliesSvc(void);
+    // create any svc counter metric families during start
+    void createStaticCounterFamiliesSvc(void);
+    // remove any svc counter metric families during stop
+    void removeStaticCounterFamiliesSvc(void);
+    // create any svc gauge metric during start
+    void createStaticGaugesSvc(void);
+    // remove any svc gauge metric during stop
+    void removeStaticGaugesSvc(void);
+    // create any svc counter metric during start
+    void createStaticCountersSvc(void);
+    // remove any svc counter metric during stop
+    void removeStaticCountersSvc(void);
+    /* End of SvcCounter related apis and state */
 
 
     /* Start of PodSvcCounter related apis and state */

@@ -24,6 +24,13 @@
 #include <unordered_map>
 #include <mutex>
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+#ifdef HAVE_PROMETHEUS_SUPPORT
+#include <opflexagent/PrometheusManager.h>
+#endif
+
 namespace opflexagent {
 
 class Agent;
@@ -36,8 +43,14 @@ public:
     /**
      * Instantiate a new service manager
      */
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    ServiceManager(Agent& agent_,
+                   opflex::ofcore::OFFramework& framework_,
+                   PrometheusManager& prometheusManager_);
+#else
     ServiceManager(Agent& agent,
                    opflex::ofcore::OFFramework& framework);
+#endif
 
     /**
      * Register a listener for service change events
@@ -133,6 +146,11 @@ private:
 
     // reference to opflex framework
     opflex::ofcore::OFFramework& framework;
+
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    // reference to prometheus manager
+    PrometheusManager& prometheusManager;
+#endif
 
     class ServiceState {
     public:
