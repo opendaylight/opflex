@@ -320,10 +320,9 @@ void MOSerializer::deserialize(const rapidjson::Value& mo,
                                            << " from updated parent " << uri;
                                 client.remove(it->second.getClassId(), child,
                                               true, notifs);
-                                if (notifs) {
+                                if (notifs)
                                     (*notifs)[child] = it->second.getClassId();
-                                    remoteUpdated = true;
-                                }
+                                remoteUpdated = true;
                             } catch (const std::out_of_range& e) {
                                 // most likely already removed by
                                 // another thread
