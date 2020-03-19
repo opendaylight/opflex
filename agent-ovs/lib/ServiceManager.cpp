@@ -28,10 +28,19 @@ using std::unique_lock;
 using std::mutex;
 using boost::optional;
 
+#ifdef HAVE_PROMETHEUS_SUPPORT
+ServiceManager::ServiceManager (Agent& agent_,
+                                opflex::ofcore::OFFramework& framework_,
+                                PrometheusManager& prometheusManager_)
+    : agent(agent_), framework(framework_),
+      prometheusManager(prometheusManager_) {
+}
+#else
 ServiceManager::ServiceManager (Agent& agent_,
                                 opflex::ofcore::OFFramework& framework_)
     : agent(agent_), framework(framework_) {
 }
+#endif
 
 void ServiceManager::registerListener(ServiceListener* listener) {
     unique_lock<mutex> guard(listener_mutex);
@@ -113,8 +122,12 @@ ServiceManager::updateObserverMoDB (const opflexagent::Service& service, bool ad
         shared_ptr<SvcCounter> pService = nullptr;
         if (opService)
             pService = opService.get();
-        else
+        else {
             pService = ssu.get()->addGbpeSvcCounter(service.getUUID());
+#ifdef HAVE_PROMETHEUS_SUPPORT
+            prometheusManager.incSvcCounter();
+#endif
+        }
 
         const Service::attr_map_t& svcAttr = service.getAttributes();
 
@@ -137,8 +150,12 @@ ServiceManager::updateObserverMoDB (const opflexagent::Service& service, bool ad
             pService->unsetScope();
 
     } else {
-        if (opService)
+        if (opService) {
             opService.get()->remove();
+#ifdef HAVE_PROMETHEUS_SUPPORT
+            prometheusManager.decSvcCounter();
+#endif
+        }
     }
 
     mutator.commit();
