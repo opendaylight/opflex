@@ -63,12 +63,14 @@ Agent::Agent(OFFramework& framework_, const LogParams& _logParams)
       prometheusManager(*this, framework),
       policyManager(framework, agent_io),
       endpointManager(*this, framework, policyManager, prometheusManager),
-      serviceManager(*this, framework),
+      serviceManager(*this, framework, prometheusManager),
       extraConfigManager(framework),
       notifServer(agent_io),rendererFwdMode(opflex_elem_t::INVALID_MODE),
       started(false), presetFwdMode(opflex_elem_t::INVALID_MODE),
       spanManager(framework, agent_io),
       netflowManager(framework,agent_io),
+      prometheusEnabled(true),
+      prometheusExposeLocalHostOnly(false),
       logParams(_logParams) {
 #else
 Agent::Agent(OFFramework& framework_, const LogParams& _logParams)
@@ -250,7 +252,6 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     }
 
 #ifdef HAVE_PROMETHEUS_SUPPORT
-    prometheusEnabled = true;
     boost::optional<bool> prometheusIsEnabled =
                 properties.get_optional<bool>(PROMETHEUS_ENABLED);
     if (prometheusIsEnabled) {
@@ -258,7 +259,6 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
             prometheusEnabled = false;
     }
 
-    prometheusExposeLocalHostOnly = false;
     boost::optional<bool> prometheusLocalHostOnly =
                 properties.get_optional<bool>(PROMETHEUS_LOCALHOST_ONLY);
     if (prometheusLocalHostOnly) {

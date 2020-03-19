@@ -17,12 +17,19 @@
 #include <modelgbp/svc/ServiceUniverse.hpp>
 #include <modelgbp/svc/ServiceModeEnumT.hpp>
 #include <modelgbp/observer/SvcStatUniverse.hpp>
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+#ifdef HAVE_PROMETHEUS_SUPPORT
+#include <opflexagent/PrometheusManager.h>
+#endif
 
 namespace opflexagent {
 
 using boost::optional;
 using std::shared_ptr;
 using std::string;
+using std::size_t;
 using namespace modelgbp::gbp;
 using namespace modelgbp::gbpe;
 using namespace modelgbp::svc;
@@ -47,11 +54,19 @@ public:
     void updateServices(void);
     void checkServiceState(bool isCreate);
     void checkServiceExists(bool isCreate);
+    void createServices(void);
     Service as;
+    /**
+     * Following commented commands didnt work in test environment, but will work from a regular terminal:
+     * const string cmd = "curl --no-proxy \"*\" --compressed --silent http://127.0.0.1:9612/metrics 2>&1";
+     * const string cmd = "curl --no-proxy \"127.0.0.1\" http://127.0.0.1:9612/metrics;";
+     * --no-proxy, even though specified somehow tries to connect to SOCKS proxy and connection
+     * fails to port 1080 :(
+     */
+    const string cmd = "curl --proxy \"\" --compressed --silent http://127.0.0.1:9612/metrics 2>&1;";
 private:
     Service::ServiceMapping sm1;
     Service::ServiceMapping sm2;
-    void createServices(void);
 };
 
 /*
@@ -261,6 +276,16 @@ BOOST_FIXTURE_TEST_CASE(testCreate, ServiceManagerFixture) {
     LOG(DEBUG) << "############# SERVICE CREATE CHECK START ############";
     checkServiceExists(true);
     checkServiceState(true);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    const string& output = PrometheusManager::getOutputFromCommand(cmd);
+    size_t pos = std::string::npos;
+    pos = output.find("opflex_svc_active_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output.find("opflex_svc_created_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output.find("opflex_svc_removed_total 0.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+#endif
     LOG(DEBUG) << "############# SERVICE CREATE CHECK END ############";
 }
 
@@ -269,6 +294,16 @@ BOOST_FIXTURE_TEST_CASE(testUpdate, ServiceManagerFixture) {
     checkServiceExists(true);
     updateServices();
     checkServiceState(false);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    const string& output = PrometheusManager::getOutputFromCommand(cmd);
+    size_t pos = std::string::npos;
+    pos = output.find("opflex_svc_active_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output.find("opflex_svc_created_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output.find("opflex_svc_removed_total 0.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+#endif
     LOG(DEBUG) << "############# SERVICE UPDATE END ############";
 }
 
@@ -277,6 +312,37 @@ BOOST_FIXTURE_TEST_CASE(testDelete, ServiceManagerFixture) {
     checkServiceExists(true);
     removeServiceObjects();
     checkServiceExists(false);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    const string& output1 = PrometheusManager::getOutputFromCommand(cmd);
+    size_t pos = std::string::npos;
+    pos = output1.find("opflex_svc_active_total 0.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output1.find("opflex_svc_created_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output1.find("opflex_svc_removed_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+
+    createServices();
+    checkServiceExists(true);
+    const string& output2 = PrometheusManager::getOutputFromCommand(cmd);
+    pos = output2.find("opflex_svc_active_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output2.find("opflex_svc_created_total 2.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output2.find("opflex_svc_removed_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+
+    removeServiceObjects();
+    checkServiceExists(false);
+    const string& output3 = PrometheusManager::getOutputFromCommand(cmd);
+    pos = output3.find("opflex_svc_active_total 0.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output3.find("opflex_svc_created_total 2.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output3.find("opflex_svc_removed_total 2.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+
+#endif
     LOG(DEBUG) << "############# SERVICE DELETE END ############";
 }
 

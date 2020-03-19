@@ -204,6 +204,7 @@ PrometheusManager::PrometheusManager(Agent &agent_,
                                      agent(agent_),
                                      framework(fwk_),
                                      gauge_ep_total{0},
+                                     gauge_svc_total{0},
                                      rddrop_last_genId{0},
                                      sgclassifier_last_genId{0},
                                      contract_last_genId{0},
@@ -234,7 +235,30 @@ void PrometheusManager::createStaticCounterFamiliesEp (void)
     counter_ep_remove_family_ptr = &counter_ep_remove_family;
 }
 
+// create all svc counter families during start
+void PrometheusManager::createStaticCounterFamiliesSvc (void)
+{
+    // add a new counter family to the registry (families combine values with the
+    // same name, but distinct label dimensions)
+    // Note: There is a unique ptr allocated and referencing the below reference
+    // during Register().
 
+    /* Counter family to track the total calls made to SvcCounter create/remove
+     * from other clients */
+    auto& counter_svc_create_family = BuildCounter()
+                         .Name("opflex_svc_created_total")
+                         .Help("Total number of SVC creates")
+                         .Labels({})
+                         .Register(*registry_ptr);
+    counter_svc_create_family_ptr = &counter_svc_create_family;
+
+    auto& counter_svc_remove_family = BuildCounter()
+                         .Name("opflex_svc_removed_total")
+                         .Help("Total number of SVC deletes")
+                         .Labels({})
+                         .Register(*registry_ptr);
+    counter_svc_remove_family_ptr = &counter_svc_remove_family;
+}
 
 // create all counter families during start
 void PrometheusManager::createStaticCounterFamilies (void)
@@ -243,6 +267,12 @@ void PrometheusManager::createStaticCounterFamilies (void)
     {
         const lock_guard<mutex> lock(ep_counter_mutex);
         createStaticCounterFamiliesEp();
+    }
+
+    // SvcCounter families
+    {
+        const lock_guard<mutex> lock(svc_counter_mutex);
+        createStaticCounterFamiliesSvc();
     }
 }
 
@@ -256,6 +286,16 @@ void PrometheusManager::createStaticCountersEp ()
     counter_ep_remove_ptr = &counter_ep_remove;
 }
 
+// create all static svc counters during start
+void PrometheusManager::createStaticCountersSvc ()
+{
+    auto& counter_svc_create = counter_svc_create_family_ptr->Add({});
+    counter_svc_create_ptr = &counter_svc_create;
+
+    auto& counter_svc_remove = counter_svc_remove_family_ptr->Add({});
+    counter_svc_remove_ptr = &counter_svc_remove;
+}
+
 // create all static counters during start
 void PrometheusManager::createStaticCounters ()
 {
@@ -263,6 +303,12 @@ void PrometheusManager::createStaticCounters ()
     {
         const lock_guard<mutex> lock(ep_counter_mutex);
         createStaticCountersEp();
+    }
+
+    // SvcCounter related metrics
+    {
+        const lock_guard<mutex> lock(svc_counter_mutex);
+        createStaticCountersSvc();
     }
 }
 
@@ -328,6 +374,16 @@ void PrometheusManager::removeStaticCountersEp ()
     counter_ep_remove_ptr = nullptr;
 }
 
+// remove all static svc counters during stop
+void PrometheusManager::removeStaticCountersSvc ()
+{
+    counter_svc_create_family_ptr->Remove(counter_svc_create_ptr);
+    counter_svc_create_ptr = nullptr;
+
+    counter_svc_remove_family_ptr->Remove(counter_svc_remove_ptr);
+    counter_svc_remove_ptr = nullptr;
+}
+
 // remove all static counters during stop
 void PrometheusManager::removeStaticCounters ()
 {
@@ -336,6 +392,12 @@ void PrometheusManager::removeStaticCounters ()
     {
         const lock_guard<mutex> lock(ep_counter_mutex);
         removeStaticCountersEp();
+    }
+
+    // Remove SvcCounter related counter metrics
+    {
+        const lock_guard<mutex> lock(svc_counter_mutex);
+        removeStaticCountersSvc();
     }
 }
 
@@ -469,6 +531,22 @@ void PrometheusManager::createStaticGaugeFamiliesEp (void)
     }
 }
 
+// create all SVC specific gauge families during start
+void PrometheusManager::createStaticGaugeFamiliesSvc (void)
+{
+    // add a new gauge family to the registry (families combine values with the
+    // same name, but distinct label dimensions)
+    // Note: There is a unique ptr allocated and referencing the below reference
+    // during Register().
+
+    auto& gauge_svc_total_family = BuildGauge()
+                         .Name("opflex_svc_active_total")
+                         .Help("Total active service count")
+                         .Labels({})
+                         .Register(*registry_ptr);
+    gauge_svc_total_family_ptr = &gauge_svc_total_family;
+}
+
 // create all PODSVC specific gauge families during start
 void PrometheusManager::createStaticGaugeFamiliesPodSvc (void)
 {
@@ -537,6 +615,11 @@ void PrometheusManager::createStaticGaugeFamilies (void)
     }
 
     {
+        const lock_guard<mutex> lock(svc_counter_mutex);
+        createStaticGaugeFamiliesSvc();
+    }
+
+    {
         const lock_guard<mutex> lock(podsvc_counter_mutex);
         createStaticGaugeFamiliesPodSvc();
     }
@@ -576,6 +659,13 @@ void PrometheusManager::createStaticGaugesEp ()
     gauge_ep_total_ptr = &gauge_ep_total;
 }
 
+// create SvcCounter gauges during start
+void PrometheusManager::createStaticGaugesSvc ()
+{
+    auto& gauge_svc_total = gauge_svc_total_family_ptr->Add({});
+    gauge_svc_total_ptr = &gauge_svc_total;
+}
+
 // create gauges during start
 void PrometheusManager::createStaticGauges ()
 {
@@ -583,6 +673,12 @@ void PrometheusManager::createStaticGauges ()
     {
         const lock_guard<mutex> lock(ep_counter_mutex);
         createStaticGaugesEp();
+    }
+
+    // SvcCounter related gauges
+    {
+        const lock_guard<mutex> lock(svc_counter_mutex);
+        createStaticGaugesSvc();
     }
 }
 
@@ -594,6 +690,14 @@ void PrometheusManager::removeStaticGaugesEp ()
     gauge_ep_total = 0;
 }
 
+// remove svc gauges during stop
+void PrometheusManager::removeStaticGaugesSvc ()
+{
+    gauge_svc_total_family_ptr->Remove(gauge_svc_total_ptr);
+    gauge_svc_total_ptr = nullptr;
+    gauge_svc_total = 0;
+}
+
 // remove gauges during stop
 void PrometheusManager::removeStaticGauges ()
 {
@@ -602,6 +706,11 @@ void PrometheusManager::removeStaticGauges ()
     {
         const lock_guard<mutex> lock(ep_counter_mutex);
         removeStaticGaugesEp();
+    }
+    // Remove SvcCounter related gauge metrics
+    {
+        const lock_guard<mutex> lock(svc_counter_mutex);
+        removeStaticGaugesSvc();
     }
     // Remove TableDropCounter related gauges
     removeStaticGaugesTableDrop();
@@ -728,6 +837,27 @@ void PrometheusManager::updateStaticGaugeEpTotal (bool add)
         gauge_ep_total_ptr->Set(++gauge_ep_total);
     else
         gauge_ep_total_ptr->Set(--gauge_ep_total);
+}
+
+// Increment Svc count
+void PrometheusManager::incStaticCounterSvcCreate ()
+{
+    counter_svc_create_ptr->Increment();
+}
+
+// decrement svc count
+void PrometheusManager::incStaticCounterSvcRemove ()
+{
+    counter_svc_remove_ptr->Increment();
+}
+
+// track total svc count
+void PrometheusManager::updateStaticGaugeSvcTotal (bool add)
+{
+    if (add)
+        gauge_svc_total_ptr->Set(++gauge_svc_total);
+    else
+        gauge_svc_total_ptr->Set(--gauge_svc_total);
 }
 
 // Check if a given metric name is Prometheus compatible
@@ -1683,6 +1813,14 @@ void PrometheusManager::removeStaticCounterFamiliesEp ()
 
 }
 
+// Remove all statically  allocated svc counter families
+void PrometheusManager::removeStaticCounterFamiliesSvc ()
+{
+    counter_svc_create_family_ptr = nullptr;
+    counter_svc_remove_family_ptr = nullptr;
+
+}
+
 // Remove all statically  allocated counter families
 void PrometheusManager::removeStaticCounterFamilies ()
 {
@@ -1690,6 +1828,12 @@ void PrometheusManager::removeStaticCounterFamilies ()
     {
         const lock_guard<mutex> lock(ep_counter_mutex);
         removeStaticCounterFamiliesEp();
+    }
+
+    // SvcCounter specific
+    {
+        const lock_guard<mutex> lock(svc_counter_mutex);
+        removeStaticCounterFamiliesSvc();
     }
 }
 
@@ -1764,6 +1908,12 @@ void PrometheusManager::removeStaticGaugeFamiliesEp()
     }
 }
 
+// Remove all statically allocated svc gauge families
+void PrometheusManager::removeStaticGaugeFamiliesSvc()
+{
+    gauge_svc_total_family_ptr = nullptr;
+}
+
 void PrometheusManager::removeStaticGaugeFamiliesTableDrop()
 {
     const lock_guard<mutex> lock(table_drop_counter_mutex);
@@ -1781,6 +1931,12 @@ void PrometheusManager::removeStaticGaugeFamilies()
     {
         const lock_guard<mutex> lock(ep_counter_mutex);
         removeStaticGaugeFamiliesEp();
+    }
+
+    // SvcCounter specific
+    {
+        const lock_guard<mutex> lock(svc_counter_mutex);
+        removeStaticGaugeFamiliesSvc();
     }
 
     // PodSvcCounter specific
@@ -1821,6 +1977,26 @@ void PrometheusManager::removeStaticGaugeFamilies()
         const lock_guard<mutex> lock(contract_stats_mutex);
         removeStaticGaugeFamiliesContractClassifier();
     }
+}
+
+// Function uses popen to retrieve output of command and converts
+// the output to string.
+// Note: system() doesnt return the output
+string PrometheusManager::getOutputFromCommand (const string& cmd)
+{
+    string output;
+    FILE * stream = nullptr;
+    const int max_buffer = 256;
+    char buffer[max_buffer];
+
+    stream = popen(cmd.c_str(), "r");
+    if (stream) {
+        while (!feof(stream))
+            if (fgets(buffer, max_buffer, stream) != NULL)
+                output.append(buffer);
+        pclose(stream);
+    }
+    return output;
 }
 
 // Return a rolling hash of attribute map for the ep
@@ -2077,6 +2253,24 @@ void PrometheusManager::addNUpdateSGClassifierCounter (const string& classifier)
         }
         out.clear();
     }
+}
+
+/* Function called from ServiceManager to increment service count */
+void PrometheusManager::incSvcCounter (void)
+{
+    RETURN_IF_DISABLED
+    const lock_guard<mutex> lock(svc_counter_mutex);
+    incStaticCounterSvcCreate();
+    updateStaticGaugeSvcTotal(true);
+}
+
+/* Function called from ServiceManager to decrement service count */
+void PrometheusManager::decSvcCounter (void)
+{
+    RETURN_IF_DISABLED
+    const lock_guard<mutex> lock(svc_counter_mutex);
+    incStaticCounterSvcRemove();
+    updateStaticGaugeSvcTotal(false);
 }
 
 /* Function called from EndpointManager to create/update RemoteEp count */
