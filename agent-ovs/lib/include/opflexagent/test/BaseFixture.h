@@ -57,6 +57,33 @@ public:
         agent.stop();
     }
 
+    // Utility apis
+    /**
+     * Function uses popen to retrieve output of command and converts
+     * the output to string.
+     * Note: system() doesnt return the output
+     *
+     * @param cmd              string form of the command to execute
+     *
+     * @return                 output of the input command
+     */
+    static string getOutputFromCommand (const string& cmd)
+    {
+        string output;
+        FILE * stream = nullptr;
+        const int max_buffer = 256;
+        char buffer[max_buffer];
+
+        stream = popen(cmd.c_str(), "r");
+        if (stream) {
+            while (!feof(stream))
+                if (fgets(buffer, max_buffer, stream) != NULL)
+                    output.append(buffer);
+            pclose(stream);
+        }
+        return output;
+    }
+
     /**
      * A framework object
      */
