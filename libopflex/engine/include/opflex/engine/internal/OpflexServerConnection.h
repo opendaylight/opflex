@@ -141,7 +141,6 @@ private:
     std::vector<opflex::modb::reference_t> replace;
     std::vector<opflex::modb::reference_t> merge;
     std::vector<opflex::modb::reference_t> deleted;
-    std::mutex uri_update_mutex;
 
     /**
      * Start a thread for sending policy updates to agent
