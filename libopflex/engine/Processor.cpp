@@ -647,6 +647,21 @@ void Processor::objectUpdated(modb::class_id_t class_id,
                         << " item " << uri << " from update";
             uint64_t nexp = 0;
             if (local) nexp = curtime+processingDelay;
+	 // Random number generator
+            std::random_device rd;
+            std::mt19937 gen(rd());
+
+         //Get prr time and split it according to the range
+            int prr_time = Processor::getPrrTimerDuration();
+            double limit1 = prr_time/3;
+            double limit2 = prr_time/2;
+
+         //Generate the uniform distribution of random values
+            std::uniform_int_distribution<> distribution(limit1,limit2);
+            int rand_val = distribution(gen);
+            policyRefTimerDuration = rand_val*1000;
+            LOG(INFO) << "policyRefTimerDuration " << policyRefTimerDuration;
+
             obj_state.insert(item(uri, class_id,
                                   nexp, policyRefTimerDuration,
                                   local ? NEW : REMOTE, local));
