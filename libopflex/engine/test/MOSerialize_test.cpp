@@ -267,6 +267,7 @@ BOOST_FIXTURE_TEST_CASE( types , BaseFixture ) {
     StoreClient& sysClient = db.getStoreClient("_SYSTEM_");
     URI c2u("/class2/32/");
     URI c4u("/class4/test/");
+    URI brokenref("class4/blahblah/");
     URI c5u("/class5/test/");
     URI c6u("/class4/test/class6/test2/");
     URI c7u("/class4/test/class7/0");
@@ -282,6 +283,8 @@ BOOST_FIXTURE_TEST_CASE( types , BaseFixture ) {
     oi2->setMAC(15, MAC("aa:bb:cc:dd:ee:ff"));
     oi5->setString(10, "test");
     oi5->addReference(11, 4, c4u);
+    // add an unresolved reference
+    oi5->addReference(11, 4, brokenref);
     oi4->setString(9, "test");
     oi6->setString(13, "test2");
     oi7->setUInt64(14, 0);
@@ -326,6 +329,10 @@ BOOST_FIXTURE_TEST_CASE( types , BaseFixture ) {
     BOOST_CHECK_EQUAL("test2", sysClient.get(6, c6u)->getString(13));
     BOOST_CHECK_EQUAL(0, sysClient.get(7, c7u)->getUInt64(14));
     BOOST_CHECK_EQUAL(MAC("aa:bb:cc:dd:ee:ff"), sysClient.get(2, c2u)->getMAC(15));
+
+    // not testing result for now...just checking for crashes
+    serializer.displayMODB(std::cout, true, true, false, 120);
+    serializer.displayUnresolved(std::cout, true, true);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
