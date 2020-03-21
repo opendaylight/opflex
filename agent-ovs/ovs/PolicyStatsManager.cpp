@@ -396,29 +396,53 @@ void PolicyStatsManager::updateNewFlowCounters(uint32_t cookie,
     }
 }
 
-void PolicyStatsManager::
-handleMessage(int msgType, ofpbuf *msg, const table_map_t& tableMap) {
+void PolicyStatsManager::handleMessage(int msgType,
+                                       ofpbuf *msg,
+                                       const table_map_t& tableMap,
+                                       struct ofputil_flow_removed *fentry) {
+    bool ret = false;
     if (msg == (ofpbuf *)NULL) {
         LOG(ERROR) << "Unexpected null message";
         return;
     }
     if (msgType == OFPTYPE_FLOW_STATS_REPLY) {
-        handleFlowStats(msg, tableMap);
+        std::lock_guard<std::mutex> lock(pstatMtx);
+        ofp_header *msgHdr = (ofp_header *)msg->data;
+        ovs_be32 recvXid = msgHdr->xid;
+        if(txns.find(recvXid) == txns.end()) {
+            return;
+        }
+        ret = handleFlowStats(msg, tableMap);
+        if(ret) {
+            txns.erase(recvXid);
+        }
     } else if (msgType == OFPTYPE_FLOW_REMOVED) {
-        handleFlowRemoved(msg, tableMap);
+        std::lock_guard<std::mutex> lock(pstatMtx);
+        if(!fentry)
+            return;
+        flowCounterState_t* counterState = tableMap(fentry->table_id);
+        if (!counterState)
+            return;
+        updateNewFlowCounters((uint32_t)ovs_ntohll(fentry->cookie),
+                              fentry->priority,
+                              (fentry->match),
+                              fentry->packet_count,
+                              fentry->byte_count,
+                              *counterState, true);
     } else {
         LOG(ERROR) << "Unexpected message type: " << msgType;
-        return;
     }
-
 }
 
-void PolicyStatsManager::handleFlowStats(ofpbuf *msg, const table_map_t& tableMap) {
+/**
+ * Call this method holding the lock pstatMtx always. Lock has been
+ * moved out of this method to avoid adding more specific locks in the
+ * code path.
+ */
+bool PolicyStatsManager::handleFlowStats(ofpbuf *msg, const table_map_t& tableMap) {
 
     struct ofputil_flow_stats* fentry, fstat;
-
     fentry = &fstat;
-    std::lock_guard<std::mutex> lock(pstatMtx);
 
     do {
         ofpbuf actsBuf;
@@ -433,8 +457,10 @@ void PolicyStatsManager::handleFlowStats(ofpbuf *msg, const table_map_t& tableMa
             if (ret != EOF) {
                 LOG(ERROR) << "Failed to decode flow stats reply: "
                            << ovs_strerror(ret);
+                return true;
+            } else {
+                return !ofpmp_more((ofp_header*)msg->header);
             }
-            break;
         } else {
 
             /**
@@ -473,7 +499,7 @@ void PolicyStatsManager::handleFlowStats(ofpbuf *msg, const table_map_t& tableMa
 
             flowCounterState_t* counterState = tableMap(fentry->table_id);
             if (!counterState)
-                return;
+                return true;
 
             if ((fentry->flags & OFPUTIL_FF_SEND_FLOW_REM) == 0) {
                 // skip those flow entries that don't have flag set
@@ -505,41 +531,6 @@ void PolicyStatsManager::handleFlowStats(ofpbuf *msg, const table_map_t& tableMa
 
 }
 
-void PolicyStatsManager::handleFlowRemoved(ofpbuf *msg, const table_map_t& tableMap) {
-
-    const struct ofp_header *oh = (ofp_header *)msg->data;
-    struct ofputil_flow_removed* fentry, flow_removed;
-
-    fentry = &flow_removed;
-    std::lock_guard<std::mutex> lock(pstatMtx);
-    int ret;
-    bzero(fentry, sizeof(struct ofputil_flow_removed));
-
-    ret = ofputil_decode_flow_removed(fentry, oh);
-    if (ret != 0) {
-        LOG(ERROR) << "Failed to decode flow removed message: "
-                   << ovs_strerror(ret);
-        return;
-    } else {
-        /* ovs 2.11.2 specific changes. Check handleFlowStats for
-         * more comments on below fix */
-        if (fentry) {
-            fentry->match.flow.packet_type = 0;
-            fentry->match.wc.masks.packet_type = 0;
-        }
-
-        flowCounterState_t* counterState = tableMap(fentry->table_id);
-        if (!counterState)
-                return;
-        updateNewFlowCounters((uint32_t)ovs_ntohll(fentry->cookie),
-                              fentry->priority,
-                              (fentry->match),
-                              fentry->packet_count,
-                              fentry->byte_count,
-                              *counterState, true);
-    }
-}
-
 void PolicyStatsManager::sendRequest(uint32_t table_id, uint64_t _cookie,
         uint64_t _cookie_mask) {
     // send port stats request again
@@ -558,6 +549,8 @@ void PolicyStatsManager::sendRequest(uint32_t table_id, uint64_t _cookie,
 
     OfpBuf req(ofputil_encode_flow_stats_request(&fsr, proto));
     ofpmsg_update_length(req.get());
+    ovs_be32 reqXid = ((ofp_header *)req->data)->xid;
+    txns.insert(reqXid);
 
     int err = connection->SendMessage(req);
     if (err != 0) {

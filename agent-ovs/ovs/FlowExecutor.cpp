@@ -246,7 +246,10 @@ FlowExecutor::WaitOnBarrier(OfpBuf& barrReq) {
 }
 
 void
-FlowExecutor::Handle(SwitchConnection *, int msgType, ofpbuf *msg) {
+FlowExecutor::Handle(SwitchConnection *,
+                     int msgType,
+                     ofpbuf *msg,
+                     struct ofputil_flow_removed*) {
     ofp_header *msgHdr = (ofp_header *)msg->data;
     ovs_be32 recvXid = msgHdr->xid;
 

@@ -94,7 +94,10 @@ public:
     void stop();
 
     // see: MessageHandler
-    void Handle(SwitchConnection *swConn, int type, ofpbuf *msg);
+    void Handle(SwitchConnection *swConn,
+                int type,
+                ofpbuf *msg,
+                struct ofputil_flow_removed* fentry=NULL);
 
 private:
     Agent* agent;

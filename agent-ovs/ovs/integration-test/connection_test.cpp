@@ -24,7 +24,10 @@ using namespace opflexagent;
 class EchoReplyHandler : public MessageHandler {
 public:
     EchoReplyHandler() : counter(0) {}
-    void Handle(SwitchConnection*, int type, ofpbuf*) {
+    void Handle(SwitchConnection*,
+                int type,
+                ofpbuf*,
+                struct ofputil_flow_removed *) {
         BOOST_CHECK(type == OFPTYPE_ECHO_REPLY);
         ++counter;
     }
