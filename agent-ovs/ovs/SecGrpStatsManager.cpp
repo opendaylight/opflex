@@ -176,7 +176,9 @@ void SecGrpStatsManager::objectUpdated(opflex::modb::class_id_t class_id,
 }
 
 void SecGrpStatsManager::Handle(SwitchConnection* connection,
-                                int msgType, ofpbuf *msg) {
+                                int msgType,
+                                ofpbuf *msg,
+                                struct ofputil_flow_removed* fentry) {
     handleMessage(msgType, msg,
                   [this](uint32_t table_id) -> flowCounterState_t* {
                       switch (table_id) {
@@ -187,7 +189,7 @@ void SecGrpStatsManager::Handle(SwitchConnection* connection,
                       default:
                           return NULL;
                       }
-                  });
+                  }, fentry);
 }
 
 } /* namespace opflexagent */

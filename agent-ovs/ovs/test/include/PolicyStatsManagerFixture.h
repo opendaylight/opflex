@@ -290,6 +290,8 @@ public:
                                        entryList);
         LOG(DEBUG) << "1 makeFlowStatReplyMessage created";
         BOOST_REQUIRE(res_msg!=0);
+        ofp_header *msgHdr = (ofp_header *)res_msg->data;
+        statsManager->testInjectTxnId(msgHdr->xid);
 
         // send first flow stats reply message
         statsManager->Handle(&portConn,
@@ -306,6 +308,8 @@ public:
                                                  (statCount+1),
                                                  table_id,
                                                  entryList);
+            msgHdr = (ofp_header *)res_msg->data;
+            statsManager->testInjectTxnId(msgHdr->xid);
             // send second flow stats reply message
             statsManager->Handle(&portConn,
                                  OFPTYPE_FLOW_STATS_REPLY, res_msg);
@@ -368,6 +372,8 @@ public:
                                        entryList);
         LOG(DEBUG) << "1 makeFlowStatReplyMessage created";
         BOOST_REQUIRE(res_msg!=0);
+        ofp_header *msgHdr = (ofp_header *)res_msg->data;
+        statsManager->testInjectTxnId(msgHdr->xid);
 
         // send first flow stats reply message
         statsManager->Handle(&portConn,
@@ -382,6 +388,8 @@ public:
                                              entryList);
         LOG(DEBUG) << "2 makeFlowStatReplyMessage created";
         BOOST_REQUIRE(res_msg!=0);
+        msgHdr = (ofp_header *)res_msg->data;
+        statsManager->testInjectTxnId(msgHdr->xid);
 
         // send second flow stats reply message
         statsManager->Handle(&portConn,

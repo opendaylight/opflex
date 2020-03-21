@@ -106,7 +106,10 @@ public:
     void UninstallListenersForConnection(SwitchConnection *conn);
 
     /** Interface: MessageHandler */
-    void Handle(SwitchConnection *conn, int msgType, ofpbuf *msg);
+    void Handle(SwitchConnection *conn,
+                int msgType,
+                ofpbuf *msg,
+                struct ofputil_flow_removed* fentry=NULL);
 
     /** Interface: OnConnectListener */
     void Connected(SwitchConnection *swConn);
