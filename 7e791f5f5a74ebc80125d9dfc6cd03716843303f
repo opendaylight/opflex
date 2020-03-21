@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f15915f9_0f45021f",
+        "filename": "libopflex/engine/Processor.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 650,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-03-21T00:29:03Z",
+      "side": 1,
+      "message": "indentation of your comments is off. Please align with the rest of the code",
+      "revId": "7e791f5f5a74ebc80125d9dfc6cd03716843303f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8579a3df_a8c3b6ef",
+        "filename": "libopflex/engine/Processor.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 651,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-03-21T00:29:03Z",
+      "side": 1,
+      "message": "Can these be member variables instead? That\u0027s what has been done in IntFlowManager",
+      "revId": "7e791f5f5a74ebc80125d9dfc6cd03716843303f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f8a68669_282d4cf5",
+        "filename": "libopflex/engine/Processor.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 655,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-03-21T00:29:03Z",
+      "side": 1,
+      "message": "We don\u0027t support runtime updates of agent config so this could be computed once and stored",
+      "revId": "7e791f5f5a74ebc80125d9dfc6cd03716843303f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0cd1772e_af012a19",
+        "filename": "libopflex/engine/Processor.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 663,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-03-21T00:29:03Z",
+      "side": 1,
+      "message": "remove this log",
+      "revId": "7e791f5f5a74ebc80125d9dfc6cd03716843303f",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
