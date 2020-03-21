@@ -38,11 +38,6 @@ using std::string;
 using rapidjson::Value;
 using rapidjson::Writer;
 
-OpflexHandler::ConnectionState OpflexHandler::getState() {
-    boost::unique_lock<boost::mutex> guard(stateMutex);
-    return state;
-}
-
 bool OpflexHandler::isReady() {
     boost::unique_lock<boost::mutex> guard(stateMutex);
     return state == READY;

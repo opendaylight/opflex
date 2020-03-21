@@ -41,7 +41,7 @@ public:
      * @param conn_ the opflex connection
      */
     OpflexHandler(OpflexConnection* conn_)
-        : conn(conn_), remoteRoles(0), state(DISCONNECTED) {}
+        : conn(conn_), state(DISCONNECTED) {}
 
     /**
      * Destroy the handler
@@ -66,13 +66,6 @@ public:
     };
 
     /**
-     * Get the connection state for this connection
-     *
-     * @return the current state for the connection
-     */
-    ConnectionState getState();
-
-    /**
      * Check whether the connection is ready to accept requests.  This
      * means that the server handshake is complete and the connection
      * is active.
@@ -80,33 +73,6 @@ public:
      * @return true if the connection is ready
      */
     bool isReady();
-
-    /**
-     * Set the connection state for the connection
-     *
-     * @param state the new connection state
-     */
-    void setState(ConnectionState state);
-
-    /**
-     * Get the bitmask representing the set of roles for the remote
-     * end of this connection
-     *
-     * @return the role bitmask, consisting of bitfields set from
-     * OpflexRole.
-     */
-    uint8_t getRemoteRoles() const { return remoteRoles; }
-
-    /**
-     * Check whether the current connection has the specified opflex
-     * role.
-     *
-     * @param role the OpFlex role to check for
-     * @return true if the connection has the given role
-     */
-    bool hasRemoteRole(ofcore::OFConstants::OpflexRole role) const {
-        return (remoteRoles & role);
-    }
 
     // *************************
     // Connection state handlers
@@ -566,14 +532,16 @@ public:
 
 protected:
     /**
+     * Set the connection state for the connection
+     *
+     * @param state the new connection state
+     */
+    void setState(ConnectionState state);
+
+    /**
      * The OpflexConnection associated with the handler
      */
     OpflexConnection* conn;
-
-    /**
-     * The local roles associated with this connection
-     */
-    uint8_t remoteRoles;
 
     /**
      * The current connection state
