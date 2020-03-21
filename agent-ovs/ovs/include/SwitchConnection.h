@@ -20,6 +20,7 @@
 struct vconn;
 struct ofpbuf;
 class OfpBuf;
+struct ofputil_flow_removed;
 
 namespace opflexagent {
 
@@ -35,9 +36,12 @@ public:
      * @param swConn Connection where message was received
      * @param msgType Type of the received message
      * @param msg The received message
+     * @param fentry decoded flow_removed message
      */
-    virtual void Handle(SwitchConnection *swConn, int msgType,
-                        struct ofpbuf *msg) = 0;
+    virtual void Handle(SwitchConnection *swConn,
+                        int msgType,
+                        struct ofpbuf *msg,
+                        struct ofputil_flow_removed *fentry=NULL) = 0;
 };
 
 /**
@@ -62,6 +66,16 @@ public:
  */
 class SwitchConnection {
 public:
+    /**
+     * Parse the received flow_removed message and notify listeners.
+     * This message requires central handling since this is
+     * received asynchronously from the switch. We cannot defer handling
+     * to the listeners, because the first listener will consume this packet.
+     * @param msg the openflow message received
+     * @param fentry structure to hold the parsed flow
+     */
+    static void DecodeFlowRemoved(ofpbuf *msg,
+            struct ofputil_flow_removed* fentry);
     /**
      * Construct a new switch connection to the given switch name
      * @param swName the name of the OVS bridge to connect to
@@ -212,7 +226,10 @@ private:
      * Needed to keep the connection to switch alive.
      */
     class EchoRequestHandler : public MessageHandler {
-        void Handle(SwitchConnection *swConn, int type, struct ofpbuf *msg);
+        void Handle(SwitchConnection *swConn,
+                    int type,
+                    struct ofpbuf *msg,
+                    struct ofputil_flow_removed* fentry=NULL);
     };
 
     EchoRequestHandler echoReqHandler;
@@ -222,7 +239,10 @@ private:
      * Needed to keep the connection to switch alive.
      */
     class EchoReplyHandler : public MessageHandler {
-        void Handle(SwitchConnection *swConn, int type, struct ofpbuf *msg);
+        void Handle(SwitchConnection *swConn,
+                    int type,
+                    struct ofpbuf *msg,
+                    struct ofputil_flow_removed* fentry=NULL);
     };
 
     EchoReplyHandler echoRepHandler;
@@ -231,7 +251,10 @@ private:
      * @brief Handle errors from the switch by logging.
      */
     class ErrorHandler : public MessageHandler {
-        void Handle(SwitchConnection *swConn, int type, struct ofpbuf *msg);
+        void Handle(SwitchConnection *swConn,
+                    int type,
+                    struct ofpbuf *msg,
+                    struct ofputil_flow_removed* fentry=NULL);
     };
 
     ErrorHandler errorHandler;

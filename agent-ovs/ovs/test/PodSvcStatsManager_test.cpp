@@ -378,6 +378,8 @@ PodSvcStatsManagerFixture::testFlowStats (MockConnection& portConn,
                                    entryList);
     BOOST_REQUIRE(res_msg!=0);
     LOG(DEBUG) << "1 makeFlowStatsReplyMessage successful";
+    ofp_header *msgHdr = (ofp_header *)res_msg->data;
+    statsManager->testInjectTxnId(msgHdr->xid);
 
     // send first flow stats reply message
     statsManager->Handle(&portConn,
@@ -403,6 +405,8 @@ PodSvcStatsManagerFixture::testFlowStats (MockConnection& portConn,
                                      entryList);
     BOOST_REQUIRE(res_msg!=0);
     LOG(DEBUG) << "2 makeFlowStatReplyMessage successful";
+    msgHdr = (ofp_header *)res_msg->data;
+    statsManager->testInjectTxnId(msgHdr->xid);
 
     // send second flow stats reply message
     statsManager->Handle(&portConn,
@@ -486,11 +490,14 @@ PodSvcStatsManagerFixture::testFlowRemoved (MockConnection& portConn,
                                    entryList1);
     BOOST_REQUIRE(res_msg!=0);
     LOG(DEBUG) << "1 makeFlowRemovedMessage successful";
+    struct ofputil_flow_removed fentry;
+    SwitchConnection::DecodeFlowRemoved(res_msg, &fentry);
 
     // send first flow stats reply message
     statsManager->Handle(&portConn,
                          OFPTYPE_FLOW_REMOVED,
-                         res_msg);
+                         res_msg,
+			 &fentry);
     LOG(DEBUG) << "1 FlowRemovedMessage handling successful";
     ofpbuf_delete(res_msg);
 
@@ -501,11 +508,13 @@ PodSvcStatsManagerFixture::testFlowRemoved (MockConnection& portConn,
                                    entryList2);
     BOOST_REQUIRE(res_msg!=0);
     LOG(DEBUG) << "2 makeFlowRemovedMessage successful";
+    SwitchConnection::DecodeFlowRemoved(res_msg, &fentry);
 
     // send first flow stats reply message
     statsManager->Handle(&portConn,
                          OFPTYPE_FLOW_REMOVED,
-                         res_msg);
+                         res_msg,
+			 &fentry);
     LOG(DEBUG) << "2 FlowRemovedMessage handling successful";
     ofpbuf_delete(res_msg);
 
