@@ -200,6 +200,8 @@ public:
     void parseLog(unsigned char *buf , std::size_t length);
 
 protected:
+    ///@{
+    /** Member names are self-explanatory */
     boost::asio::io_service &server_io;
     boost::asio::io_service &client_io;
     std::unique_ptr<UdpServer> socketListener;
@@ -217,6 +219,7 @@ protected:
     static const unsigned maxOutstandingEvents=30;
     friend UdpServer;
     friend LocalClient;
+    ///@}
 };
 
 } /* namespace opflexagent */

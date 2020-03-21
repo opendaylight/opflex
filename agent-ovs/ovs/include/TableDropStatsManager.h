@@ -71,7 +71,9 @@ public:
 
     /* Interface: MessageListener */
     void Handle(SwitchConnection* connection,
-                int msgType, ofpbuf *msg) override;
+                int msgType,
+                ofpbuf *msg,
+                struct ofputil_flow_removed* fentry=NULL) override;
 
     void handleTableDropStats(struct ofputil_flow_stats* fentry) override;
 

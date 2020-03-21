@@ -74,7 +74,9 @@ public:
 
     /* Interface: MessageListener */
     void Handle(SwitchConnection* connection,
-                int msgType, ofpbuf *msg) override;
+                int msgType,
+                ofpbuf *msg,
+                struct ofputil_flow_removed* fentry=NULL) override;
 
     void updatePolicyStatsCounters(const std::string& l24Classifier,
                                    FlowStats_t& newVals1,

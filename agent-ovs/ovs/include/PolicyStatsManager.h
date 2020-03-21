@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include <mutex>
 #include <functional>
+#include <unordered_set>
 
 #pragma once
 #ifndef OPFLEXAGENT_POLICYSTATSMANAGER_H
@@ -140,6 +141,13 @@ public:
      */
     static const int MAX_AGE = 9;
 
+    /**
+     * This is a test method. Do not use in production
+     * @param txn_id: transaction id to simulate send
+     */
+    void testInjectTxnId(uint32_t txn_id) {
+        txns.insert(txn_id);
+    }
 protected:
     /**
      * Type used as a key for Policy counter maps
@@ -415,7 +423,10 @@ protected:
     /**
      * handle the OpenFlow message provided using the given table map
      */
-    void handleMessage(int msgType, ofpbuf *msg, const table_map_t& tableMap);
+    void handleMessage(int msgType,
+                       ofpbuf *msg,
+                       const table_map_t& tableMap,
+                       struct ofputil_flow_removed* fentry=NULL);
 
     /**
      * Handle a drop stats message
@@ -474,9 +485,14 @@ protected:
      */
     std::atomic<bool> stopping;
 
+    /**
+     * Transaction Id set for tracking request/replies
+     */
+    std::unordered_set<uint32_t> txns;
+
+
 private:
-    void handleFlowStats(ofpbuf *msg, const table_map_t& tableMap);
-    void handleFlowRemoved(ofpbuf *msg, const table_map_t& tableMap);
+    bool handleFlowStats(ofpbuf *msg, const table_map_t& tableMap);
 
 };
 

@@ -30,6 +30,7 @@ extern "C" {
 #include <openvswitch/vconn.h>
 #include <openvswitch/ofp-msgs.h>
 #include <openvswitch/ofp-packet.h>
+#include <openvswitch/ofp-monitor.h>
 }
 
 typedef std::lock_guard<std::mutex> mutex_guard;
@@ -39,6 +40,28 @@ const std::chrono::seconds ECHO_INTERVAL(5);
 const std::chrono::seconds MAX_ECHO_INTERVAL(30);
 
 namespace opflexagent {
+
+int SwitchConnection::DecodeFlowRemoved(ofpbuf *msg,
+        struct ofputil_flow_removed* fentry) {
+    const struct ofp_header *oh = (ofp_header *)msg->data;
+    int ret;
+    bzero(fentry, sizeof(struct ofputil_flow_removed));
+
+    ret = ofputil_decode_flow_removed(fentry, oh);
+    if (ret != 0) {
+        LOG(ERROR) << "Failed to decode flow removed message: "
+                   << ovs_strerror(ret);
+        return ret;
+    } else {
+        /* ovs 2.11.2 specific changes. Check handleFlowStats for
+         * more comments on below fix */
+        if (fentry) {
+            fentry->match.flow.packet_type = 0;
+            fentry->match.wc.masks.packet_type = 0;
+        }
+    }
+    return ret;
+}
 
 SwitchConnection::SwitchConnection(const std::string& swName) :
     switchName(swName), ofConn(NULL) {
@@ -284,10 +307,16 @@ SwitchConnection::receiveOFMessage() {
         } else {
             ofptype type;
             if (!ofptype_decode(&type, (ofp_header *)recvMsg->data)) {
+                struct ofputil_flow_removed flow_removed;
+                if(type == OFPTYPE_FLOW_REMOVED) {
+                    if(DecodeFlowRemoved(recvMsg, &flow_removed) != 0) {
+                        break;
+                    }
+                }
                 HandlerMap::const_iterator itr = msgHandlers.find(type);
                 if (itr != msgHandlers.end()) {
                     for (MessageHandler *h : itr->second) {
-                        h->Handle(this, type, recvMsg);
+                        h->Handle(this, type, recvMsg, &flow_removed);
                     }
                 }
             }
@@ -358,7 +387,8 @@ SwitchConnection::notifyConnectListeners() {
 
 void
 SwitchConnection::EchoRequestHandler::Handle(SwitchConnection *swConn,
-                                             int, ofpbuf *msg) {
+                                             int, ofpbuf *msg,
+                                             struct ofputil_flow_removed*) {
     const ofp_header *rq = (const ofp_header *)msg->data;
     OfpBuf echoReplyMsg(ofputil_encode_echo_reply(rq));
     swConn->SendMessage(echoReplyMsg);
@@ -366,14 +396,16 @@ SwitchConnection::EchoRequestHandler::Handle(SwitchConnection *swConn,
 
 void
 SwitchConnection::EchoReplyHandler::Handle(SwitchConnection *swConn,
-                                    int, ofpbuf *msg) {
+                                    int, ofpbuf *msg,
+                                    struct ofputil_flow_removed*) {
     mutex_guard lock(swConn->connMtx);
     swConn->lastEchoTime = std::chrono::steady_clock::now();
 }
 
 void
 SwitchConnection::ErrorHandler::Handle(SwitchConnection*, int,
-                                       ofpbuf *msg) {
+                                       ofpbuf *msg,
+                                       struct ofputil_flow_removed*) {
     const struct ofp_header *oh = (ofp_header *)msg->data;
     ofperr err = ofperr_decode_msg(oh, NULL);
     LOG(ERROR) << "Got error reply from switch ("
