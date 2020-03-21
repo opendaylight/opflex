@@ -303,14 +303,16 @@ void ContractStatsManager::objectUpdated(opflex::modb::class_id_t class_id,
 }
 
 void ContractStatsManager::Handle(SwitchConnection* connection,
-                                  int msgType, ofpbuf *msg) {
+                                  int msgType,
+                                  ofpbuf *msg,
+                                  struct ofputil_flow_removed* fentry) {
     handleMessage(msgType, msg,
                   [this](uint32_t table_id) -> flowCounterState_t* {
                       if (table_id == IntFlowManager::POL_TABLE_ID)
                           return &contractState;
                       else
                           return NULL;
-                  });
+                  }, fentry);
 }
 
 } /* namespace opflexagent */

@@ -896,7 +896,8 @@ static void handleICMPEchoPktIn(bool v4,
  * Dispatch packet-in messages to the appropriate handlers
  */
 void PacketInHandler::Handle(SwitchConnection* conn,
-                             int msgType, ofpbuf *msg) {
+                             int msgType, ofpbuf *msg,
+                             struct ofputil_flow_removed* fentry) {
     assert(msgType == OFPTYPE_PACKET_IN);
 
     const struct ofp_header *oh = (ofp_header *)msg->data;

@@ -232,9 +232,12 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemoved, ContractStatsManagerFixture) {
                                  entryList);
     LOG(DEBUG) << "1 makeFlowRemovedMessage_2 created";
     BOOST_REQUIRE(res_msg!=0);
+    struct ofputil_flow_removed fentry;
+    SwitchConnection::DecodeFlowRemoved(res_msg, &fentry);
 
     contractStatsManager.Handle(&integrationPortConn,
-                                OFPTYPE_FLOW_REMOVED, res_msg);
+                                OFPTYPE_FLOW_REMOVED, res_msg,
+                                &fentry);
     LOG(DEBUG) << "1 makeFlowRemovedMessage_2 handled";
     ofpbuf_delete(res_msg);
 

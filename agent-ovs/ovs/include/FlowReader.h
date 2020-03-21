@@ -102,7 +102,10 @@ public:
     virtual bool getTlvs(const TlvCb& cb);
 
     /* Interface: MessageHandler */
-    void Handle(SwitchConnection *c, int msgType, ofpbuf *msg);
+    void Handle(SwitchConnection *c,
+                int msgType,
+                ofpbuf *msg,
+                struct ofputil_flow_removed *fentry=NULL);
 
     /**
      * Clear the state of the flow reader

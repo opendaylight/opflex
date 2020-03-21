@@ -67,7 +67,9 @@ public:
      * Interface: MessageListener 
      */
     void Handle(SwitchConnection* connection,
-                int msgType, ofpbuf *msg) override;
+                int msgType,
+                ofpbuf *msg,
+                struct ofputil_flow_removed* fentry=NULL) override;
 
     /** Interface: ObjectListener */
     // Note: This is used to delete observer MOs.

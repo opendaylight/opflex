@@ -151,9 +151,11 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemoved, SecGrpStatsManagerFixture) {
                                  AccessFlowManager::SEC_GROUP_IN_TABLE_ID,
                                  entryList);
     BOOST_REQUIRE(res_msg!=0);
+    struct ofputil_flow_removed fentry;
+    SwitchConnection::DecodeFlowRemoved(res_msg, &fentry);
 
     secGrpStatsManager.Handle(&accPortConn,
-                              OFPTYPE_FLOW_REMOVED, res_msg);
+                              OFPTYPE_FLOW_REMOVED, res_msg, &fentry);
     secGrpStatsManager.on_timer(ec);
 
     ofpbuf_delete(res_msg);
@@ -164,7 +166,7 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemoved, SecGrpStatsManagerFixture) {
     BOOST_REQUIRE(res_msg!=0);
 
     secGrpStatsManager.Handle(&accPortConn,
-                              OFPTYPE_FLOW_REMOVED, res_msg);
+                              OFPTYPE_FLOW_REMOVED, res_msg, &fentry);
     ofpbuf_delete(res_msg);
     res_msg =
         makeFlowRemovedMessage_2(&accPortConn,
@@ -172,9 +174,10 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemoved, SecGrpStatsManagerFixture) {
                                  AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,
                                  entryList1);
     BOOST_REQUIRE(res_msg!=0);
+    SwitchConnection::DecodeFlowRemoved(res_msg, &fentry);
 
     secGrpStatsManager.Handle(&accPortConn,
-                              OFPTYPE_FLOW_REMOVED, res_msg);
+                              OFPTYPE_FLOW_REMOVED, res_msg, &fentry);
     ofpbuf_delete(res_msg);
     res_msg =
         makeFlowRemovedMessage_2(&accPortConn,
@@ -182,9 +185,10 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemoved, SecGrpStatsManagerFixture) {
                                  AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,
                                  entryList1);
     BOOST_REQUIRE(res_msg!=0);
+    SwitchConnection::DecodeFlowRemoved(res_msg, &fentry);
 
     secGrpStatsManager.Handle(&accPortConn,
-                              OFPTYPE_FLOW_REMOVED, res_msg);
+                              OFPTYPE_FLOW_REMOVED, res_msg, &fentry);
     ofpbuf_delete(res_msg);
     // Call on_timer function to process the stats collected
     // and generate Genie objects for stats
