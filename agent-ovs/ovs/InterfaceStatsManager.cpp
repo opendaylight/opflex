@@ -163,7 +163,8 @@ updateEndpointCounters(const std::string& uuid,
 }
 
 void InterfaceStatsManager::Handle(SwitchConnection* connection,
-                                   int msgType, ofpbuf *msg) {
+                                   int msgType, ofpbuf *msg,
+                                   struct ofputil_flow_removed* fentry) {
     assert(msgType == OFPTYPE_PORT_STATS_REPLY);
     if (!connection || !msg)
         return;

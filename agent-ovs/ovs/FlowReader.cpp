@@ -117,7 +117,10 @@ bool FlowReader::sendRequest(OfpBuf& req, const U& cb, V& reqMap) {
     return (err == 0);
 }
 
-void FlowReader::Handle(SwitchConnection*, int msgType, ofpbuf *msg) {
+void FlowReader::Handle(SwitchConnection*,
+                        int msgType,
+                        ofpbuf *msg,
+                        struct ofputil_flow_removed * fentry) {
     if (msgType == OFPTYPE_FLOW_STATS_REPLY) {
         handleReply<FlowEntryList, FlowCb, FlowCbMap>(msg, flowRequests);
     } else if (msgType == OFPTYPE_GROUP_DESC_STATS_REPLY) {

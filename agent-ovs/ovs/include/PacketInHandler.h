@@ -75,8 +75,10 @@ public:
     // MessageHandler
     // **************
 
-    virtual void Handle(SwitchConnection *swConn, int msgType,
-                        ofpbuf *msg);
+    virtual void Handle(SwitchConnection *swConn,
+                        int msgType,
+                        ofpbuf *msg,
+                        struct ofputil_flow_removed* fentry=NULL);
 
 private:
     Agent& agent;
