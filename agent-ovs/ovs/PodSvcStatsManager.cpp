@@ -282,14 +282,15 @@ operator()(const PodSvcStatsManager::PodSvcFlowMatchKey_t& k) const noexcept {
 }
 
 void PodSvcStatsManager::Handle(SwitchConnection* connection,
-                                  int msgType, ofpbuf *msg) {
+                                  int msgType, ofpbuf *msg,
+                                  struct ofputil_flow_removed* fentry) {
     handleMessage(msgType, msg,
                   [this](uint32_t table_id) -> flowCounterState_t* {
                       if (table_id == IntFlowManager::STATS_TABLE_ID)
                           return &statsState;
                       else
                           return NULL;
-                  });
+                  }, fentry);
 }
 
 } /* namespace opflexagent */

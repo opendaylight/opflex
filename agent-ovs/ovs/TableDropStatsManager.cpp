@@ -106,6 +106,10 @@ void BaseTableDropStatsManager::start(bool register_listener) {
        prometheusManager.addTableDropGauge(connection->getSwitchName(),
                                             tbl_it.second.first);
 #endif
+       CurrentDropCounterState[tbl_it.first];
+       auto &counter = TableDropCounterState[tbl_it.first];
+       counter.packet_count = boost::make_optional(false, 0);
+       counter.byte_count = boost::make_optional(false, 0);
     }
     PolicyStatsManager::start(register_listener);
     {
@@ -348,14 +352,16 @@ void BaseTableDropStatsManager::objectUpdated(opflex::modb::class_id_t class_id,
 }
 
 void BaseTableDropStatsManager::Handle(SwitchConnection* connection,
-                                  int msgType, ofpbuf *msg) {
+                                  int msgType,
+                                  ofpbuf *msg,
+                                  struct ofputil_flow_removed* fentry) {
     handleMessage(msgType, msg,
-                  [this](uint32_t table_id) -> flowCounterState_t* {
-                      if(tableDescMap.find(table_id)!= tableDescMap.end())
-                          return &CurrentDropCounterState[table_id];
-                      else
-                          return NULL;
-                  });
+        [this](uint32_t table_id) -> flowCounterState_t* {
+            if(tableDescMap.find(table_id)!= tableDescMap.end())
+                return &CurrentDropCounterState[table_id];
+            else
+                return NULL;
+        }, fentry);
 }
 
 } /* namespace opflexagent */

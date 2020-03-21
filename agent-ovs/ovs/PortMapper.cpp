@@ -82,7 +82,10 @@ PortMapper::Connected(SwitchConnection *conn) {
 }
 
 void
-PortMapper::Handle(SwitchConnection*, int msgType, ofpbuf *msg) {
+PortMapper::Handle(SwitchConnection*,
+                   int msgType,
+                   ofpbuf *msg,
+                   struct ofputil_flow_removed*) {
     switch (msgType) {
     case OFPTYPE_PORT_DESC_STATS_REPLY:
         HandlePortDescReply(msg);
