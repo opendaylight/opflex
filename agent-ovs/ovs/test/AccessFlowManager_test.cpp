@@ -332,7 +332,9 @@ void AccessFlowManagerFixture::initExpStatic() {
             .actions().go(GRP).done());
     for(int i=GRP; i<=OUT; i++) {
         ADDF(Bldr().table(i).priority(0)
-                .actions().dropLog(i).go(EXP_DROP).done());
+        .cookie(ovs_ntohll(flow::cookie::TABLE_DROP_FLOW))
+        .flags(OFPUTIL_FF_SEND_FLOW_REM).priority(0)
+	.actions().dropLog(i).go(EXP_DROP).done());
     }
 }
 
@@ -540,7 +542,7 @@ uint16_t AccessFlowManagerFixture::initExpSecGrp2(uint32_t setId) {
     ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio - 128).cookie(ruleId)
          .isCtState("-new-est+rel-inv+trk").tcp().reg(SEPG, setId)
          .actions().go(OUT).done());
-    ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio - 128).cookie(ruleId)
+    ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio - 128)
          .isCtState("-trk").tcp().reg(SEPG, setId)
          .actions().ct("table=1,zone=NXM_NX_REG6[0..15]").done());
     ADDF(Bldr(SEND_FLOW_REM).table(OUT_POL).priority(prio - 128).cookie(ruleId)
