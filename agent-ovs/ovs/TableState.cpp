@@ -267,9 +267,13 @@ void TableState::diffSnapshot(const FlowEntryList& oldEntries,
             it->second.first = true;
             FlowEntryPtr& olde = it->second.second;
             FlowEntryPtr& newe = e.second.front().second;
-            if (!newe->actionEq(olde.get())) {
+            if(newe->entry->cookie != olde->entry->cookie) {
+                diffs.add(FlowEdit::DEL, olde);
+                diffs.add(FlowEdit::ADD, newe);
+            } else if (!newe->actionEq(olde.get())) {
                 diffs.add(FlowEdit::MOD, newe);
             }
+
         }
     }
 
@@ -374,8 +378,12 @@ void TableState::apply(const std::string& objId,
                                 oit->second.front().second->entry->cookie,
                                 tomod->entry->cookie,
                                 e.first);
-
-                if (!oit->second.front().second->actionEq(tomod.get())) {
+                if (oit->second.front().second->entry->cookie
+                        != tomod->entry->cookie) {
+                    diffs.add(FlowEdit::DEL, oit->second.front().second);
+                    diffs.add(FlowEdit::ADD, tomod);
+                    oit->second.front().second = tomod;
+                } else if (!oit->second.front().second->actionEq(tomod.get())) {
                     oit->second.front().second = tomod;
                     diffs.add(FlowEdit::MOD, tomod);
                 }
