@@ -153,17 +153,21 @@ public:
                      uint32_t bdId = 1, uint32_t rdId = 1);
 
     /** Initialize service-scoped flow entries for local services */
-    void initExpAnycastService(int nextHop = 0);
+    void initExpAnycastService(Service &as, int nextHop = 0);
 
     /**
      * Initialize flows in stats table for pod to svc
      * and vice versa */
     void initExpPodServiceStats(const string& svc_ip,
-                                shared_ptr<Endpoint>& ep);
+                                shared_ptr<Endpoint>& ep,
+                                Service &as);
 
     /** Initialize service-scoped flow entries for load balanced
         services */
-    void initExpLBService(bool conntrack = false, bool remote = false);
+    void initExpLBService(Service &as1,
+                          Service &as2,
+                          bool conntrack = false,
+                          bool remote = false);
 
     /** Initialize virtual IP flow entries */
     void initExpVirtualIp();
@@ -847,9 +851,9 @@ BOOST_FIXTURE_TEST_CASE(policy_portrange, VxlanIntFlowManagerFixture) {
 
 void BaseIntFlowManagerFixture::connectTest() {
     exec.ignoredFlowMods.insert(FlowEdit::ADD);
-    exec.Expect(FlowEdit::MOD, fe_connect_1);
-    exec.Expect(FlowEdit::DEL, fe_connect_learn);
+    exec.Expect(FlowEdit::DEL, fe_connect_1);
     exec.Expect(FlowEdit::MOD, fe_connect_2);
+    exec.Expect(FlowEdit::DEL, fe_connect_learn);
     exec.ExpectGroup(FlowEdit::DEL, "group_id=10,type=all");
     intFlowManager.egDomainUpdated(epg4->getURI());
     setConnected();
@@ -1345,6 +1349,8 @@ BOOST_FIXTURE_TEST_CASE(anycastService, VxlanIntFlowManagerFixture) {
 
     servSrc.updateService(as);
     intFlowManager.serviceUpdated(as.getUUID());
+    uint64_t ep_to_svc_cookie;
+    intFlowManager.getPodSvcUuidCookie(ep0->getUUID(),true,ep_to_svc_cookie);
 
     initExpStatic();
     initExpEpg(epg0);
@@ -1352,7 +1358,7 @@ BOOST_FIXTURE_TEST_CASE(anycastService, VxlanIntFlowManagerFixture) {
     initExpRd();
     initExpEp(ep0, epg0);
     initExpEp(ep2, epg0);
-    initExpAnycastService();
+    initExpAnycastService(as);
     WAIT_FOR_TABLES("create", 500);
 
     as.clearServiceMappings();
@@ -1371,7 +1377,7 @@ BOOST_FIXTURE_TEST_CASE(anycastService, VxlanIntFlowManagerFixture) {
     initExpRd();
     initExpEp(ep0, epg0);
     initExpEp(ep2, epg0);
-    initExpAnycastService(1);
+    initExpAnycastService(as,1);
     WAIT_FOR_TABLES("nexthop", 500);
 
     as.clearServiceMappings();
@@ -1390,7 +1396,7 @@ BOOST_FIXTURE_TEST_CASE(anycastService, VxlanIntFlowManagerFixture) {
     initExpRd();
     initExpEp(ep0, epg0);
     initExpEp(ep2, epg0);
-    initExpAnycastService(2);
+    initExpAnycastService(as,2);
     WAIT_FOR_TABLES("nexthop lb", 500);
 
     // Test service deletion
@@ -1467,7 +1473,7 @@ void BaseIntFlowManagerFixture::loadBalancedServiceTest() {
     initExpRd();
     initExpEp(ep0, epg0);
     initExpEp(ep2, epg0);
-    initExpLBService();
+    initExpLBService(as1, as2);
     WAIT_FOR_TABLES("create", 500);
 
     as1.clearServiceMappings();
@@ -1489,7 +1495,7 @@ void BaseIntFlowManagerFixture::loadBalancedServiceTest() {
     initExpRd();
     initExpEp(ep0, epg0);
     initExpEp(ep2, epg0);
-    initExpLBService(true);
+    initExpLBService(as1, as2, true);
     WAIT_FOR_TABLES("conntrack", 500);
 
     portmapper.setPort("service-iface", 17);
@@ -1522,7 +1528,7 @@ void BaseIntFlowManagerFixture::loadBalancedServiceTest() {
     initExpRd();
     initExpEp(ep0, epg0);
     initExpEp(ep2, epg0);
-    initExpLBService(false, true);
+    initExpLBService(as1, as2, false, true);
     WAIT_FOR_TABLES("exposed", 500);
 
     as1.clearServiceMappings();
@@ -1544,7 +1550,7 @@ void BaseIntFlowManagerFixture::loadBalancedServiceTest() {
     initExpRd();
     initExpEp(ep0, epg0);
     initExpEp(ep2, epg0);
-    initExpLBService(true, true);
+    initExpLBService(as1, as2, true, true);
     WAIT_FOR_TABLES("exposed conntrack", 500);
 
     // Test service deletion
@@ -1908,8 +1914,10 @@ void BaseIntFlowManagerFixture::initExpRd(uint32_t rdId,
                                           bool includeSubnets) {
     uint32_t tunPort = intFlowManager.getTunnelPort();
 
-    ADDF(Bldr().table(POL).priority(1).reg(RD, rdId).actions().
-            dropLog(POL).go(EXP_DROPLOG).done());
+    ADDF(Bldr().cookie(ovs_htonll(flow::cookie::TABLE_DROP_FLOW|
+         flow::cookie::RD_POL_DROP_FLOW)).flags(OFPUTIL_FF_SEND_FLOW_REM).
+         table(POL).priority(1).reg(RD, rdId).actions().
+         dropLog(POL).go(EXP_DROPLOG).done());
 
     if (isUnenforced) {
         ADDF(Bldr().table(POL).priority(8442).reg(RD, rdId).
@@ -1932,13 +1940,16 @@ void BaseIntFlowManagerFixture::initExpRd(uint32_t rdId,
              .actions().mdAct(flow::meta::out::TUNNEL)
              .go(STAT).done());
     } else {
-        ADDF(Bldr().table(RT).priority(324)
+        ADDF(Bldr().cookie(ovs_htonll(flow::cookie::TABLE_DROP_FLOW))
+             .flags(OFPUTIL_FF_SEND_FLOW_REM).table(RT).priority(324)
              .ip().reg(RD, rdId).isIpDst("10.20.44.0/24")
              .actions().dropLog(RT).go(EXP_DROPLOG).done());
-        ADDF(Bldr().table(RT).priority(324)
+        ADDF(Bldr().cookie(ovs_htonll(flow::cookie::TABLE_DROP_FLOW))
+             .flags(OFPUTIL_FF_SEND_FLOW_REM).table(RT).priority(324)
              .ip().reg(RD, rdId).isIpDst("10.20.45.0/24")
              .actions().dropLog(RT).go(EXP_DROPLOG).done());
-        ADDF(Bldr().table(RT).priority(332)
+        ADDF(Bldr().cookie(ovs_htonll(flow::cookie::TABLE_DROP_FLOW))
+             .flags(OFPUTIL_FF_SEND_FLOW_REM).table(RT).priority(332)
              .ipv6().reg(RD, rdId).isIpv6Dst("2001:db8::/32")
              .actions().dropLog(RT).go(EXP_DROPLOG).done());
     }
@@ -2544,7 +2555,7 @@ void BaseIntFlowManagerFixture::initExpRemoteEp() {
     }
 }
 
-void BaseIntFlowManagerFixture::initExpAnycastService(int nextHop) {
+void BaseIntFlowManagerFixture::initExpAnycastService(Service &as, int nextHop) {
     string mac = "ed:84:da:ef:16:96";
     string bmac("ff:ff:ff:ff:ff:ff");
     uint8_t rmacArr[6];
@@ -2552,18 +2563,18 @@ void BaseIntFlowManagerFixture::initExpAnycastService(int nextHop) {
     string rmac = MAC(rmacArr).toString();
     string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
 
-    initExpPodServiceStats("169.254.169.254", ep0);
-    initExpPodServiceStats("169.254.169.254", ep1);
-    initExpPodServiceStats("169.254.169.254", ep2);
-    initExpPodServiceStats("169.254.169.254", ep3);
-    initExpPodServiceStats("169.254.169.254", ep4);
-    initExpPodServiceStats("169.254.169.254", ep5);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep0);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep1);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep2);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep3);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep4);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep5);
+    initExpPodServiceStats("169.254.169.254", ep0, as);
+    initExpPodServiceStats("169.254.169.254", ep1, as);
+    initExpPodServiceStats("169.254.169.254", ep2, as);
+    initExpPodServiceStats("169.254.169.254", ep3, as);
+    initExpPodServiceStats("169.254.169.254", ep4, as);
+    initExpPodServiceStats("169.254.169.254", ep5, as);
+    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep0, as);
+    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep1, as);
+    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep2, as);
+    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep3, as);
+    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep4, as);
+    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep5, as);
 
     if (nextHop) {
         std::stringstream mss;
@@ -2729,12 +2740,18 @@ void BaseIntFlowManagerFixture::initExpAnycastService(int nextHop) {
 }
 
 void BaseIntFlowManagerFixture::initExpPodServiceStats (const string& svc_ip,
-                                                        shared_ptr<Endpoint>& ep)
+                                                        shared_ptr<Endpoint>& ep,
+                                                        Service &as)
 {
     address svc_ipa = address::from_string(svc_ip);
-
+    usleep(500000);
     for (const string& ep_ip : ep->getIPs()) {
         address ep_ipa = address::from_string(ep_ip);
+        const std::string &uuid = ep->getUUID();
+        std::string complete_uuid = uuid + ":" + as.getUUID();
+        uint64_t ep_to_svc_cookie=0, svc_to_ep_cookie=0;
+        intFlowManager.getPodSvcUuidCookie(complete_uuid,true,ep_to_svc_cookie);
+        intFlowManager.getPodSvcUuidCookie(complete_uuid,false,svc_to_ep_cookie);
 
         // ensure flows are either v4 or v6 - no mix-n-match
         if (svc_ipa.is_v4() != ep_ipa.is_v4())
@@ -2743,11 +2760,13 @@ void BaseIntFlowManagerFixture::initExpPodServiceStats (const string& svc_ip,
         if (ep_ipa.is_v4()) {
             // to svc
             ADDF(Bldr(SEND_FLOW_REM).table(STAT)
+                 .cookie(ep_to_svc_cookie)
                  .priority(100).ip()
                  .reg(SVCADDR1, svc_ipa.to_v4().to_ulong()).isIpSrc(ep_ip)
                  .actions().go(OUT).done());
             // from svc
             ADDF(Bldr(SEND_FLOW_REM).table(STAT)
+                 .cookie(svc_to_ep_cookie)
                  .priority(100).ip()
                  .isIpSrc(svc_ip).isIpDst(ep_ip)
                  .actions().go(OUT).done());
@@ -2756,6 +2775,7 @@ void BaseIntFlowManagerFixture::initExpPodServiceStats (const string& svc_ip,
             uint32_t pAddr[4];
             IntFlowManager::in6AddrToLong(svc_ipa, &pAddr[0]);
             ADDF(Bldr(SEND_FLOW_REM).table(STAT)
+                 .cookie(ep_to_svc_cookie)
                  .priority(100).ipv6()
                  .reg(SVCADDR1, pAddr[0])
                  .reg(SVCADDR2, pAddr[1])
@@ -2765,6 +2785,7 @@ void BaseIntFlowManagerFixture::initExpPodServiceStats (const string& svc_ip,
                  .actions().go(OUT).done());
             // from svc
             ADDF(Bldr(SEND_FLOW_REM).table(STAT)
+                 .cookie(svc_to_ep_cookie)
                  .priority(100).ipv6()
                  .isIpv6Src(svc_ip).isIpv6Dst(ep_ip)
                  .actions().go(OUT).done());
@@ -2772,7 +2793,10 @@ void BaseIntFlowManagerFixture::initExpPodServiceStats (const string& svc_ip,
     }
 }
 
-void BaseIntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
+void BaseIntFlowManagerFixture::initExpLBService(Service &as1,
+                                                 Service &as2,
+                                                 bool conntrack,
+                                                 bool exposed) {
     string mac = "13:37:13:37:13:37";
     string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
     string bmac("ff:ff:ff:ff:ff:ff");
@@ -2780,18 +2804,18 @@ void BaseIntFlowManagerFixture::initExpLBService(bool conntrack, bool exposed) {
     memcpy(rmacArr, intFlowManager.getRouterMacAddr(), sizeof(rmacArr));
     string rmac = MAC(rmacArr).toString();
 
-    initExpPodServiceStats("169.254.169.254", ep0);
-    initExpPodServiceStats("169.254.169.254", ep1);
-    initExpPodServiceStats("169.254.169.254", ep2);
-    initExpPodServiceStats("169.254.169.254", ep3);
-    initExpPodServiceStats("169.254.169.254", ep4);
-    initExpPodServiceStats("169.254.169.254", ep5);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep0);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep1);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep2);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep3);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep4);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep5);
+    initExpPodServiceStats("169.254.169.254", ep0, as1);
+    initExpPodServiceStats("169.254.169.254", ep1, as1);
+    initExpPodServiceStats("169.254.169.254", ep2, as1);
+    initExpPodServiceStats("169.254.169.254", ep3, as1);
+    initExpPodServiceStats("169.254.169.254", ep4, as1);
+    initExpPodServiceStats("169.254.169.254", ep5, as1);
+    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep0, as2);
+    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep1, as2);
+    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep2, as2);
+    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep3, as2);
+    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep4, as2);
+    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep5, as2);
 
     if (exposed) {
         ADDF(Bldr().table(SEC).priority(90).in(17).isVlan(4003)
@@ -3368,10 +3392,7 @@ createOnConnectEntries(IntFlowManager::EncapType encapType,
     groups.push_back(entryIn);
 
     // Flow mods that we expect after diffing against the table
-    fe_connect_1 = Bldr().table(SEC).priority(0)
-            .cookie(ovs_ntohll(flow::cookie::TABLE_DROP_FLOW))
-            .flags(OFPUTIL_FF_SEND_FLOW_REM)
-            .actions().dropLog(SEC).go(EXP_DROPLOG).done();
+    fe_connect_1 = Bldr().table(SEC).cookie(0xabcd).actions().drop().done();
     fe_connect_2 = Bldr().table(POL).priority(8292).reg(SEPG, epg4_vnid)
             .reg(DEPG, epg4_vnid).actions().go(STAT).done();
 }
