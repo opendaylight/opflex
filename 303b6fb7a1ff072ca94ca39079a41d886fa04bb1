@@ -2,6 +2,52 @@
   "comments": [
     {
       "key": {
+        "uuid": "2040eb7a_6be8f27c",
+        "filename": "agent-ovs/ovs/PolicyStatsManager.cpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 462,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-22T09:14:35Z",
+      "side": 1,
+      "message": "will this tell if the current xid has more forthcoming replies from ovs?",
+      "range": {
+        "startLine": 462,
+        "startChar": 24,
+        "endLine": 462,
+        "endChar": 34
+      },
+      "revId": "303b6fb7a1ff072ca94ca39079a41d886fa04bb1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "318f31a9_ef639a99",
+        "filename": "agent-ovs/ovs/SwitchConnection.cpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 312,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-22T09:14:35Z",
+      "side": 1,
+      "message": "If ofputil_decode_flow_removed() is returning error, then will be safe to bail out instead of calling \"handle\"...",
+      "range": {
+        "startLine": 312,
+        "startChar": 20,
+        "endLine": 312,
+        "endChar": 37
+      },
+      "revId": "303b6fb7a1ff072ca94ca39079a41d886fa04bb1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "0d9ac48f_dcf669c1",
         "filename": "agent-ovs/ovs/include/PolicyStatsManager.h",
         "patchSetId": 4
