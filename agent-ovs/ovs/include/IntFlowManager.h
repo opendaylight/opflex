@@ -493,7 +493,25 @@ public:
     void updatePodSvcStatsCounters(const uint64_t &cookie,
                                    const uint64_t &pkts,
                                    const uint64_t &bytes);
-
+    /**
+     * Get the cookie used for PodSvc Flows.
+     * @param uuid UUID of the Ep
+     * @param ep_to_svc true if cookie for ep_to_svc,else svc_to_ep
+     * @param cookie returned cookie
+     * @return true if cookie was found, false otherwise
+     */
+    bool getPodSvcUuidCookie(const std::string & uuid, bool ep_to_svc,
+		    uint64_t &cookie) {
+	if(podSvcUuidCkMap.find(uuid) == podSvcUuidCkMap.end()) {
+            return false;
+	}
+	if(ep_to_svc) {
+            cookie = podSvcUuidCkMap[uuid].first;
+	} else {
+            cookie = podSvcUuidCkMap[uuid].second;
+	}
+        return true;
+    }
 private:
     /**
      * Write flows that are fixed and not related to any policy or
