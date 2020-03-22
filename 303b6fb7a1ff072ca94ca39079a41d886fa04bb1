@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0d9ac48f_dcf669c1",
+        "filename": "agent-ovs/ovs/include/PolicyStatsManager.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2020-03-22T04:25:06Z",
+      "side": 1,
+      "message": "This is a hack. To properly mock this class, requires significant rework, being in the renderer, hence taking the shorter path.",
+      "range": {
+        "startLine": 149,
+        "startChar": 26,
+        "endLine": 149,
+        "endChar": 28
+      },
+      "revId": "303b6fb7a1ff072ca94ca39079a41d886fa04bb1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
