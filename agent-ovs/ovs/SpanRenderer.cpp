@@ -22,6 +22,7 @@ namespace opflexagent {
     using boost::optional;
     using namespace boost::adaptors;
     using namespace std;
+    using modelgbp::gbp::DirectionEnumT;
 
     SpanRenderer::SpanRenderer(Agent& agent_) : JsonRpcRenderer(agent_) {
 
@@ -81,7 +82,7 @@ namespace opflexagent {
         if (ec) {
             string cat = string(ec.category().name());
             LOG(DEBUG) << "timer error " << cat << ":" << ec.value();
-            if (!(cat.compare("system") == 0 &&
+            if (!(cat == "system" &&
                 ec.value() == 125)) {
                 connection_timer->cancel();
                 timerStarted = false;
@@ -129,8 +130,7 @@ namespace opflexagent {
         unique_lock<mutex> lock(handlerMutex);
         SpanManager& spMgr = agent.getSpanManager();
         lock_guard<recursive_mutex> guard(opflexagent::SpanManager::updates);
-        optional<shared_ptr<SessionState>> seSt =
-                                             spMgr.getSessionState(spanURI);
+        optional<shared_ptr<SessionState>> seSt = spMgr.getSessionState(spanURI);
         // Is the session state pointer set
         if (!seSt) {
             return;
@@ -174,15 +174,14 @@ namespace opflexagent {
         //get the source ports.
         set<string> srcPort;
         set<string> dstPort;
-        modelgbp::gbp::DirectionEnumT dir;
 
         for (auto& src : seSt.get()->getSrcEndPointSet()) {
-            if (src->getDirection() == dir.CONST_BIDIRECTIONAL ||
-                    src->getDirection() == dir.CONST_OUT) {
+            if (src->getDirection() == DirectionEnumT::CONST_BIDIRECTIONAL ||
+                    src->getDirection() == DirectionEnumT::CONST_OUT) {
                 srcPort.emplace(src->getPort());
             }
-            if (src->getDirection() == dir.CONST_BIDIRECTIONAL ||
-                    src->getDirection() == dir.CONST_IN) {
+            if (src->getDirection() == DirectionEnumT::CONST_BIDIRECTIONAL ||
+                    src->getDirection() == DirectionEnumT::CONST_IN) {
                 dstPort.emplace(src->getPort());
             }
         }
@@ -199,11 +198,10 @@ namespace opflexagent {
 
         // compare source port names. If at least one is different, the config
         // has changed.
-        for (auto itr = mir.src_ports.begin(); itr != mir.src_ports.end();
-                itr++) {
-            auto itr1 = srcPort.find(*itr);
-            if (itr1 != srcPort.end()) {
-                srcPort.erase(itr1);
+        for (const auto& src_port : mir.src_ports) {
+            auto itr = srcPort.find(src_port);
+            if (itr != srcPort.end()) {
+                srcPort.erase(itr);
             } else {
                 updateMirrorConfig(seSt.get());
                 cleanup();
@@ -216,11 +214,10 @@ namespace opflexagent {
             return;
         }
 
-        for (auto itr = mir.dst_ports.begin(); itr != mir.dst_ports.end();
-                itr++) {
-            set<string>::iterator itr1 = dstPort.find(*itr);
-            if (itr1 != dstPort.end()) {
-                dstPort.erase(itr1);
+        for (const auto& dst_port : mir.dst_ports) {
+            auto itr = dstPort.find(dst_port);
+            if (itr != dstPort.end()) {
+                dstPort.erase(itr);
             } else {
                 updateMirrorConfig(seSt.get());
                 cleanup();
@@ -236,7 +233,7 @@ namespace opflexagent {
         // check out port config
         // get the destination IPs
         set<address> dstIp;
-        for (auto dst : seSt.get()->getDstEndPointMap()) {
+        for (auto& dst : seSt.get()->getDstEndPointMap()) {
             dstIp.emplace(dst.second->getAddress());
         }
         // get the first element of the set as only one
@@ -249,7 +246,7 @@ namespace opflexagent {
             return;
         }
         // check for change in config, push it if there is a change.
-        if (pEp->remote_ip.compare(ipAddr) ||
+        if (pEp->remote_ip == ipAddr ||
             pEp->erspan_ver != seSt.get()->getVersion()) {
             updateMirrorConfig(seSt.get());
             cleanup();
@@ -262,15 +259,14 @@ namespace opflexagent {
         // get the source ports.
         set<string> srcPort;
         set<string> dstPort;
-        modelgbp::gbp::DirectionEnumT dir;
 
         for (auto& src : seSt->getSrcEndPointSet()) {
-            if (src->getDirection() == dir.CONST_BIDIRECTIONAL ||
-                    src->getDirection() == dir.CONST_OUT) {
+            if (src->getDirection() == DirectionEnumT::CONST_BIDIRECTIONAL ||
+                    src->getDirection() == DirectionEnumT::CONST_OUT) {
                 srcPort.emplace(src->getPort());
             }
-            if (src->getDirection() == dir.CONST_BIDIRECTIONAL ||
-                    src->getDirection() == dir.CONST_IN) {
+            if (src->getDirection() == DirectionEnumT::CONST_BIDIRECTIONAL ||
+                    src->getDirection() == DirectionEnumT::CONST_IN) {
                 dstPort.emplace(src->getPort());
             }
         }
