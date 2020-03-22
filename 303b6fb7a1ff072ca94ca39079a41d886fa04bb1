@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "66e3057f_fa17ecea",
+        "filename": "agent-ovs/ovs/PolicyStatsManager.cpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 462,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2020-03-22T17:18:53Z",
+      "side": 1,
+      "message": "Yes",
+      "parentUuid": "2040eb7a_6be8f27c",
+      "range": {
+        "startLine": 462,
+        "startChar": 24,
+        "endLine": 462,
+        "endChar": 34
+      },
+      "revId": "303b6fb7a1ff072ca94ca39079a41d886fa04bb1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "318f31a9_ef639a99",
         "filename": "agent-ovs/ovs/SwitchConnection.cpp",
         "patchSetId": 4
@@ -45,6 +69,30 @@
       "revId": "303b6fb7a1ff072ca94ca39079a41d886fa04bb1",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "89d0e77f_a531c802",
+        "filename": "agent-ovs/ovs/SwitchConnection.cpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 312,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2020-03-22T17:18:53Z",
+      "side": 1,
+      "message": "Yes, I will fix this.",
+      "parentUuid": "318f31a9_ef639a99",
+      "range": {
+        "startLine": 312,
+        "startChar": 20,
+        "endLine": 312,
+        "endChar": 37
+      },
+      "revId": "303b6fb7a1ff072ca94ca39079a41d886fa04bb1",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     },
     {
       "key": {
