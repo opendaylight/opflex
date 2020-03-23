@@ -195,6 +195,12 @@ public:
      */
     uint64_t getPrrTimerDuration() { return prrTimerDuration; }
 
+    /**
+     * Initialize prr time variables
+     */
+    uint64_t prrTimeVal = 0;
+    uint64_t prrRandVal = 0;
+
     // See HandlerFactory::newHandler
     virtual
     internal::OpflexHandler* newHandler(internal::OpflexConnection* conn);
