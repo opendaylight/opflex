@@ -19,7 +19,7 @@
 #include <uv.h>
 #include <limits>
 #include <cmath>
-
+#include <random>
 #include <boost/tuple/tuple.hpp>
 #include <boost/foreach.hpp>
 #include "opflex/engine/internal/OpflexPEHandler.h"
@@ -53,6 +53,9 @@ static const uint64_t DEFAULT_PROC_DELAY = 250;
 static const uint64_t DEFAULT_RETRY_DELAY = 1000*60*2;
 static const uint64_t FIRST_XID = (uint64_t)1 << 63;
 static const uint32_t MAX_PROCESS = 1024;
+
+std::random_device rd;
+std::mt19937 gen(rd());
 
 Processor::Processor(ObjectStore* store_, ThreadManager& threadManager_)
     : AbstractObjectListener(store_),
@@ -586,7 +589,7 @@ void Processor::start(ofcore::OFConstants::OpflexElementMode agent_mode) {
     pool.setClientMode(agent_mode);
 
     LOG(DEBUG) << "Starting OpFlex Processor";
-
+    prrTimeVal = Processor::getPrrTimerDuration();
     client = &store->getStoreClient("_SYSTEM_");
     store->forEachClass(&register_listeners, this);
 
@@ -647,6 +650,12 @@ void Processor::objectUpdated(modb::class_id_t class_id,
                         << " item " << uri << " from update";
             uint64_t nexp = 0;
             if (local) nexp = curtime+processingDelay;
+	    double prrRange1 =   prrTimeVal/3;
+            double prrRange2 =   prrTimeVal/2;
+            std::uniform_int_distribution<> distribution(prrRange1,prrRange2);
+            prrRandVal = distribution(gen);
+            policyRefTimerDuration = prrRandVal*1000;
+
             obj_state.insert(item(uri, class_id,
                                   nexp, policyRefTimerDuration,
                                   local ? NEW : REMOTE, local));
