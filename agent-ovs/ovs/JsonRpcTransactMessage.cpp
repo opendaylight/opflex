@@ -19,7 +19,7 @@
 
 namespace opflexagent {
 
-JsonRpcTransactMessage::JsonRpcTransactMessage(const transData& td) : JsonRpcMessage("transact", REQUEST),
+JsonRpcTransactMessage::JsonRpcTransactMessage(const TransData& td) : JsonRpcMessage("transact", REQUEST),
         tData(td) {}
 
 void JsonRpcTransactMessage::serializePayload(yajr::rpc::SendHandler& writer) {
@@ -90,7 +90,7 @@ bool JsonRpcTransactMessage::operator()(rapidjson::Writer<T> & writer) {
         writePair<T>(writer, pair, true);
     }
 
-    if (tData.operation != "insert") {
+    if (tData.getOperation() != "insert") {
         writer.String("where");
         writer.StartArray();
         if (!tData.conditions.empty()) {
@@ -116,9 +116,9 @@ bool JsonRpcTransactMessage::operator()(rapidjson::Writer<T> & writer) {
         writer.EndArray();
     }
     writer.String("table");
-    writer.String(tData.table.c_str());
+    writer.String(tData.getTable().c_str());
     writer.String("op");
-    writer.String(tData.operation.c_str());
+    writer.String(tData.getOperation().c_str());
     if (!tData.columns.empty()) {
         writer.String("columns");
         writer.StartArray();
