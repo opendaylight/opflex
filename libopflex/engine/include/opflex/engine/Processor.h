@@ -493,7 +493,6 @@ private:
      */
     static const uint64_t DEFAULT_PRR_TIMER_DURATION = 3600;
     uint64_t prrTimerDuration = DEFAULT_PRR_TIMER_DURATION;
-
     /**
      *  policy refresh timer duration in msecs
      */
