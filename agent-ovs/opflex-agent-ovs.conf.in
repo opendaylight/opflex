@@ -94,8 +94,8 @@
        "timers": {
            // Custom settings for various timers related to opflex
            // prr - Policy Resolve Request timer duration in seconds.
-           // default 3600 secs, min 15 secs
-           // "prr": 3600
+           // default 5400 secs, min 15 secs
+           // "prr": 5400
        },
        // Statistics. Counters for various artifacts.
        // mode: can have three values, viz.

@@ -491,7 +491,7 @@ private:
     /**
      * prr timer duration in secs
      */
-    static const uint64_t DEFAULT_PRR_TIMER_DURATION = 3600;
+    static const uint64_t DEFAULT_PRR_TIMER_DURATION = 5400;
     uint64_t prrTimerDuration = DEFAULT_PRR_TIMER_DURATION;
 
     /**
