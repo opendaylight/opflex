@@ -142,9 +142,8 @@ namespace opflexagent {
     }
 
      bool NetFlowRenderer::createIpfix(const string &targets, int sampling) {
-        LOG(DEBUG) << "createIpfix:";
         string brUuid = jRpc->getBridgeUuid(switchName);
-        LOG(DEBUG) << "bridge uuid " << brUuid << "sampling rate is" << sampling;
+        LOG(DEBUG) << "bridge uuid " << brUuid << "sampling rate is " << sampling;
         jRpc->createIpfix(brUuid, targets, sampling);
         return true;
     }

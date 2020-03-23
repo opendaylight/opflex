@@ -236,7 +236,7 @@ public:
      * @param tl transaction data
      * @param reqId request ID
      */
-    JsonReq(const list<transData>& tl, uint64_t reqId);
+    JsonReq(const list<TransData>& tl, uint64_t reqId);
 
     /**
      * Serialize payload
@@ -374,10 +374,10 @@ class OvsdbConnection : public opflex::jsonrpc::RpcConnection {
 
     /**
      * send transaction request
-     * @param[in] tl list of transData objects
+     * @param[in] tl list of TransData objects
      * @param[in] reqId request ID
      */
-    virtual void sendTransaction(const list<transData>& tl, const uint64_t& reqId);
+    virtual void sendTransaction(const list<TransData>& tl, const uint64_t& reqId);
 
 
     /**
@@ -450,7 +450,7 @@ public:
      * @param tl list of Transaction objects
      * @param reqId request ID
      */
-    void sendTransaction(const list<transData>& tl,
+    void sendTransaction(const list<TransData>& tl,
                          const uint64_t& reqId);
 
     /**

@@ -231,19 +231,13 @@ typedef map<string, shared_ptr<TupleDataSet>> row_map;
 /**
  * struct used for setting up a JSON/RPC request.
  */
-typedef struct transData_ {
+class TransData {
+public:
     /**
      * set of tuple of data to be mapped to rows
      */
     set<tuple<string, string, string>> conditions;
-    /**
-     * operation type, E.g select, insert.
-     */
-    string operation;
-    /**
-     * table name
-     */
-    string table;
+
     /**
      * set of columns in table
      */
@@ -256,17 +250,38 @@ typedef struct transData_ {
      * key value pairs
      */
     set<shared_ptr<BaseData>> kvPairs;
-    /**
-     * default constructor
-     */
-    transData_() {};
+
     /**
      * constructor with data
      */
-    transData_(const transData_& td) : conditions(td.conditions),
-            operation(td.operation), table(td.table),
-            columns(td.columns), rows(td.rows), kvPairs(td.kvPairs) {};
-} transData;
+    TransData(const string& operation_, const string& table_) :
+        operation(operation_), table(table_) {};
+
+    /**
+     * copy constructor
+     */
+    TransData(const TransData& td) :  conditions(td.conditions),
+            columns(td.columns), rows(td.rows), kvPairs(td.kvPairs),
+            operation(td.operation), table(td.table){};
+
+    /**
+     * operation type, E.g select, insert.
+     */
+    string getOperation() {
+        return operation;
+    }
+
+    /**
+     * table name
+     */
+    string getTable() {
+        return table;
+    }
+
+private:
+    string operation;
+    string table;
+};
 
 /**
  * Transact message
@@ -277,7 +292,7 @@ public:
      * Constract a transaction request
      * @param td transaction data
      */
-    JsonRpcTransactMessage(const transData& td);
+    JsonRpcTransactMessage(const TransData& td);
 
     /**
      * Serialize payload
@@ -303,7 +318,7 @@ private:
     template <typename T>
     void writePair(rapidjson::Writer<T>& writer, const shared_ptr<BaseData>& bPtr, bool kvPair);
 
-    transData tData;
+    TransData tData;
 };
 
 }

@@ -24,7 +24,7 @@ extern "C" {
 
 namespace opflexagent {
 
-JsonReq::JsonReq(const list<transData>& tl, uint64_t reqId)
+JsonReq::JsonReq(const list<TransData>& tl, uint64_t reqId)
     : JsonRpcMessage("transact", REQUEST), reqId(reqId)
 {
     for (auto& elem : tl) {
@@ -50,7 +50,7 @@ void OvsdbConnection::send_req_cb(uv_async_t* handle) {
     delete(reqCbd);
 }
 
-void OvsdbConnection::sendTransaction(const list<transData>& tl,
+void OvsdbConnection::sendTransaction(const list<TransData>& tl,
         const uint64_t& reqId) {
     req_cb_data* reqCbd = new req_cb_data();
     reqCbd->req = new JsonReq(tl, reqId);
@@ -140,7 +140,7 @@ void OvsdbConnection::handleTransaction(uint64_t reqId,
     pTrans->handleTransaction(reqId, payload);
 }
 
-void MockRpcConnection::sendTransaction(const list<transData>& tl,
+void MockRpcConnection::sendTransaction(const list<TransData>& tl,
         const uint64_t& reqId) {
     ResponseDict& rDict = ResponseDict::Instance();
     auto itr = rDict.dict.find(reqId);
