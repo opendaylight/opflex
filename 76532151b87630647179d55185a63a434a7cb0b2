@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d9ed99ca_0461bbbc",
+        "filename": "agent-ovs/ovs/test/IntFlowManager_test.cpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 2747,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-23T23:38:00Z",
+      "side": 1,
+      "message": "We can wait until the creation of epToSvc and svcToEp observer MOs and proceed sooner. We can go ahead with the checkin, i can fix this sleep later.",
+      "range": {
+        "startLine": 2747,
+        "startChar": 10,
+        "endLine": 2747,
+        "endChar": 11
+      },
+      "revId": "76532151b87630647179d55185a63a434a7cb0b2",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
