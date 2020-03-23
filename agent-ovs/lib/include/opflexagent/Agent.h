@@ -342,7 +342,7 @@ private:
 
     // timers
     // prr timer - policy resolve request timer
-    boost::uint_t<64>::fast prr_timer = 3600;  /* seconds */
+    boost::uint_t<64>::fast prr_timer = 5400;  /* seconds */
 
     std::set<std::string> endpointSourceFSPaths;
     std::set<std::string> disabledFeaturesSet;

@@ -73,7 +73,7 @@ BOOST_FIXTURE_TEST_CASE( mo_serialize , BaseFixture ) {
     writer.EndArray();
 
     writer.String("prr");
-    writer.Uint(3600);
+    writer.Uint(5400);
     writer.EndObject();
 
     writer.String("id");
@@ -88,7 +88,7 @@ BOOST_FIXTURE_TEST_CASE( mo_serialize , BaseFixture ) {
     BOOST_CHECK(result.IsObject());
     const Value& prr = result["prr"];
     BOOST_CHECK(prr.IsUint());
-    BOOST_CHECK_EQUAL(3600, prr.GetInt());
+    BOOST_CHECK_EQUAL(5400, prr.GetInt());
 
     const Value& policy = result["policy"];
     BOOST_CHECK(policy.IsArray());
@@ -141,7 +141,7 @@ BOOST_FIXTURE_TEST_CASE( mo_deserialize , BaseFixture ) {
         "n\":\"class2\"},{\"subject\":\"class2\",\"uri\":\"/class"
         "2/-42\",\"properties\":[{\"name\":\"prop4\",\"data\":-42}"
         "],\"children\":[],\"parent_subject\":\"class1\",\"parent_"
-        "uri\":\"/\",\"parent_relation\":\"class2\"}],\"prr\":360"
+        "uri\":\"/\",\"parent_relation\":\"class2\"}],\"prr\":540"
         "0},\"id\":42}";
 
     MOSerializer serializer(&db);
@@ -186,7 +186,7 @@ BOOST_FIXTURE_TEST_CASE( mo_deserialize , BaseFixture ) {
         "{\"result\":{\"policy\":[{\"subject\":\"class1\",\"uri\""
         ":\"/\",\"properties\":[{\"name\":\"prop2\",\"data\":[\"te"
         "st3\",\"test4\"]},{\"name\":\"prop1\",\"data\":84}],\"chi"
-        "ldren\":[]}],\"prr\":360"
+        "ldren\":[]}],\"prr\":540"
         "0},\"id\":42}";
     Document d2;
     d2.Parse(buffer2);
@@ -227,7 +227,7 @@ BOOST_FIXTURE_TEST_CASE( mo_deserialize , BaseFixture ) {
         "{\"result\":{\"policy\":[{\"subject\":\"class1\",\"uri\""
         ":\"/\",\"properties\":[{\"name\":\"prop2\",\"data\":[\"te"
         "st1\",\"test2\"]},{\"name\":\"prop1\",\"data\":42}],\"chi"
-        "ldren\":[\"/class2/-84\"]}],\"prr\":3600},\"id\":42}";
+        "ldren\":[\"/class2/-84\"]}],\"prr\":5400},\"id\":42}";
     Document d3;
     d3.Parse(buffer3);
     const Value& result3 = d3["result"];
