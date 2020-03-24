@@ -10,6 +10,7 @@
 
 #include <sstream>
 #include <boost/test/unit_test.hpp>
+#include <boost/lexical_cast.hpp>
 #include <boost/assign/list_of.hpp>
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -21,6 +22,8 @@
 #include <modelgbp/gbp/RoutingModeEnumT.hpp>
 #include <modelgbp/platform/RemoteInventoryTypeEnumT.hpp>
 #include <modelgbp/gbp/EnforcementPreferenceTypeEnumT.hpp>
+#include <modelgbp/gbpe/SvcToEpCounter.hpp>
+#include <modelgbp/gbpe/EpToSvcCounter.hpp>
 
 #include <opflexagent/logging.h>
 #include <opflexagent/LearningBridgeSource.h>
@@ -41,6 +44,8 @@
 using namespace boost::assign;
 using namespace opflex::modb;
 using namespace modelgbp::gbp;
+using namespace modelgbp::gbpe;
+using modelgbp::observer::SvcStatUniverse;
 using namespace modelgbp::platform;
 using namespace opflexagent;
 namespace fs = boost::filesystem;
@@ -2564,13 +2569,11 @@ void BaseIntFlowManagerFixture::initExpAnycastService(Service &as, int nextHop) 
     string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
 
     initExpPodServiceStats("169.254.169.254", ep0, as);
-    initExpPodServiceStats("169.254.169.254", ep1, as);
     initExpPodServiceStats("169.254.169.254", ep2, as);
     initExpPodServiceStats("169.254.169.254", ep3, as);
     initExpPodServiceStats("169.254.169.254", ep4, as);
     initExpPodServiceStats("169.254.169.254", ep5, as);
     initExpPodServiceStats("fe80::a9:fe:a9:fe", ep0, as);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep1, as);
     initExpPodServiceStats("fe80::a9:fe:a9:fe", ep2, as);
     initExpPodServiceStats("fe80::a9:fe:a9:fe", ep3, as);
     initExpPodServiceStats("fe80::a9:fe:a9:fe", ep4, as);
@@ -2744,14 +2747,28 @@ void BaseIntFlowManagerFixture::initExpPodServiceStats (const string& svc_ip,
                                                         Service &as)
 {
     address svc_ipa = address::from_string(svc_ip);
-    usleep(500000);
+
+    // Check if podtosvc and vice-versa are created, indirectly ensuring
+    // cookie is created for these flows
+    auto epUuid = ep->getUUID();
+    auto svcUuid = as.getUUID();
+    auto epSvcUuid = epUuid + ":" + svcUuid;
+    auto epToSvcUuid = "eptosvc:"+epSvcUuid;
+    auto svcToEpUuid = "svctoep:"+epSvcUuid;
+    optional<shared_ptr<SvcStatUniverse> > su =
+                SvcStatUniverse::resolve(agent.getFramework());
+    BOOST_CHECK(su);
+    auto aUuid = boost::lexical_cast<std::string>(agent.getUuid());
+    WAIT_FOR_DO_ONFAIL(su.get()->resolveGbpeEpToSvcCounter(aUuid, epToSvcUuid), 500,
+                        ,LOG(ERROR) << "ep2svc obj not resolved uuid: " << epToSvcUuid;);
+    WAIT_FOR_DO_ONFAIL(su.get()->resolveGbpeSvcToEpCounter(aUuid, svcToEpUuid), 500,
+                        ,LOG(ERROR) << "svc2ep obj not resolved uuid: " << svcToEpUuid;);
+
     for (const string& ep_ip : ep->getIPs()) {
         address ep_ipa = address::from_string(ep_ip);
-        const std::string &uuid = ep->getUUID();
-        std::string complete_uuid = uuid + ":" + as.getUUID();
         uint64_t ep_to_svc_cookie=0, svc_to_ep_cookie=0;
-        intFlowManager.getPodSvcUuidCookie(complete_uuid,true,ep_to_svc_cookie);
-        intFlowManager.getPodSvcUuidCookie(complete_uuid,false,svc_to_ep_cookie);
+        intFlowManager.getPodSvcUuidCookie(epSvcUuid,true,ep_to_svc_cookie);
+        intFlowManager.getPodSvcUuidCookie(epSvcUuid,false,svc_to_ep_cookie);
 
         // ensure flows are either v4 or v6 - no mix-n-match
         if (svc_ipa.is_v4() != ep_ipa.is_v4())
@@ -2805,17 +2822,11 @@ void BaseIntFlowManagerFixture::initExpLBService(Service &as1,
     string rmac = MAC(rmacArr).toString();
 
     initExpPodServiceStats("169.254.169.254", ep0, as1);
-    initExpPodServiceStats("169.254.169.254", ep1, as1);
     initExpPodServiceStats("169.254.169.254", ep2, as1);
     initExpPodServiceStats("169.254.169.254", ep3, as1);
     initExpPodServiceStats("169.254.169.254", ep4, as1);
     initExpPodServiceStats("169.254.169.254", ep5, as1);
     initExpPodServiceStats("fe80::a9:fe:a9:fe", ep0, as2);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep1, as2);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep2, as2);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep3, as2);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep4, as2);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep5, as2);
 
     if (exposed) {
         ADDF(Bldr().table(SEC).priority(90).in(17).isVlan(4003)
