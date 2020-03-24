@@ -249,9 +249,9 @@ public:
     /**
      * get uuid of bridge from OVSDB
      * @param[in] name name of bridge
-     * @return uuid of the bridge or empty
+     * @param[out] uuid of the bridge or empty
      */
-    string getBridgeUuid(const string& name);
+    void getBridgeUuid(const string& name, string& uuid);
 
     /**
      * read port uuids from the map and insert into list
@@ -323,11 +323,9 @@ public:
      * process bridge ipfix lst response
      * @param[in] reqId request ID
      * @param[in] payload body of the response
-     * @param[out] uuid of the mirror
      * @return true id success, false otherwise
     */
-    static bool handleCreateIpfixResp(uint64_t reqId, const rapidjson::Document& payload,
-            string& uuid);
+    static bool handleCreateIpfixResp(uint64_t reqId, const rapidjson::Document& payload);
 
     /**
      * process port uuid request response
@@ -347,16 +345,15 @@ public:
      * @return true id success, false otherwise
      */
     bool handleGetBridgePortList(uint64_t reqId, const rapidjson::Document& payload,
-            shared_ptr<BrPortResult> brPtr);
+            shared_ptr<BrPortResult>& brPtr);
 
     /**
      * process bridge port list response
      * @param[in] reqId request ID
      * @param[in] payload body of the response
      * @param[out] uuid of the bridge
-     * @return true id success, false otherwise
      */
-    static bool handleGetBridgeUuidResp(uint64_t reqId, const rapidjson::Document& payload,
+    static void handleGetBridgeUuidResp(uint64_t reqId, const rapidjson::Document& payload,
             string& uuid);
 
     /**
@@ -457,9 +454,9 @@ private:
     /**
      * generate a UUID for use by OVSDB when creating new artifacts.
      * This UUID conforms to OVSDB format for temp UUIDs.
-     * @return string temp UUID
+     * @param[out] uuid temp UUID
      */
-    static string generateTempUuid();
+    static void generateTempUuid(string& uuid);
 
     /**
      * get ERSPAN interface options from Value struct

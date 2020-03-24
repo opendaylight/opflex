@@ -35,6 +35,9 @@
 
 using namespace std::chrono;
 
+std::random_device json_rng;
+std::mt19937 json_urng(json_rng());
+
 namespace opflexagent {
 
 using namespace opflex::jsonrpc;
@@ -70,7 +73,8 @@ using boost::uuids::basic_random_generator;
         pTdSet.reset(new TupleDataSet(pSet));
         td1.rows.emplace("add_id_to_interface", pTdSet);
 
-        string uuid_name = generateTempUuid();
+        string uuid_name;
+        generateTempUuid(uuid_name);
         td1.kvPairs.emplace(make_shared<TupleData<string>>("uuid-name", uuid_name));
         uint64_t reqId = getNextId();
         list<TransData> tl;
@@ -133,7 +137,8 @@ using boost::uuids::basic_random_generator;
             pTdSet.reset(new TupleDataSet(pSet));
             td1.rows.emplace("sampling", pTdSet);
         }
-        string uuid_name = generateTempUuid();
+        string uuid_name;
+        generateTempUuid(uuid_name);
         td1.kvPairs.emplace(make_shared<TupleData<string>>("uuid-name", uuid_name));
         uint64_t reqId = getNextId();
         list<TransData> tl;
@@ -162,18 +167,16 @@ using boost::uuids::basic_random_generator;
             LOG(DEBUG) << "Error getting response";
             return false;
         }
-        string uuid;
-        return handleCreateIpfixResp(pResp->reqId, pResp->payload, uuid);
+        return handleCreateIpfixResp(pResp->reqId, pResp->payload);
     }
 
     bool JsonRpc::handleCreateIpfixResp(uint64_t reqId,
-            const rapidjson::Document& payload, string& uuid) {
+            const rapidjson::Document& payload) {
         list<string> ids = {"0","uuid","1"};
         Value val;
         opflexagent::getValue(payload, ids, val);
         if (!val.IsNull() && val.IsString()) {
             LOG(DEBUG) << "ipfix uuid " << val.GetString();
-            uuid = val.GetString();
         } else {
             return false;
         }
@@ -366,7 +369,7 @@ using boost::uuids::basic_random_generator;
 
     bool JsonRpc::handleGetBridgePortList(uint64_t reqId,
             const rapidjson::Document& payload,
-            shared_ptr<BrPortResult> brPtr) {
+            shared_ptr<BrPortResult>& brPtr) {
         tuple<string, set<string>> brPorts;
         string brPortUuid;
         set<string> brPortSet;
@@ -711,7 +714,7 @@ using boost::uuids::basic_random_generator;
         }
     }
 
-    string JsonRpc::getBridgeUuid(const string& name) {
+    void JsonRpc::getBridgeUuid(const string& name, string& uuid) {
         tuple<string, string, string> cond1("name", "==", name);
         set<tuple<string, string, string>> condSet;
         condSet.emplace(cond1);
@@ -725,31 +728,22 @@ using boost::uuids::basic_random_generator;
         tl.push_back(td);
         if (!sendRequest(tl, reqId)) {
             LOG(DEBUG) << "Error sending message";
-            return "";
         }
         if (!checkForResponse()) {
             LOG(DEBUG) << "Error getting response";
-            return "";
         }
-        string uuid;
-        if (handleGetBridgeUuidResp(pResp->reqId, pResp->payload, uuid)) {
-            return uuid;
-        } else {
-            return "";
-        }
+        handleGetBridgeUuidResp(pResp->reqId, pResp->payload, uuid);
     }
 
-    bool JsonRpc::handleGetBridgeUuidResp(uint64_t reqId,
-                    const rapidjson::Document& payload, string& uuid) {
+    void JsonRpc::handleGetBridgeUuidResp(uint64_t reqId, const rapidjson::Document& payload, string& uuid) {
         list<string> ids = {"0","rows","0","_uuid","1"};
         Value val;
         opflexagent::getValue(payload, ids, val);
         if (!val.IsNull() && val.IsString()) {
             uuid = val.GetString();
         } else {
-            return false;
+            LOG(WARNING) << "Unable to extract UUID from response for request " << reqId;
         }
-        return true;
     }
 
     bool JsonRpc::createMirror(const string& brUuid, const string& name) {
@@ -820,7 +814,8 @@ using boost::uuids::basic_random_generator;
         pTdSet.reset(new TupleDataSet(TupleDataSet(pSet)));
         td1.rows.emplace("name", pTdSet);
 
-        string uuid_name = generateTempUuid();
+        string uuid_name;
+        generateTempUuid(uuid_name);
         td1.kvPairs.emplace(make_shared<TupleData<string>>("uuid-name", uuid_name));
         uint64_t reqId = getNextId();
         list<TransData> tl;
@@ -853,14 +848,12 @@ using boost::uuids::basic_random_generator;
         return handleCreateMirrorResp(pResp->reqId, pResp->payload, uuid);
     }
 
-    inline string JsonRpc::generateTempUuid() {
-        random_device rng;
-        mt19937 urng(rng());
-        string uuid_name = to_string(basic_random_generator<mt19937>(urng)());
-        uuid_name.insert(0,"row");
+    inline void JsonRpc::generateTempUuid(string& tempUuid) {
+        tempUuid = to_string(basic_random_generator<mt19937>(json_urng)());
+        tempUuid.insert(0,"row");
         std::regex hyph ("-");
         string underscore("_");
-        return std::regex_replace(uuid_name, hyph, underscore);
+        std::regex_replace(tempUuid, hyph, underscore);
     }
 
     bool JsonRpc::addErspanPort(const string& bridge, shared_ptr<erspan_ifc> port) {
@@ -873,11 +866,13 @@ using boost::uuids::basic_random_generator;
         td.rows.emplace("name", pTdSet);
 
         // uuid-name
-        string uuid_name = generateTempUuid();
+        string uuid_name;
+        generateTempUuid(uuid_name);
         td.kvPairs.emplace(make_shared<TupleData<string>>("uuid-name", uuid_name));
 
         // interfaces
-        string named_uuid = generateTempUuid();
+        string named_uuid;
+        generateTempUuid(named_uuid);
         tPtr.reset(new TupleData<string>("named-uuid", named_uuid));
         pSet.clear();
         pSet.emplace(tPtr);
@@ -1095,11 +1090,6 @@ ResponseDict& ResponseDict::Instance() {
  * @return a Value object.
  */
 void getValue(const Document& val, const list<string>& idx, Value& result) {
-    stringstream ss;
-    for (auto& str : idx) {
-        ss << " " << str << ", ";
-    }
-    LOG(DEBUG) << ss.rdbuf();
     Document::AllocatorType& alloc = ((Document&)val).GetAllocator();
     Value tmpVal(Type::kNullType);
     if (val == NULL || !val.IsArray()) {

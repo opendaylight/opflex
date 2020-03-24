@@ -135,17 +135,18 @@ namespace opflexagent {
 
     bool NetFlowRenderer::createNetFlow(const string &targets, int timeout) {
         LOG(DEBUG) << "createNetFlow:";
-        string brUuid = jRpc->getBridgeUuid(switchName);
+        string brUuid;
+        jRpc->getBridgeUuid(switchName, brUuid);
         LOG(DEBUG) << "bridge uuid " << brUuid;
         jRpc->createNetFlow(brUuid, targets, timeout);
         return true;
     }
 
      bool NetFlowRenderer::createIpfix(const string &targets, int sampling) {
-        string brUuid = jRpc->getBridgeUuid(switchName);
+        string brUuid;
+        jRpc->getBridgeUuid(switchName, brUuid);
         LOG(DEBUG) << "bridge uuid " << brUuid << "sampling rate is " << sampling;
-        jRpc->createIpfix(brUuid, targets, sampling);
-        return true;
+        return jRpc->createIpfix(brUuid, targets, sampling);
     }
 
     void NetFlowRenderer::updateConnectCb(const boost::system::error_code& ec,
@@ -154,7 +155,7 @@ namespace opflexagent {
         if (ec) {
             string cat = string(ec.category().name());
             LOG(DEBUG) << "timer error " << cat << ":" << ec.value();
-            if (!(cat.compare("system") == 0 &&
+            if (!(cat == "system" &&
                 ec.value() == 125)) {
                 connection_timer->cancel();
                 timerStarted = false;

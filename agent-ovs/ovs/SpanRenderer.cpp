@@ -347,11 +347,12 @@ namespace opflexagent {
         JsonRpc::mirror mir{};
         mir.src_ports.insert(srcPorts.begin(), srcPorts.end());
         mir.dst_ports.insert(dstPorts.begin(), dstPorts.end());
-        jRpc->addMirrorData("msandhu-sess1", mir);
-        string brUuid = jRpc->getBridgeUuid(switchName);
+        jRpc->addMirrorData(sess, mir);
+        string brUuid;
+        jRpc->getBridgeUuid(switchName, brUuid);
         LOG(DEBUG) << "bridge uuid " << brUuid;
 
-        jRpc->createMirror(brUuid, "msandhu-sess1");
+        jRpc->createMirror(brUuid, sess);
         return true;
     }
 }

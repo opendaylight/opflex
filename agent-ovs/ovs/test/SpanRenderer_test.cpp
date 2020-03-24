@@ -96,13 +96,14 @@ static bool verifyCreateDestroy(const shared_ptr<MockSpanRenderer>& spr) {
     mir.src_ports.insert(src_ports.begin(), src_ports.end());
     mir.dst_ports.insert(dst_ports.begin(), dst_ports.end());
     mir.out_ports.insert(out_ports.begin(), out_ports.end());
-    spr->jRpc->addMirrorData("msandhu-sess1", mir);
+    spr->jRpc->addMirrorData("sess1", mir);
 
-    string brUuid = spr->jRpc->getBridgeUuid("br-int");
+    string brUuid;
+    spr->jRpc->getBridgeUuid("br-int", brUuid);
     if (brUuid.empty()) {
         return false;
     }
-    return spr->jRpc->createMirror(brUuid, "msandhu-sess1");
+    return spr->jRpc->createMirror(brUuid, "sess1");
 }
 
 BOOST_FIXTURE_TEST_CASE( verify_getport, SpanRendererFixture ) {
