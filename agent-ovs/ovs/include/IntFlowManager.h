@@ -503,6 +503,7 @@ public:
     bool getPodSvcUuidCookie(const std::string & uuid,
                              bool ep_to_svc,
                              uint64_t &cookie) {
+        const std::lock_guard<mutex> lock(podSvcMutex);
         if(podSvcUuidCkMap.find(uuid) == podSvcUuidCkMap.end()) {
             return false;
         }

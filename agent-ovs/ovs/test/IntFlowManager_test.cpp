@@ -10,6 +10,7 @@
 
 #include <sstream>
 #include <boost/test/unit_test.hpp>
+#include <boost/lexical_cast.hpp>
 #include <boost/assign/list_of.hpp>
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -21,6 +22,8 @@
 #include <modelgbp/gbp/RoutingModeEnumT.hpp>
 #include <modelgbp/platform/RemoteInventoryTypeEnumT.hpp>
 #include <modelgbp/gbp/EnforcementPreferenceTypeEnumT.hpp>
+#include <modelgbp/gbpe/SvcToEpCounter.hpp>
+#include <modelgbp/gbpe/EpToSvcCounter.hpp>
 
 #include <opflexagent/logging.h>
 #include <opflexagent/LearningBridgeSource.h>
@@ -41,6 +44,8 @@
 using namespace boost::assign;
 using namespace opflex::modb;
 using namespace modelgbp::gbp;
+using namespace modelgbp::gbpe;
+using modelgbp::observer::SvcStatUniverse;
 using namespace modelgbp::platform;
 using namespace opflexagent;
 namespace fs = boost::filesystem;
@@ -2744,7 +2749,23 @@ void BaseIntFlowManagerFixture::initExpPodServiceStats (const string& svc_ip,
                                                         Service &as)
 {
     address svc_ipa = address::from_string(svc_ip);
-    usleep(500000);
+
+    // Check if podtosvc and vice-versa are created, indirectly ensuring
+    // cookie is created for these flows
+    auto epUuid = ep0->getUUID();
+    auto svcUuid = as.getUUID();
+    auto epSvcUuid = epUuid + ":" + svcUuid;
+    auto epToSvcUuid = "eptosvc:"+epSvcUuid;
+    auto svcToEpUuid = "svctoep:"+epSvcUuid;
+    optional<shared_ptr<SvcStatUniverse> > su =
+                SvcStatUniverse::resolve(agent.getFramework());
+    BOOST_CHECK(su);
+    auto aUuid = boost::lexical_cast<std::string>(agent.getUuid());
+    WAIT_FOR_DO_ONFAIL(su.get()->resolveGbpeEpToSvcCounter(aUuid, epToSvcUuid), 500,
+                        ,LOG(ERROR) << "ep2svc obj not resolved";);
+    WAIT_FOR_DO_ONFAIL(su.get()->resolveGbpeSvcToEpCounter(aUuid, svcToEpUuid), 500,
+                        ,LOG(ERROR) << "svc2ep obj not resolved";);
+
     for (const string& ep_ip : ep->getIPs()) {
         address ep_ipa = address::from_string(ep_ip);
         const std::string &uuid = ep->getUUID();
