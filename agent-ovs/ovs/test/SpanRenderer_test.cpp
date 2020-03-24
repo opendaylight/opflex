@@ -24,23 +24,6 @@ using namespace rapidjson;
 
 BOOST_AUTO_TEST_SUITE(SpanRenderer_test)
 
-class MockJsonRpc : public JsonRpc {
-public:
-    MockJsonRpc() : JsonRpc() {}
-    virtual ~MockJsonRpc() {}
-
-    virtual void start() {
-        LOG(DEBUG) << "Starting MockJsonRpc ...";
-        shared_ptr<OvsdbConnection> ptr = make_shared<MockRpcConnection>(this);
-        setRpcConnectionPtr(ptr);
-        getRpcConnectionPtr()->start();
-    }
-
-    virtual void connect() {
-        getRpcConnectionPtr()->connect();
-    }
-};
-
 class MockSpanRenderer : public SpanRenderer {
 public:
     MockSpanRenderer(Agent& agent) : SpanRenderer(agent) {}

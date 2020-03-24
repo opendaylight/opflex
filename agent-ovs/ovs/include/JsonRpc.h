@@ -516,5 +516,25 @@ private:
     shared_ptr<Response> pResp;
     uint64_t id = 0;
 };
+
+/**
+ * Mock object for testing
+ */
+class MockJsonRpc : public JsonRpc {
+public:
+    MockJsonRpc() : JsonRpc() {}
+    virtual ~MockJsonRpc() {}
+
+    virtual void start() {
+        LOG(DEBUG) << "Starting MockJsonRpc ...";
+        shared_ptr<OvsdbConnection> ptr = make_shared<MockRpcConnection>(this);
+        setRpcConnectionPtr(ptr);
+        getRpcConnectionPtr()->start();
+    }
+
+    virtual void connect() {
+        getRpcConnectionPtr()->connect();
+    }
+};
 }
 #endif // OPFLEX_JSONRPC_H

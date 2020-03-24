@@ -315,10 +315,66 @@ public:
     bool operator()(rapidjson::Writer<T> & writer);
 
 private:
-    template <typename T>
-    void writePair(rapidjson::Writer<T>& writer, const shared_ptr<BaseData>& bPtr, bool kvPair);
 
     TransData tData;
+};
+
+/**
+ * JSON/RPC transaction message
+ */
+class JsonReq : public opflex::jsonrpc::JsonRpcMessage {
+public:
+    /**
+     * Construct a JsonReq instance
+     * @param tl transaction data
+     * @param reqId request ID
+     */
+    JsonReq(const list<TransData>& tl, uint64_t reqId);
+
+    /**
+     * Serialize payload
+     * @param writer writer
+     */
+    virtual void serializePayload(yajr::rpc::SendHandler& writer);
+
+    /**
+     * Clone a request
+     * @return clone
+     */
+    virtual JsonReq* clone(){
+        return new JsonReq(*this);
+    }
+
+    /**
+     * Get request ID
+     * @return request ID
+     */
+    uint64_t getReqId() {
+        return reqId;
+    }
+
+    /**
+     * Operator to serialize OVSDB transaction
+     * @tparam T Type
+     * @param writer writer
+     * @return
+     */
+    template <typename T>
+    bool operator()(rapidjson::Writer<T> & writer) {
+        writer.StartArray();
+        writer.String("Open_vSwitch");
+        for (shared_ptr<JsonRpcTransactMessage>& tr : transList) {
+            writer.StartObject();
+            (*tr)(writer);
+            writer.EndObject();
+        }
+        writer.EndArray();
+        return true;
+    }
+
+private:
+    list<shared_ptr<JsonRpcTransactMessage>> transList;
+    uint64_t reqId;
 };
 
 }
