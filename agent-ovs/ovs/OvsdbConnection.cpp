@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Implementation of opflex messages for engine
+ * Implementation of ovsdb messages for engine
  *
  * Copyright (c) 2019 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -20,23 +20,9 @@ extern "C" {
 
 #include "ovs/include/OvsdbConnection.h"
 #include <opflexagent/logging.h>
-#include "opflex/rpc/JsonRpcConnection.h"
 
 namespace opflexagent {
 
-JsonReq::JsonReq(const list<TransData>& tl, uint64_t reqId)
-    : JsonRpcMessage("transact", REQUEST), reqId(reqId)
-{
-    for (auto& elem : tl) {
-        shared_ptr<JsonRpcTransactMessage> pTr = make_shared<JsonRpcTransactMessage>(elem);
-        transList.push_back(pTr);
-    }
-}
-
-void JsonReq::serializePayload(yajr::rpc::SendHandler& writer) {
-    LOG(DEBUG) << "serializePayload send handler";
-    (*this)(writer);
-}
 
 void OvsdbConnection::send_req_cb(uv_async_t* handle) {
     req_cb_data* reqCbd = (req_cb_data*)handle->data;

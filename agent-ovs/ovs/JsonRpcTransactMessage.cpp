@@ -28,7 +28,7 @@ void JsonRpcTransactMessage::serializePayload(yajr::rpc::SendHandler& writer) {
 }
 
 template<typename T>
-void JsonRpcTransactMessage::writePair(rapidjson::Writer<T>& writer, const shared_ptr<BaseData>& bPtr,
+void writePair(rapidjson::Writer<T>& writer, const shared_ptr<BaseData>& bPtr,
         bool kvPair) {
     if (bPtr->getType() == Dtype::INTEGER) {
         shared_ptr<TupleData<int>> tPtr =
@@ -154,6 +154,20 @@ bool JsonRpcTransactMessage::operator()(rapidjson::Writer<T> & writer) {
         writer.EndObject();
     }
     return true;
+}
+
+JsonReq::JsonReq(const list<TransData>& tl, uint64_t reqId)
+    : JsonRpcMessage("transact", REQUEST), reqId(reqId)
+{
+    for (auto& elem : tl) {
+        shared_ptr<JsonRpcTransactMessage> pTr = make_shared<JsonRpcTransactMessage>(elem);
+        transList.push_back(pTr);
+    }
+}
+
+void JsonReq::serializePayload(yajr::rpc::SendHandler& writer) {
+    LOG(DEBUG) << "serializePayload send handler";
+    (*this)(writer);
 }
 
 }
