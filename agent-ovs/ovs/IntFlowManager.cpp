@@ -2279,10 +2279,7 @@ void IntFlowManager::updatePodSvcFlows (const string &uuid,
                                                         "svctoep:"+uuid);
 
             // Create the objects and cookies once for every POD,SVC combination
-            LOG(DEBUG) << "Creating pod<-->svc counters for"
-                       << " uuid: " << uuid
-                       << " cookieIg: " << cookieIdIg
-                       << " cookieEg: " << cookieIdEg;
+            LOG(DEBUG) << "Creating pod<-->svc counters for uuid: " << uuid;
             podSvcUuidCkMap[uuid] = make_pair(cookieIdIg, cookieIdEg);
         }
 
