@@ -870,7 +870,13 @@ public:
      */
     void addRoutingDomainToSubnets(const opflex::modb::URI& subnets,
                                    const opflex::modb::URI& rd);
+    /**
+     * Handle routing domain deletion
+     */
     void deleteRoutingDomain(const opflex::modb::URI& rd);
+    /**
+     * Handle Subnets deletion
+     */
     void deleteSubnets(const opflex::modb::URI& subnets);
 private:
     opflex::ofcore::OFFramework& framework;
