@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1596bf8a_a930319f",
+        "filename": "agent-ovs/ovs/test/IntFlowManager_test.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 2753,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-03-24T03:10:45Z",
+      "side": 1,
+      "message": "Uploading second patch set. Pls hold off reviewing.",
+      "range": {
+        "startLine": 2753,
+        "startChar": 7,
+        "endLine": 2753,
+        "endChar": 12
+      },
+      "revId": "8457f10dfcf5c1593995d32f39a117cec9ea6ab5",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    }
+  ]
+}
