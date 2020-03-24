@@ -17,6 +17,7 @@
 
 #include <rapidjson/document.h>
 #include <opflex/rpc/JsonRpcMessage.h>
+#include <opflexagent/logging.h>
 
 namespace opflexagent {
 
@@ -24,13 +25,19 @@ using namespace std;
 using namespace rapidjson;
 
 /**
- * Class to represent JSON/RPC tuple data.
- */
-
-/**
  * enum for data types to be sent over JSON/RPC
  */
 enum class Dtype {STRING, INTEGER, BOOL};
+
+/**
+ * OVSDB operations
+ */
+enum class OvsdbOperation {SELECT, INSERT, UPDATE};
+
+/**
+ * OVSDB tables
+ */
+enum class OvsdbTable {PORT, INTERFACE, BRIDGE, IPFIX, NETFLOW, MIRROR};
 
 /**
  * Data template for JSON/RPC data representation
@@ -254,7 +261,7 @@ public:
     /**
      * constructor with data
      */
-    TransData(const string& operation_, const string& table_) :
+    TransData(OvsdbOperation operation_, OvsdbTable table_) :
         operation(operation_), table(table_) {};
 
     /**
@@ -267,20 +274,20 @@ public:
     /**
      * operation type, E.g select, insert.
      */
-    string getOperation() {
+    OvsdbOperation getOperation() {
         return operation;
     }
 
     /**
      * table name
      */
-    string getTable() {
+    OvsdbTable getTable() {
         return table;
     }
 
 private:
-    string operation;
-    string table;
+    OvsdbOperation operation;
+    OvsdbTable table;
 };
 
 /**
@@ -322,14 +329,14 @@ private:
 /**
  * JSON/RPC transaction message
  */
-class JsonReq : public opflex::jsonrpc::JsonRpcMessage {
+class TransactReq : public opflex::jsonrpc::JsonRpcMessage {
 public:
     /**
-     * Construct a JsonReq instance
+     * Construct a TransactReq instance
      * @param tl transaction data
      * @param reqId request ID
      */
-    JsonReq(const list<TransData>& tl, uint64_t reqId);
+    TransactReq(const list<TransData>& tl, uint64_t reqId);
 
     /**
      * Serialize payload
@@ -341,8 +348,8 @@ public:
      * Clone a request
      * @return clone
      */
-    virtual JsonReq* clone(){
-        return new JsonReq(*this);
+    virtual TransactReq* clone(){
+        return new TransactReq(*this);
     }
 
     /**

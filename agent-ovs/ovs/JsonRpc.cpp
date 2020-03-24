@@ -58,7 +58,7 @@ using boost::uuids::basic_random_generator;
         set<shared_ptr<BaseData>> pSet;
         pSet.emplace(tPtr);
         shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet));
-        TransData td1("insert", "NetFlow");
+        TransData td1(OvsdbOperation::INSERT, OvsdbTable::NETFLOW);
         td1.rows.emplace("targets", pTdSet);
 
         shared_ptr<TupleData<int>> iTimeout = make_shared<TupleData<int>>("", timeout);
@@ -85,7 +85,7 @@ using boost::uuids::basic_random_generator;
         condSet.emplace(cond1);
 
         pSet.clear();
-        TransData td2("update", "Bridge");
+        TransData td2(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
         td2.conditions = condSet;
 
         tPtr.reset(new TupleData<string>("named-uuid", uuid_name));
@@ -127,7 +127,7 @@ using boost::uuids::basic_random_generator;
         set<shared_ptr<BaseData>> pSet;
         pSet.emplace(tPtr);
         shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet));
-        TransData td1("insert", "IPFIX");
+        TransData td1(OvsdbOperation::INSERT, OvsdbTable::IPFIX);
         td1.rows.emplace("targets", pTdSet);
         if (sampling != 0) {
             shared_ptr<TupleData<int>> iSampling =
@@ -149,7 +149,7 @@ using boost::uuids::basic_random_generator;
         condSet.emplace(cond1);
 
         pSet.clear();
-        TransData td2("update", "Bridge");
+        TransData td2(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
         td2.conditions = condSet;
 
         tPtr.reset(new TupleData<string>("named-uuid", uuid_name));
@@ -189,7 +189,7 @@ using boost::uuids::basic_random_generator;
         set<tuple<string, string, string>> condSet;
         condSet.emplace(cond1);
 
-        TransData td("update", "Bridge");
+        TransData td(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
         td.conditions = condSet;
 
         set<shared_ptr<BaseData>> pSet;
@@ -217,7 +217,7 @@ using boost::uuids::basic_random_generator;
         set<tuple<string, string, string>> condSet;
         condSet.emplace(cond1);
 
-        TransData td("update", "Bridge");
+        TransData td(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
         td.conditions = condSet;
 
         set<shared_ptr<BaseData>> pSet;
@@ -339,7 +339,7 @@ using boost::uuids::basic_random_generator;
             // remove port from list
             brPorts.erase(port);
         }
-        TransData td("update", "Bridge");
+        TransData td(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
         tuple<string, string, string> cond1("_uuid", "==", brPortUuid);
         set<tuple<string, string, string>> condSet;
         condSet.emplace(cond1);
@@ -442,7 +442,7 @@ using boost::uuids::basic_random_generator;
         tuple<string, string, string> cond1("name", "==", bridge);
         set<tuple<string, string, string>> condSet;
         condSet.emplace(cond1);
-        TransData td("select", "Bridge");
+        TransData td(OvsdbOperation::SELECT, OvsdbTable::BRIDGE);
         td.conditions = condSet;
         td.columns.emplace("ports");
         td.columns.emplace("_uuid");
@@ -469,7 +469,7 @@ using boost::uuids::basic_random_generator;
     }
 
     bool JsonRpc::getOvsdbMirrorConfig(mirror& mir) {
-        TransData td("select", "Mirror");
+        TransData td(OvsdbOperation::SELECT, OvsdbTable::MIRROR);
         uint64_t reqId = getNextId();
         list<TransData> tl;
         tl.push_back(td);
@@ -492,7 +492,7 @@ using boost::uuids::basic_random_generator;
         uuids.insert(mir.dst_ports.begin(), mir.dst_ports.end());
         uuids.insert(mir.out_ports.begin(), mir.out_ports.end());
 
-        td = TransData("select", "Port");
+        td = TransData(OvsdbOperation::SELECT, OvsdbTable::PORT);
         td.columns.emplace("name");
         td.columns.emplace("_uuid");
         reqId = getNextId();
@@ -521,7 +521,7 @@ using boost::uuids::basic_random_generator;
 
     bool JsonRpc::getErspanIfcParams(shared_ptr<erspan_ifc>& pIfc) {
         // for ERSPAN port get IP address
-        TransData td("select", "Interface");
+        TransData td(OvsdbOperation::SELECT, OvsdbTable::INTERFACE);
         tuple<string, string, string> cond1("name", "==", ERSPAN_PORT_NAME);
         set<tuple<string, string, string>> condSet;
         condSet.emplace(cond1);
@@ -677,7 +677,7 @@ using boost::uuids::basic_random_generator;
     }
 
     string JsonRpc::getPortUuid(const string& name) {
-        TransData td("select", "Port");
+        TransData td(OvsdbOperation::SELECT, OvsdbTable::PORT);
         tuple<string, string, string> cond1("name", "==", name);
         set<tuple<string, string, string>> condSet;
         condSet.emplace(cond1);
@@ -718,7 +718,7 @@ using boost::uuids::basic_random_generator;
         tuple<string, string, string> cond1("name", "==", name);
         set<tuple<string, string, string>> condSet;
         condSet.emplace(cond1);
-        TransData td("select", "Bridge");
+        TransData td(OvsdbOperation::SELECT, OvsdbTable::BRIDGE);
         td.conditions = condSet;
 
         td.columns.emplace("_uuid");
@@ -766,7 +766,7 @@ using boost::uuids::basic_random_generator;
         }
         getPortUuids(portUuidMap);
 
-        TransData td1("insert", "Mirror");
+        TransData td1(OvsdbOperation::INSERT, OvsdbTable::MIRROR);
 
         set<shared_ptr<BaseData>> pSet;
         // src ports
@@ -827,7 +827,7 @@ using boost::uuids::basic_random_generator;
         condSet.emplace(cond1);
 
         pSet.clear();
-        TransData td2("update", "Bridge");
+        TransData td2(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
         td2.conditions = condSet;
         tPtr.reset(new TupleData<string>("named-uuid", uuid_name));
         pSet.emplace(tPtr);
@@ -857,7 +857,7 @@ using boost::uuids::basic_random_generator;
     }
 
     bool JsonRpc::addErspanPort(const string& bridge, shared_ptr<erspan_ifc> port) {
-        TransData td("insert", "Port");
+        TransData td(OvsdbOperation::INSERT, OvsdbTable::PORT);
         shared_ptr<TupleData<string>> tPtr =
                 make_shared<TupleData<string>>("", port->name);
         set<shared_ptr<BaseData>> pSet;
@@ -883,7 +883,7 @@ using boost::uuids::basic_random_generator;
         tl.push_back(td);
 
         // uuid-name
-        TransData td1("insert", "Interface");
+        TransData td1(OvsdbOperation::INSERT, OvsdbTable::INTERFACE);
         td1.kvPairs.emplace(make_shared<TupleData<string>>("uuid-name", named_uuid));
 
         // row entries
@@ -934,7 +934,7 @@ using boost::uuids::basic_random_generator;
         set<tuple<string, string, string>> condSet;
         condSet.emplace(cond1);
 
-        TransData td2("update", "Bridge");
+        TransData td2(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
         pSet.clear();
         for (const auto& elem : res.portUuids) {
             tPtr.reset(new TupleData<string>("uuid", elem));
@@ -1011,7 +1011,7 @@ using boost::uuids::basic_random_generator;
             set<tuple<string, string, string>> condSet;
             condSet.emplace(cond1);
 
-            TransData td("update", "Bridge");
+            TransData td(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
             td.conditions = condSet;
 
             set<shared_ptr<BaseData>> pSet;
