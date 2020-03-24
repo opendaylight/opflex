@@ -346,7 +346,7 @@ private:
     yajr::Peer* peer;
 
     typedef struct req_cb_data_ {
-        JsonReq* req;
+        TransactReq* req;
         yajr::Peer* peer;
     } req_cb_data;
 

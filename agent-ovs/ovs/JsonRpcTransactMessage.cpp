@@ -15,7 +15,6 @@
 #endif
 
 #include "JsonRpcTransactMessage.h"
-#include <opflexagent/logging.h>
 
 namespace opflexagent {
 
@@ -25,6 +24,18 @@ JsonRpcTransactMessage::JsonRpcTransactMessage(const TransData& td) : JsonRpcMes
 void JsonRpcTransactMessage::serializePayload(yajr::rpc::SendHandler& writer) {
     LOG(DEBUG) << "serializePayload send handler";
     (*this)(writer);
+}
+
+static const char* OvsdbOperationStrings[] = {"select", "insert", "update"};
+
+static const char* toString(OvsdbOperation operation) {
+    return OvsdbOperationStrings[static_cast<uint32_t>(operation)];
+}
+
+static const char* OvsdbTableStrings[] = {"Port", "Interface", "Bridge", "IPFIX", "NetFlow", "Mirror"};
+
+static const char* toString(OvsdbTable table) {
+    return OvsdbTableStrings[static_cast<uint32_t>(table)];
 }
 
 template<typename T>
@@ -90,7 +101,7 @@ bool JsonRpcTransactMessage::operator()(rapidjson::Writer<T> & writer) {
         writePair<T>(writer, pair, true);
     }
 
-    if (tData.getOperation() != "insert") {
+    if (tData.getOperation() != OvsdbOperation::INSERT) {
         writer.String("where");
         writer.StartArray();
         if (!tData.conditions.empty()) {
@@ -116,9 +127,9 @@ bool JsonRpcTransactMessage::operator()(rapidjson::Writer<T> & writer) {
         writer.EndArray();
     }
     writer.String("table");
-    writer.String(tData.getTable().c_str());
+    writer.String(toString(tData.getTable()));
     writer.String("op");
-    writer.String(tData.getOperation().c_str());
+    writer.String(toString(tData.getOperation()));
     if (!tData.columns.empty()) {
         writer.String("columns");
         writer.StartArray();
@@ -156,16 +167,15 @@ bool JsonRpcTransactMessage::operator()(rapidjson::Writer<T> & writer) {
     return true;
 }
 
-JsonReq::JsonReq(const list<TransData>& tl, uint64_t reqId)
-    : JsonRpcMessage("transact", REQUEST), reqId(reqId)
-{
+TransactReq::TransactReq(const list<TransData>& tl, uint64_t reqId)
+    : JsonRpcMessage("transact", REQUEST), reqId(reqId) {
     for (auto& elem : tl) {
         shared_ptr<JsonRpcTransactMessage> pTr = make_shared<JsonRpcTransactMessage>(elem);
         transList.push_back(pTr);
     }
 }
 
-void JsonReq::serializePayload(yajr::rpc::SendHandler& writer) {
+void TransactReq::serializePayload(yajr::rpc::SendHandler& writer) {
     LOG(DEBUG) << "serializePayload send handler";
     (*this)(writer);
 }

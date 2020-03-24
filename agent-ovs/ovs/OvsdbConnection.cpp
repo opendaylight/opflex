@@ -26,7 +26,7 @@ namespace opflexagent {
 
 void OvsdbConnection::send_req_cb(uv_async_t* handle) {
     req_cb_data* reqCbd = (req_cb_data*)handle->data;
-    JsonReq* req = reqCbd->req;
+    TransactReq* req = reqCbd->req;
     yajr::rpc::MethodName method(req->getMethod().c_str());
     opflex::jsonrpc::PayloadWrapper wrapper(req);
     yajr::rpc::OutboundRequest outr =
@@ -39,7 +39,7 @@ void OvsdbConnection::send_req_cb(uv_async_t* handle) {
 void OvsdbConnection::sendTransaction(const list<TransData>& tl,
         const uint64_t& reqId) {
     req_cb_data* reqCbd = new req_cb_data();
-    reqCbd->req = new JsonReq(tl, reqId);
+    reqCbd->req = new TransactReq(tl, reqId);
     reqCbd->peer = getPeer();
     send_req_async.data = (void*)reqCbd;
     uv_async_send(&send_req_async);
