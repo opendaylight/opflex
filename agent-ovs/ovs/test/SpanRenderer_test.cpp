@@ -16,6 +16,7 @@
 #include <opflexagent/logging.h>
 #include <opflexagent/test/BaseFixture.h>
 #include <SpanRenderer.h>
+#include "MockJsonRpc.h"
 
 namespace opflexagent {
 
@@ -64,7 +65,8 @@ static bool verifyCreateDestroy(const shared_ptr<MockSpanRenderer>& spr) {
     if (!spr->jRpc->getOvsdbMirrorConfig(mir)) {
         return false;
     }
-    string erspanUuid = spr->jRpc->getPortUuid("erspan");
+    string erspanUuid;
+    spr->jRpc->getPortUuid("erspan", erspanUuid);
     if (erspanUuid.empty()) {
         return false;
     }

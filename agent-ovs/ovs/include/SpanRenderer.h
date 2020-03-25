@@ -71,7 +71,7 @@ private:
     void handleSpanUpdate(const opflex::modb::URI& spanURI);
     virtual void sessionDeleted(shared_ptr<SessionState>& sesSt);
     virtual void sessionDeleted();
-    bool deleteErspnPort(const string& name);
+    bool deleteErspanPort(const string& name);
     bool deleteMirror(const string& session);
     bool createMirror(const string& session, const set<string>& srcPorts,
             const set<string>& dstPorts);

@@ -114,7 +114,7 @@ namespace opflexagent {
     void SpanRenderer::sessionDeleted(shared_ptr<SessionState>& seSt) {
         deleteMirror(seSt->getName());
         // There is only one ERSPAN port.
-        deleteErspnPort(ERSPAN_PORT_NAME);
+        deleteErspanPort(ERSPAN_PORT_NAME);
     }
 
     void SpanRenderer::sessionDeleted() {
@@ -122,7 +122,7 @@ namespace opflexagent {
             LOG(DEBUG) << "Unable to delete mirror";
             cleanup();
         }
-        deleteErspnPort(ERSPAN_PORT_NAME);
+        deleteErspanPort(ERSPAN_PORT_NAME);
     }
 
     void SpanRenderer::handleSpanUpdate(const opflex::modb::URI& spanURI) {
@@ -325,8 +325,9 @@ namespace opflexagent {
         return true;
     }
 
-    bool SpanRenderer::deleteErspnPort(const string& name) {
-        string erspanUuid = jRpc->getPortUuid(ERSPAN_PORT_NAME);
+    bool SpanRenderer::deleteErspanPort(const string& name) {
+        string erspanUuid;
+        jRpc->getPortUuid(ERSPAN_PORT_NAME, erspanUuid);
         LOG(DEBUG) << ERSPAN_PORT_NAME << " uuid: " << erspanUuid;
         JsonRpc::BrPortResult res;
         if (jRpc->getBridgePortList(switchName, res)) {

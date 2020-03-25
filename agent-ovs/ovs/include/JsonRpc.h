@@ -178,10 +178,9 @@ public:
     /**
      * call back for transaction response
      * @param[in] reqId request ID of the request for this response.
-     * @param[in] payload rapidjson::Document reference of the response body.
+     * @param[in] payload Document reference of the response body.
      */
-    void handleTransaction(uint64_t reqId,
-                const rapidjson::Document& payload);
+    void handleTransaction(uint64_t reqId, const Document& payload);
 
     /**
      * update the port list for the bridge
@@ -204,9 +203,9 @@ public:
     /**
      * get the UUID of the port
      * @param[in] name name of the port
-     * @return uuid of the port or empty string.
+     * @param[out] uuid of the port or empty string.
      */
-    string getPortUuid(const string& name);
+    void getPortUuid(const string& name, string& uuid);
 
     /**
      * initialize the module
@@ -314,11 +313,9 @@ public:
      * process bridge netflow lst response
      * @param[in] reqId request ID
      * @param[in] payload body of the response
-     * @param[out] uuid of the mirror
      * @return true id success, false otherwise
     */
-    static bool handleCreateNetFlowResp(uint64_t reqId, const rapidjson::Document& payload,
-            string& uuid);
+    static bool handleCreateNetFlowResp(uint64_t reqId, const rapidjson::Document& payload);
     /**
      * process bridge ipfix lst response
      * @param[in] reqId request ID
@@ -377,11 +374,9 @@ public:
      * process bridge port list response
      * @param[in] reqId request ID
      * @param[in] payload body of the response
-     * @param[out] uuid of the mirror
      * @return true id success, false otherwise
      */
-    static bool handleCreateMirrorResp(uint64_t reqId, const rapidjson::Document& payload,
-            string& uuid);
+    static bool handleCreateMirrorResp(uint64_t reqId, const rapidjson::Document& payload);
 
     /**
      * get ERSPAN interface parameters from OVSDB
@@ -514,24 +509,5 @@ private:
     uint64_t id = 0;
 };
 
-/**
- * Mock object for testing
- */
-class MockJsonRpc : public JsonRpc {
-public:
-    MockJsonRpc() : JsonRpc() {}
-    virtual ~MockJsonRpc() {}
-
-    virtual void start() {
-        LOG(DEBUG) << "Starting MockJsonRpc ...";
-        shared_ptr<OvsdbConnection> ptr = make_shared<MockRpcConnection>(this);
-        setRpcConnectionPtr(ptr);
-        getRpcConnectionPtr()->start();
-    }
-
-    virtual void connect() {
-        getRpcConnectionPtr()->connect();
-    }
-};
 }
 #endif // OPFLEX_JSONRPC_H
