@@ -126,14 +126,4 @@ void OvsdbConnection::handleTransaction(uint64_t reqId,
     pTrans->handleTransaction(reqId, payload);
 }
 
-void MockRpcConnection::sendTransaction(const list<TransData>& tl,
-        const uint64_t& reqId) {
-    ResponseDict& rDict = ResponseDict::Instance();
-    auto itr = rDict.dict.find(reqId);
-    if (itr != rDict.dict.end()) {
-        handleTransaction(1, rDict.d[itr->second]);
-    } else {
-        LOG(DEBUG) << "No response found";
-    }
-}
 }
