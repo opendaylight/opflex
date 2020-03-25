@@ -61,7 +61,7 @@ public:
     boost::optional<uint64_t> getProp1() {
         if (isProp1Set())
             return getObjectInstance().getUInt64(1);
-        return boost::none;
+        return boost::make_optional<uint64_t>(false, 0);;
     }
 
     /**

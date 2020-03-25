@@ -54,7 +54,7 @@ public:
     boost::optional<int64_t> getProp6() {
         if (isProp6Set())
             return getObjectInstance().getInt64(6);
-        return boost::none;
+        return boost::make_optional<int64_t>(false, 0);;
     }
 
     /**
