@@ -310,21 +310,6 @@ public:
     bool deleteIpfix(const string& brName);
 
     /**
-     * process bridge netflow lst response
-     * @param[in] reqId request ID
-     * @param[in] payload body of the response
-     * @return true id success, false otherwise
-    */
-    static bool handleCreateNetFlowResp(uint64_t reqId, const rapidjson::Document& payload);
-    /**
-     * process bridge ipfix lst response
-     * @param[in] reqId request ID
-     * @param[in] payload body of the response
-     * @return true id success, false otherwise
-    */
-    static bool handleCreateIpfixResp(uint64_t reqId, const rapidjson::Document& payload);
-
-    /**
      * process port uuid request response
      * @param[in] reqId request ID
      * @param[in] payload body of the response

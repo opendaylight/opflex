@@ -332,8 +332,7 @@ void InbRes<&yajr::rpc::method::transact>::process() const {
 
 template<>
 void InbReq<&yajr::rpc::method::transact>::process() const {
-    VLOG(5) << "calling InbReq transact";
-    getPeer()->getData();
+    // unsupported
 }
 
 template<>

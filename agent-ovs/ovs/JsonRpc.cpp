@@ -47,6 +47,7 @@ using boost::uuids::basic_random_generator;
 
     void JsonRpc::handleTransaction(uint64_t reqId, const Document& payload) {
         pResp.reset(new Response(reqId, payload));
+        // TODO - generically check payload of response for errors and log
         responseReceived = true;
         pConn->ready.notify_all();
     }
@@ -98,22 +99,6 @@ bool JsonRpc::createNetFlow(const string& brUuid, const string& target, const in
         LOG(DEBUG) << "Error sending message";
         return false;
     }
-    if (!checkForResponse()) {
-        LOG(DEBUG) << "Error getting response";
-        return false;
-    }
-    return handleCreateNetFlowResp(pResp->reqId, pResp->payload);
-}
-
-bool JsonRpc::handleCreateNetFlowResp(uint64_t reqId, const Document& payload) {
-    list<string> ids = {"0","uuid","1"};
-    Value val;
-    opflexagent::getValue(payload, ids, val);
-    if (!val.IsNull() && val.IsString()) {
-        LOG(DEBUG) << "netflow uuid " << val.GetString();
-    } else {
-        return false;
-    }
     return true;
 }
 
@@ -157,22 +142,6 @@ bool JsonRpc::createIpfix(const string& brUuid, const string& target, const int&
 
     if (!sendRequest(tl, reqId)) {
         LOG(DEBUG) << "Error sending message";
-        return false;
-    }
-    if (!checkForResponse()) {
-        LOG(DEBUG) << "Error getting response";
-        return false;
-    }
-    return handleCreateIpfixResp(pResp->reqId, pResp->payload);
-}
-
-bool JsonRpc::handleCreateIpfixResp(uint64_t reqId, const Document& payload) {
-    list<string> ids = {"0","uuid","1"};
-    Value val;
-    opflexagent::getValue(payload, ids, val);
-    if (!val.IsNull() && val.IsString()) {
-        LOG(DEBUG) << "ipfix uuid " << val.GetString();
-    } else {
         return false;
     }
     return true;
@@ -223,10 +192,6 @@ bool JsonRpc::deleteIpfix(const string& brName) {
 
     if (!sendRequest(tl, reqId)) {
         LOG(DEBUG) << "Error sending message";
-        return false;
-    }
-    if (!checkForResponse()) {
-        LOG(DEBUG) << "Error getting response";
         return false;
     }
     return true;

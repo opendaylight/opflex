@@ -68,7 +68,7 @@ void OpflexConnection::connect() {}
 void OpflexConnection::cleanup() {
     util::LockGuard guard(&queue_mutex);
     connGeneration += 1;
-    while (write_queue.size() > 0) {
+    while (!write_queue.empty()) {
         delete write_queue.front().first;
         write_queue.pop_front();
     }
@@ -121,7 +121,7 @@ void OpflexConnection::doWrite(OpflexMessage* message) {
 
 void OpflexConnection::processWriteQueue() {
     util::LockGuard guard(&queue_mutex);
-    while (write_queue.size() > 0) {
+    while (!write_queue.empty()) {
         const write_queue_item_t& qi = write_queue.front();
         // Avoid writing messages from a previous reconnect attempt
         if (qi.second < connGeneration) {
