@@ -486,6 +486,11 @@ protected:
     std::atomic<bool> stopping;
 
     /**
+     * Mutex to protect access of xid set
+     */
+    std::mutex txnMtx;
+
+    /**
      * Transaction Id set for tracking request/replies
      */
     std::unordered_set<uint32_t> txns;

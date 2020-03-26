@@ -409,12 +409,18 @@ void PolicyStatsManager::handleMessage(int msgType,
         std::lock_guard<std::mutex> lock(pstatMtx);
         ofp_header *msgHdr = (ofp_header *)msg->data;
         ovs_be32 recvXid = msgHdr->xid;
-        if(txns.find(recvXid) == txns.end()) {
-            return;
+        {
+            std::lock_guard<mutex> lock(txnMtx);
+            if (txns.find(recvXid) == txns.end()) {
+                return;
+            }
         }
         ret = handleFlowStats(msg, tableMap);
-        if(ret) {
-            txns.erase(recvXid);
+        {
+            std::lock_guard<mutex> lock(txnMtx);
+            if(ret) {
+                txns.erase(recvXid);
+            }
         }
     } else if (msgType == OFPTYPE_FLOW_REMOVED) {
         std::lock_guard<std::mutex> lock(pstatMtx);
@@ -550,7 +556,10 @@ void PolicyStatsManager::sendRequest(uint32_t table_id, uint64_t _cookie,
     OfpBuf req(ofputil_encode_flow_stats_request(&fsr, proto));
     ofpmsg_update_length(req.get());
     ovs_be32 reqXid = ((ofp_header *)req->data)->xid;
-    txns.insert(reqXid);
+    {
+        std::lock_guard<mutex> lock(txnMtx);
+        txns.insert(reqXid);
+    }
 
     int err = connection->SendMessage(req);
     if (err != 0) {
