@@ -459,6 +459,49 @@ module[gbpe]
         member[txbytes; type=scalar/UInt64]
     }
 
+    # Counter for showing target Rx and Tx statistics per service. Traffic must
+    # be load balanced evenly across these targets.
+    # - This will typically contain only E-W traffic stats
+    # - N-S traffic getting bounced to different node will be accounted here
+    class[SvcTargetCounter;
+          super=observer/Observable;
+          concrete;
+          ]
+    {
+        contained
+        {
+            parent[class=gbpe/SvcCounter]
+        }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=uuid]
+            }
+        }
+
+        # A unique pod identifer
+        member[uuid; type=reference/UUID]
+
+        # name of the pod: taken from attr for k8s OR intf-name for openstack
+        member[name; type=ascii/String]
+
+        # name of the pod namespace; only populated in k8s
+        member[namespace; type=ascii/String]
+
+        # number of packets received by the service target
+        member[rxpackets; type=scalar/UInt64]
+
+        # number of bytes received by the service target
+        member[rxbytes; type=scalar/UInt64]
+
+        # number of packets sent from the service target
+        member[txpackets; type=scalar/UInt64]
+
+        # number of bytes sent from the service target
+        member[txbytes; type=scalar/UInt64]
+    }
+
     class[SecGrpClassifierCounter;
           super=observer/Observable;
           concrete;
