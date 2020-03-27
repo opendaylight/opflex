@@ -1314,6 +1314,28 @@ static void flowsEndpointSource(FlowEntryList& elSrc,
     }
 }
 
+static void matchServiceProto (FlowBuilder& flow, uint8_t proto,
+                               const Service::ServiceMapping& sm,
+                               bool forward) {
+    if (!proto) return;
+    flow.proto(proto);
+
+    if (!sm.getServicePort()) return;
+
+    uint16_t s_port = sm.getServicePort().get();
+    uint16_t nh_port = s_port;
+    if (sm.getNextHopPort())
+        nh_port = sm.getNextHopPort().get();
+
+    if (forward) {
+        // post DNAT of servic-ip/service-port to target pod-ip/pod-port
+        flow.tpDst(nh_port);
+    } else {
+        // post SNAT of target pod-ip/pod-port to service-ip/service-port
+        flow.tpSrc(s_port);
+    }
+}
+
 static void matchActionServiceProto(FlowBuilder& flow, uint8_t proto,
                                     const Service::ServiceMapping& sm,
                                     bool forward, bool applyAction) {
@@ -1330,10 +1352,12 @@ static void matchActionServiceProto(FlowBuilder& flow, uint8_t proto,
     if (nh_port == s_port) applyAction = false;
 
     if (forward) {
+        // pre DNAT of servic-ip/service-port to target pod-ip/pod-port
         flow.tpDst(s_port);
         if (applyAction)
             flow.action().l4Dst(nh_port, proto);
     } else {
+        // pre SNAT of target pod-ip/pod-port to service-ip/service-port
         flow.tpSrc(nh_port);
         if (applyAction)
             flow.action().l4Src(s_port, proto);
@@ -2254,9 +2278,34 @@ void IntFlowManager::updatePodSvcFlows (const string &uuid,
 
     // Expr to add stats flow between "ep to svc" and "svc to ep"
     auto podSvcFlowAddExpr =
-        [this, &uuid_felist_map]
-        (const string &uuid, address &epAddr, address &svcAddr,
-         const attr_map &epAttr, const attr_map &svcAttr) -> void {
+        [this, &uuid_felist_map](const string &uuid,
+                                 const string &epipStr,
+                                 const Service::ServiceMapping &sm,
+                                 const attr_map &epAttr,
+                                 const attr_map &svcAttr) -> void {
+
+        boost::system::error_code ec;
+
+        address epAddr = address::from_string(epipStr, ec);
+        if (ec) {
+            LOG(WARNING) << "Invalid endpoint IP: "
+                         << epipStr << ": " << ec.message();
+            return;
+        }
+
+        if (!sm.getServiceIP())
+            return;
+        address svcAddr =
+            address::from_string(sm.getServiceIP().get(), ec);
+        if (ec) {
+            LOG(WARNING) << "Invalid service IP: "
+                         << sm.getServiceIP().get()
+                         << ": " << ec.message();
+            return;
+        }
+        LOG(DEBUG) << "Adding pod<-->svc flow between"
+                   << " EP IP: " << epipStr
+                   << " SVC-SM IP: " << sm.getServiceIP().get();
 
         // ensure flows are either v4 or v6 - no mix-n-match
         if (svcAddr.is_v4() != epAddr.is_v4()) {
@@ -2264,8 +2313,18 @@ void IntFlowManager::updatePodSvcFlows (const string &uuid,
             return;
         }
 
-        FlowBuilder epToSvc; // to service stats
-        FlowBuilder svcToEp; // from service stats
+        uint8_t proto = 0;
+        if (sm.getServiceProto()) {
+            const string& protoStr = sm.getServiceProto().get();
+            if ("udp" == protoStr)
+                proto = 17;
+            else if ("tcp" == protoStr)
+                proto = 6;
+            else {
+                LOG(DEBUG) << "unhandled proto: " << protoStr;
+                return;
+            }
+        }
 
         auto itr = podSvcUuidCkMap.find(uuid);
         if (itr == podSvcUuidCkMap.end()) {
@@ -2291,6 +2350,12 @@ void IntFlowManager::updatePodSvcFlows (const string &uuid,
         // updates to take care of ep/svc attr changes
         updatePodSvcStatsCounters(podSvcUuidCkMap[uuid].first, 0, 0, epAttr, svcAttr);
         updatePodSvcStatsCounters(podSvcUuidCkMap[uuid].second, 0, 0, epAttr, svcAttr);
+
+        FlowBuilder epToSvc; // to service stats
+        FlowBuilder svcToEp; // from service stats
+
+        matchServiceProto(epToSvc, proto, sm, true);
+        matchServiceProto(svcToEp, proto, sm, false);
 
         if (svcAddr.is_v4()) {
             epToSvc.priority(100).ethType(eth::type::IP)
@@ -2326,7 +2391,6 @@ void IntFlowManager::updatePodSvcFlows (const string &uuid,
         svcToEp.build(uuid_felist_map[uuid]);
     };
 
-    boost::system::error_code ec;
     if (is_svc) {
         unordered_set<string> epUuids;
         EndpointManager& epMgr = agent.getEndpointManager();
@@ -2350,17 +2414,6 @@ void IntFlowManager::updatePodSvcFlows (const string &uuid,
         LOG(DEBUG) << "####### pod<-->svc Service ########";
         LOG(DEBUG) << *asWrapper;
         for (auto const& sm : as.getServiceMappings()) {
-            if (!sm.getServiceIP())
-                continue;
-
-            address serviceAddr =
-                address::from_string(sm.getServiceIP().get(), ec);
-            if (ec) {
-                LOG(WARNING) << "Invalid service IP: "
-                             << sm.getServiceIP().get()
-                             << ": " << ec.message();
-                continue;
-            }
 
             for (const string& epUuid : epUuids) {
                 shared_ptr<const Endpoint> epWrapper
@@ -2371,13 +2424,9 @@ void IntFlowManager::updatePodSvcFlows (const string &uuid,
                 LOG(DEBUG) << *epWrapper;
 
                 const Endpoint& endPoint = *epWrapper.get();
-                for (const string& ipStr : endPoint.getIPs()) {
-                    address epAddr = address::from_string(ipStr, ec);
-                    LOG(DEBUG) << "Adding pod<-->svc flow between"
-                               << " epIp: " << ipStr
-                               << " <--> svc-smIp: " << sm.getServiceIP().get();
+                for (const string& epipStr : endPoint.getIPs()) {
                     podSvcFlowAddExpr(epUuid+":"+uuid,
-                                      epAddr, serviceAddr,
+                                      epipStr, sm,
                                       endPoint.getAttributes(),
                                       as.getAttributes());
                 }
@@ -2407,13 +2456,7 @@ void IntFlowManager::updatePodSvcFlows (const string &uuid,
         LOG(DEBUG) << *epWrapper;
 
         const Endpoint& endPoint = *epWrapper.get();
-        for (const string& ipStr : endPoint.getIPs()) {
-            address epAddr = address::from_string(ipStr, ec);
-            if (ec) {
-                LOG(WARNING) << "Invalid endpoint IP: "
-                             << ipStr << ": " << ec.message();
-                continue;
-            }
+        for (const string& epipStr : endPoint.getIPs()) {
 
             for (const string& svcUuid : svcUuids) {
                 shared_ptr<const Service> asWrapper
@@ -2426,23 +2469,8 @@ void IntFlowManager::updatePodSvcFlows (const string &uuid,
 
                 const Service& as = *asWrapper.get();
                 for (auto const& sm : as.getServiceMappings()) {
-                    if (!sm.getServiceIP())
-                        continue;
-
-                    address serviceAddr =
-                        address::from_string(sm.getServiceIP().get(), ec);
-                    if (ec) {
-                        LOG(WARNING) << "Invalid service IP: "
-                                     << sm.getServiceIP().get()
-                                     << ": " << ec.message();
-                        continue;
-                    }
-                    LOG(DEBUG) << "Adding pod<-->svc flow between"
-                               << " EP IP: " << ipStr
-                               << " SVC-SM IP: " << sm.getServiceIP().get();
-
                     podSvcFlowAddExpr(uuid+":"+svcUuid,
-                                      epAddr, serviceAddr,
+                                      epipStr, sm,
                                       endPoint.getAttributes(),
                                       as.getAttributes());
                 }
@@ -2542,7 +2570,7 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
 
             uint8_t proto = 0;
             if (sm.getServiceProto()) {
-                string protoStr = sm.getServiceProto().get();
+                const string& protoStr = sm.getServiceProto().get();
                 if ("udp" == protoStr)
                     proto = 17;
                 else

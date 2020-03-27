@@ -325,7 +325,8 @@ PodSvcStatsManagerFixture::testFlowStats (MockConnection& portConn,
     auto createFlowExpr =
         [&] (address epAddr, address svcAddr, bool isV4) -> void {
         if (isV4) {
-            FlowBuilder().priority(100).ethType(eth::type::IP)
+            FlowBuilder().proto(17).tpDst(5353)
+                     .priority(100).ethType(eth::type::IP)
                      .ipSrc(epAddr)
                      .reg(8, svcAddr.to_v4().to_ulong())
                      .flags(OFPUTIL_FF_SEND_FLOW_REM)
@@ -333,7 +334,8 @@ PodSvcStatsManagerFixture::testFlowStats (MockConnection& portConn,
                      .action().go(IntFlowManager::OUT_TABLE_ID)
                      .parent().build(entryList);
 
-            FlowBuilder().priority(100).ethType(eth::type::IP)
+            FlowBuilder().proto(17).tpSrc(53)
+                     .priority(100).ethType(eth::type::IP)
                      .ipSrc(svcAddr)
                      .ipDst(epAddr)
                      .flags(OFPUTIL_FF_SEND_FLOW_REM)
@@ -343,7 +345,8 @@ PodSvcStatsManagerFixture::testFlowStats (MockConnection& portConn,
         } else {
             uint32_t pAddr[4];
             IntFlowManager::in6AddrToLong(svcAddr, &pAddr[0]);
-            FlowBuilder().priority(100).ethType(eth::type::IPV6)
+            FlowBuilder().proto(6).tpDst(80)
+                     .priority(100).ethType(eth::type::IPV6)
                      .ipSrc(epAddr)
                      .reg(8, pAddr[0]).reg(9, pAddr[1])
                      .reg(10, pAddr[2]).reg(11, pAddr[3])
@@ -352,7 +355,8 @@ PodSvcStatsManagerFixture::testFlowStats (MockConnection& portConn,
                      .action().go(IntFlowManager::OUT_TABLE_ID)
                      .parent().build(entryList);
 
-            FlowBuilder().priority(100).ethType(eth::type::IPV6)
+            FlowBuilder().proto(6).tpSrc(80)
+                     .priority(100).ethType(eth::type::IPV6)
                      .ipSrc(svcAddr)
                      .ipDst(epAddr)
                      .flags(OFPUTIL_FF_SEND_FLOW_REM)
@@ -457,7 +461,8 @@ PodSvcStatsManagerFixture::testFlowRemoved (MockConnection& portConn,
     auto createFlowExpr =
         [&] (bool isEpToSvc) -> void {
         if (isEpToSvc) {
-            FlowBuilder().priority(100).ethType(eth::type::IP)
+            FlowBuilder().proto(17).tpDst(5353)
+                 .priority(100).ethType(eth::type::IP)
                  .ipSrc(ep1Addr)
                  .reg(8, svc1Addr.to_v4().to_ulong())
                  .flags(OFPUTIL_FF_SEND_FLOW_REM)
@@ -465,7 +470,8 @@ PodSvcStatsManagerFixture::testFlowRemoved (MockConnection& portConn,
                  .action().go(IntFlowManager::OUT_TABLE_ID)
                  .parent().build(entryList1);
         } else {
-            FlowBuilder().priority(100).ethType(eth::type::IP)
+            FlowBuilder().proto(17).tpSrc(53)
+                 .priority(100).ethType(eth::type::IP)
                  .ipSrc(svc1Addr)
                  .ipDst(ep1Addr)
                  .flags(OFPUTIL_FF_SEND_FLOW_REM)
