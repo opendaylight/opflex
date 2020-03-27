@@ -320,7 +320,7 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
     Mutator mutator(framework, "policyelement");
     unordered_set<uri_set_t> notifySecGroupSets;
     bool extDomRemoved = false;
-    URI *egURI;
+    URI *egURI = NULL;
 
     ep_map_t::iterator it = ep_map.find(uuid);
     if (it != ep_map.end()) {
@@ -437,7 +437,7 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
     for (auto& s : notifySecGroupSets) {
         notifyListeners(s);
     }
-    if(extDomRemoved) {
+    if(extDomRemoved && (egURI != NULL)) {
         notifyLocalExternalDomainListeners(*egURI);
     }
 }
@@ -1354,6 +1354,28 @@ void EndpointManager::getEndpointsByIpmNextHopIf(const std::string& ifaceName,
                                                  /* out */ str_uset_t& eps) {
     unique_lock<mutex> guard(ep_mutex);
     getEps(ifaceName, ipm_nexthop_if_ep_map, eps);
+}
+
+void EndpointManager::getLocalExternalDomains(std::unordered_set<opflex::modb::URI>& domain) {
+    unique_lock<mutex> guard(ep_mutex);
+    for(auto &local_ext_dom: local_ext_dom_map) {
+        domain.insert(local_ext_dom.first);
+    }
+}
+
+bool EndpointManager::localExternalDomainExists(const opflex::modb::URI& epgURI) {
+    unique_lock<mutex> guard(ep_mutex);
+    auto it = local_ext_dom_map.find(epgURI);
+    return (it != local_ext_dom_map.end());
+}
+
+uint32_t EndpointManager::getExtEncapId(const opflex::modb::URI& epgURI) {
+    unique_lock<mutex> guard(ep_mutex);
+    auto it = local_ext_dom_map.find(epgURI);
+    if(it != local_ext_dom_map.end()) {
+        return it->second;
+    }
+    return 0;
 }
 
 void EndpointManager::updateEndpointCounters(const std::string& uuid,
