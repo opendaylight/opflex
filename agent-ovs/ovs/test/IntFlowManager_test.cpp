@@ -165,7 +165,10 @@ public:
      * and vice versa */
     void initExpPodServiceStats(const string& svc_ip,
                                 shared_ptr<Endpoint>& ep,
-                                Service &as);
+                                Service &as,
+                                const string& proto = "",
+                                uint16_t svc_port = 0,
+                                uint16_t nh_port = 0);
 
     /** Initialize service-scoped flow entries for load balanced
         services */
@@ -2740,7 +2743,10 @@ void BaseIntFlowManagerFixture::initExpAnycastService(Service &as, int nextHop) 
 
 void BaseIntFlowManagerFixture::initExpPodServiceStats (const string& svc_ip,
                                                         shared_ptr<Endpoint>& ep,
-                                                        Service &as)
+                                                        Service &as,
+                                                        const string& proto,
+                                                        uint16_t svc_port,
+                                                        uint16_t nh_port)
 {
     address svc_ipa = address::from_string(svc_ip);
 
@@ -2760,6 +2766,40 @@ void BaseIntFlowManagerFixture::initExpPodServiceStats (const string& svc_ip,
     WAIT_FOR_DO_ONFAIL(su.get()->resolveGbpeSvcToEpCounter(aUuid, svcToEpUuid), 500,
                         ,LOG(ERROR) << "svc2ep obj not resolved uuid: " << svcToEpUuid;);
 
+    auto expMatchProto = [&proto] (Bldr& b,
+                                   bool is_v4) -> Bldr& {
+        if (proto == "") {
+            if (is_v4)
+                b.ip();
+            else
+                b.ipv6();
+        } else if (proto == "tcp") {
+            if (is_v4)
+                b.tcp();
+            else
+                b.tcp6();
+        } else if (proto == "udp") {
+            if (is_v4)
+                b.udp();
+            else
+                b.udp6();
+        }
+        return b;
+    };
+
+    auto expMatchPort =
+            [&svc_port, &nh_port] (Bldr& b,
+                                   bool fwd) -> Bldr& {
+        if (!svc_port)
+            return b;
+
+        if (fwd)
+            b.isTpDst(nh_port);
+        else
+            b.isTpSrc(svc_port);
+        return b;
+    };
+
     for (const string& ep_ip : ep->getIPs()) {
         address ep_ipa = address::from_string(ep_ip);
         uint64_t ep_to_svc_cookie=0, svc_to_ep_cookie=0;
@@ -2772,35 +2812,42 @@ void BaseIntFlowManagerFixture::initExpPodServiceStats (const string& svc_ip,
 
         if (ep_ipa.is_v4()) {
             // to svc
-            ADDF(Bldr(SEND_FLOW_REM).table(STAT)
+            ADDF(expMatchPort(expMatchProto(
+                 Bldr(SEND_FLOW_REM).table(STAT)
                  .cookie(ep_to_svc_cookie)
-                 .priority(100).ip()
-                 .reg(SVCADDR1, svc_ipa.to_v4().to_ulong()).isIpSrc(ep_ip)
+                 .priority(100), true)
+                 .reg(SVCADDR1, svc_ipa.to_v4().to_ulong())
+                 .isIpSrc(ep_ip), true)
                  .actions().go(OUT).done());
             // from svc
-            ADDF(Bldr(SEND_FLOW_REM).table(STAT)
+            ADDF(expMatchPort(expMatchProto(
+                 Bldr(SEND_FLOW_REM).table(STAT)
                  .cookie(svc_to_ep_cookie)
-                 .priority(100).ip()
-                 .isIpSrc(svc_ip).isIpDst(ep_ip)
+                 .priority(100), true)
+                 .isIpSrc(svc_ip)
+                 .isIpDst(ep_ip), false)
                  .actions().go(OUT).done());
         } else {
             // to svc
             uint32_t pAddr[4];
             IntFlowManager::in6AddrToLong(svc_ipa, &pAddr[0]);
-            ADDF(Bldr(SEND_FLOW_REM).table(STAT)
+            ADDF(expMatchPort(expMatchProto(
+                 Bldr(SEND_FLOW_REM).table(STAT)
                  .cookie(ep_to_svc_cookie)
-                 .priority(100).ipv6()
+                 .priority(100), false)
                  .reg(SVCADDR1, pAddr[0])
                  .reg(SVCADDR2, pAddr[1])
                  .reg(SVCADDR3, pAddr[2])
                  .reg(SVCADDR4, pAddr[3])
-                 .isIpv6Src(ep_ip)
+                 .isIpv6Src(ep_ip), true)
                  .actions().go(OUT).done());
             // from svc
-            ADDF(Bldr(SEND_FLOW_REM).table(STAT)
+            ADDF(expMatchPort(expMatchProto(
+                 Bldr(SEND_FLOW_REM).table(STAT)
                  .cookie(svc_to_ep_cookie)
-                 .priority(100).ipv6()
-                 .isIpv6Src(svc_ip).isIpv6Dst(ep_ip)
+                 .priority(100), false)
+                 .isIpv6Src(svc_ip)
+                 .isIpv6Dst(ep_ip), false)
                  .actions().go(OUT).done());
         }
     }
@@ -2817,12 +2864,12 @@ void BaseIntFlowManagerFixture::initExpLBService(Service &as1,
     memcpy(rmacArr, intFlowManager.getRouterMacAddr(), sizeof(rmacArr));
     string rmac = MAC(rmacArr).toString();
 
-    initExpPodServiceStats("169.254.169.254", ep0, as1);
-    initExpPodServiceStats("169.254.169.254", ep2, as1);
-    initExpPodServiceStats("169.254.169.254", ep3, as1);
-    initExpPodServiceStats("169.254.169.254", ep4, as1);
-    initExpPodServiceStats("169.254.169.254", ep5, as1);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep0, as2);
+    initExpPodServiceStats("169.254.169.254", ep0, as1, "udp", 53, 5353);
+    initExpPodServiceStats("169.254.169.254", ep2, as1, "udp", 53, 5353);
+    initExpPodServiceStats("169.254.169.254", ep3, as1, "udp", 53, 5353);
+    initExpPodServiceStats("169.254.169.254", ep4, as1, "udp", 53, 5353);
+    initExpPodServiceStats("169.254.169.254", ep5, as1, "udp", 53, 5353);
+    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep0, as2, "tcp", 80, 80);
 
     if (exposed) {
         ADDF(Bldr().table(SEC).priority(90).in(17).isVlan(4003)
