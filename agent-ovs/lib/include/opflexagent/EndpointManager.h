@@ -208,6 +208,13 @@ public:
                                     std::unordered_set<std::string>& eps);
 
     /**
+     * Get all the known local external domains
+     *
+     * @param domain local external domain set to populate
+     */
+    void getLocalExternalDomains(std::unordered_set<opflex::modb::URI>& domain);
+
+    /**
      * Get opflex agent instance
      *
      * @return instance of opflex agent
@@ -317,23 +324,15 @@ public:
      * @param epgURI the URI of the local external domain
      * @return whether local external domain is still being referenced
      */
-    bool localExternalDomainExists(const opflex::modb::URI& epgURI) {
-        auto it = local_ext_dom_map.find(epgURI);
-        return (it != local_ext_dom_map.end());
-    }
+    bool localExternalDomainExists(const opflex::modb::URI& epgURI);
+
     /**
      * Get the external encap value for the given ext domain egURI
      *
      * @param epgURI the URI of the local external domain
      * @return external encap id
      */
-    uint32_t getExtEncapId(const opflex::modb::URI& epgURI) {
-        auto it = local_ext_dom_map.find(epgURI);
-        if(it != local_ext_dom_map.end()) {
-            return it->second;
-        }
-        return 0;
-    }
+    uint32_t getExtEncapId(const opflex::modb::URI& epgURI);
 
 private:
     /**

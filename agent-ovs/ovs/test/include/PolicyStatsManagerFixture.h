@@ -58,13 +58,12 @@ public:
         SwitchConnection((conn_type== TEST_CONN_TYPE_INT)
                          ? "int_conn": "acc_conn") {
     }
-    int SendMessage(struct ofpbuf *msg) {
-        BOOST_REQUIRE(msg != NULL);
-        ofp_header *hdr = (ofp_header *)msg->data;
+    virtual int SendMessage(OfpBuf &msg) {
+        ofp_header *hdr = (ofp_header *)msg.data;
         ofptype typ;
         ofptype_decode(&typ, hdr);
         BOOST_CHECK(typ == OFPTYPE_FLOW_STATS_REQUEST);
-        ofpbuf_delete(msg);
+        msg.reset();
         return 0;
     }
 };
