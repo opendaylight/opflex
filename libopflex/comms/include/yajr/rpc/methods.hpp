@@ -81,9 +81,6 @@ namespace yajr {
                 )
                 : InboundRequest(peer, params, id)
                 {
-                    VLOG(5)
-                        << M->s
-                    ;
                 }
 
             virtual void process() const;
@@ -105,9 +102,6 @@ namespace yajr {
                 )
                 : InboundResult(peer, params, id)
                 {
-                    VLOG(5)
-                        << M->s
-                    ;
                 }
 
             virtual void process() const;

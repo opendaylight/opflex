@@ -50,8 +50,6 @@ bool operator< (rapidjson::Value const & l, rapidjson::Value const & r) {
 
 bool LocalIdentifier::emitId(yajr::rpc::SendHandler & h) const {
 
-    VLOG(4);
-
     if (!h.StartArray()) {
 
         return false;
@@ -77,17 +75,10 @@ bool LocalIdentifier::emitId(yajr::rpc::SendHandler & h) const {
 }
 
 bool RemoteIdentifier::emitId(yajr::rpc::SendHandler & h) const {
-
-    VLOG(4);
-
-    bool ok = id_.Accept(h);
-
-    return ok;
+    return id_.Accept(h);
 }
 
 bool OutboundMessage::Accept(yajr::rpc::SendHandler& handler) {
-
-    VLOG(5);
 
     if (!handler.StartObject()) {
         return false;
@@ -121,8 +112,6 @@ bool OutboundMessage::Accept(yajr::rpc::SendHandler& handler) {
 
 bool OutboundMessage::send() {
 
-    VLOG(5);
-
     ::yajr::comms::internal::CommunicationPeer const * cP =
         dynamic_cast< ::yajr::comms::internal::CommunicationPeer const * >
         (peer_);
@@ -131,8 +120,6 @@ bool OutboundMessage::send() {
             "peer needs to be set "
             "to a proper communication peer "
             "before outbound messages are sent");
-
-    VLOG(5) << cP;
 
     unsigned char connected = cP->connected_;
 
@@ -194,9 +181,6 @@ yajr::rpc::Message::getUvLoop() const {
 }
 
 std::size_t hash_value(rapidjson::Value const& v) {
-
-    /* switch(v.GetType()) { <-- would be more efficient but would have to
-                                 rely on private stuff from Value */
 
     if(v.IsDouble()) {
         return boost::hash<double>()(v.GetDouble());

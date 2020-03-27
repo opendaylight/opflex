@@ -90,10 +90,6 @@ struct Cb< ZeroCopyOpenSSL >::StaticHelpers {
 ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
         CommunicationPeer const * peer) {
 
-    VLOG(5)
-        << peer
-    ;
-
     /* we have to process the decrypted data, if any is available */
 
     ZeroCopyOpenSSL * e = peer->getEngine<ZeroCopyOpenSSL>();
@@ -162,10 +158,6 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
 ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
         CommunicationPeer const * peer) {
 
-    VLOG(5)
-        << peer
-    ;
-
     assert(!peer->pendingBytes_);
     if (peer->pendingBytes_) {
         VLOG(3)
@@ -210,39 +202,7 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
                 tryWrite);
 
         if (nwrite > 0) {
-
             totalWrite += nwrite;
-
-            VLOG(5)
-                << peer
-                << " nwrite = "
-                << nwrite
-                << " tryWrite = "
-                << tryWrite
-                << " totalWrite = "
-                << totalWrite
-            ;
-
-        } else {
-
-            VLOG(3)
-                << peer
-                << " nwrite = "
-                << nwrite
-                << " tryWrite = "
-                << tryWrite
-                << " totalWrite = "
-                << totalWrite
-                << " RETRY="
-                << BIO_should_retry     (e->bioSSL_)
-                << " R="
-                << BIO_should_read      (e->bioSSL_)
-                << " W="
-                << BIO_should_write     (e->bioSSL_)
-                << " S="
-                << BIO_should_io_special(e->bioSSL_)
-            ;
-
         }
 
         if (nwrite < tryWrite) {
@@ -269,22 +229,12 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
             peer->s_.deque_.begin() + totalWrite
     );
 
-    VLOG(totalWrite ? 4 : 3)
-        << peer
-        << " Returning: "
-        << (totalWrite ?: nwrite)
-    ;
     /* short-circuit a single non-positive nread */
     return totalWrite ?: nwrite;
-
 }
 
 int Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(
         CommunicationPeer const * peer) {
-
-    VLOG(5)
-        << peer
-    ;
 
     if (peer->pendingBytes_) {
         LOG(WARNING)
@@ -313,20 +263,6 @@ int Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(
     ;
 
     if (nread <= 0) {
-        VLOG(4)
-            << peer
-            << " nread = "
-            << nread
-            << " RETRY="
-            << BIO_should_retry     (e->bioExternal_)
-            << " R="
-            << BIO_should_read      (e->bioExternal_)
-            << " W="
-            << BIO_should_write     (e->bioExternal_)
-            << " S="
-            << BIO_should_io_special(e->bioExternal_)
-        ;
-
         return 0;
     }
 
@@ -341,23 +277,14 @@ int Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(
 template<>
 int Cb< ZeroCopyOpenSSL >::send_cb(CommunicationPeer const * peer) {
 
-    VLOG(5)
-        << peer
-    ;
-
     assert(!peer->pendingBytes_);
 
     (void) Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(peer);
     return Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(peer);
-
 }
 
 template<>
 void Cb< ZeroCopyOpenSSL >::on_sent(CommunicationPeer const * peer) {
-
-    VLOG(4)
-        << peer
-    ;
 
     ZeroCopyOpenSSL * e = peer
         ->getEngine<ZeroCopyOpenSSL>();
@@ -417,10 +344,6 @@ void Cb< ZeroCopyOpenSSL >::alloc_cb(
 
     CommunicationPeer * peer = comms::internal::Peer::get<CommunicationPeer>(h);
 
-    VLOG(4)
-        << peer
-    ;
-
     ZeroCopyOpenSSL * e = peer->getEngine<ZeroCopyOpenSSL>();
 
     ssize_t avail = BIO_nwrite0(
@@ -457,10 +380,6 @@ void Cb< ZeroCopyOpenSSL >::on_read(
       ) {
 
     CommunicationPeer * peer = comms::internal::Peer::get<CommunicationPeer>(h);
-
-    VLOG(4)
-        << peer
-    ;
 
     if (!peer->connected_) {
         return;
@@ -533,19 +452,7 @@ void Cb< ZeroCopyOpenSSL >::on_read(
             Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(peer);
 
         if (decrypted <= 0) {
-            VLOG(2)
-                << peer
-                << " decrypted = "
-                << decrypted
-                << " RETRY="
-                << BIO_should_retry     (e->bioSSL_)
-                << " R="
-                << BIO_should_read      (e->bioSSL_)
-                << " W="
-                << BIO_should_write     (e->bioSSL_)
-                << " S="
-                << BIO_should_io_special(e->bioSSL_)
-            ;
+
             if (BIO_should_retry(e->bioSSL_) && !peer->pendingBytes_) {
                 (void) Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(peer);
 
@@ -787,13 +694,6 @@ ZeroCopyOpenSSL::~ZeroCopyOpenSSL() {
 
 void ZeroCopyOpenSSL::infoCallback(SSL const *, int where, int ret) {
 
-    VLOG(3)
-        << " ret = "
-        << ret
-        << " where = "
-        << reinterpret_cast< void * >(where)
-    ;
-
     switch (where) {
         case SSL_CB_HANDSHAKE_START:
             VLOG(2)
@@ -806,7 +706,6 @@ void ZeroCopyOpenSSL::infoCallback(SSL const *, int where, int ret) {
             ;
             break;
     }
-
 }
 
 int ZeroCopyOpenSSL::Ctx::pwdCb(

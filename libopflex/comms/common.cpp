@@ -126,8 +126,6 @@ void on_close(uv_handle_t * h) {
 
 void on_write(uv_write_t *req, int status) {
 
-    VLOG(5);
-
     CommunicationPeer * peer = Peer::get(req);
 
     peer->down();

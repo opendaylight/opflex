@@ -235,10 +235,6 @@ void internal::Peer::LoopData::walkAndCountHandlesCb(
 
 void Peer::LoopData::RetryPeer::operator () (Peer *peer)
 {
-    VLOG(1)
-        << peer
-        << " retry"
-    ;
     peer->retry();
 }
 

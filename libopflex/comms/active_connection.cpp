@@ -162,9 +162,6 @@ void on_active_connection(uv_connect_t *req, int status) {
         return;
     }
 
-    VLOG(1)
-        << peer;
-
     if (peer->destroying_) {
         LOG(INFO)
             << peer
@@ -208,8 +205,6 @@ void on_active_connection(uv_connect_t *req, int status) {
 }
 
 void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
-
-    VLOG(2);
 
     ActiveTcpPeer * peer = Peer::get(req);
     assert(!peer->passive_);
@@ -352,10 +347,6 @@ void retry_later(ActivePeer * peer) {
 
     }
 
-    VLOG(1)
-        << peer
-    ;
-
     peer->unlink();
     peer->insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
 
@@ -396,10 +387,6 @@ void swap_stack_on_close(uv_handle_t * h) {
 }
 
 int connect_to_next_address(ActiveTcpPeer * peer, bool swap_stack) {
-
-    VLOG(1)
-        << peer
-    ;
 
     struct addrinfo const * ai = peer->_.ai_next;
 

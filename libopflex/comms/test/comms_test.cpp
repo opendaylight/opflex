@@ -111,10 +111,6 @@ class CommsFixture {
 
         uv_loop_init(CommsFixture::current_loop);
 
-        LOG(INFO)
-            << "\n\n\n\n\n\n\n\n"
-        ;
-
         prepare_.data = timer_.data = this;
 
         int rc = ::yajr::initLoop(CommsFixture::current_loop);
@@ -141,8 +137,6 @@ class CommsFixture {
 
     void cleanup() {
 
-        VLOG(3);
-
         uv_timer_stop(&timer_);
         uv_prepare_stop(&prepare_);
 
@@ -166,13 +160,7 @@ class CommsFixture {
     }
 
     ~CommsFixture() {
-
         uv_loop_close(CommsFixture::current_loop);
-
-        LOG(INFO)
-            << "\n\n\n\n\n\n\n\n"
-        ;
-
     }
 
     typedef void (*pc)(void);
@@ -335,8 +323,6 @@ class CommsFixture {
 
     static void timeout_cb(uv_timer_t * handle) {
 
-        VLOG(4);
-
         if (!expect_timeout) {
             BOOST_CHECK(!"the test has timed out");
         }
@@ -351,8 +337,6 @@ class CommsFixture {
 
     static void destroy_listener_cb(uv_timer_t * handle) {
 
-        VLOG(1);
-
         reinterpret_cast< ::yajr::Listener * >(handle->data)->destroy();
 
         uv_timer_stop(handle);
@@ -363,8 +347,6 @@ class CommsFixture {
     }
 
     static void destroy_peer_cb(uv_timer_t * handle) {
-
-        VLOG(1);
 
         reinterpret_cast< ::yajr::Peer* >(handle->data)->destroy();
 
@@ -383,8 +365,6 @@ class CommsFixture {
             unsigned int timeout = DEFAULT_COMMSTEST_TIMEOUT,
             size_t num_events = 0
             ) {
-
-        VLOG(1);
 
         required_final_peers = final_peers;
         required_transient_peers = transient_peers;
@@ -418,15 +398,10 @@ uv_loop_t * CommsFixture::loopSelector(void *) {
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_initialization, CommsFixture ) {
 
-    LOG(DEBUG);
-
     loop_until_final(range_t(0,0), NULL);
-
 }
 
 void pc_successful_connect(void) {
-
-    LOG(DEBUG);
 
     /* empty */
     BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
@@ -564,8 +539,6 @@ void StartPingingOnConnect(
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_ipv4, CommsFixture ) {
 
-    LOG(DEBUG);
-
     ::yajr::Listener * l = ::yajr::Listener::create(
             "127.0.0.1", 65535-kPortOffset, doNothingOnConnect,
             NULL, NULL, CommsFixture::current_loop, CommsFixture::loopSelector
@@ -585,8 +558,6 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_ipv4, CommsFixture ) {
 }
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_ipv6, CommsFixture ) {
-
-    LOG(DEBUG);
 
     ::yajr::Listener * l = ::yajr::Listener::create(
             "::1", 65534-kPortOffset, doNothingOnConnect,
@@ -608,8 +579,6 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_ipv6, CommsFixture ) {
 
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_pipe, CommsFixture ) {
-
-    LOG(DEBUG);
 
     static const char * domainSocket = "/tmp/comms_test_test_pipe.sock";
 
@@ -634,8 +603,6 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_pipe, CommsFixture ) {
 }
 
 static void pc_non_existent(void) {
-
-    LOG(DEBUG);
 
     /* non-empty */
     BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
@@ -662,8 +629,6 @@ static void pc_non_existent(void) {
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_non_existent_host, CommsFixture ) {
 
-    LOG(DEBUG);
-
     ::yajr::Peer * p = ::yajr::Peer::create(
             "non_existent_host.", boost::lexical_cast<std::string>(65533-kPortOffset), doNothingOnConnect,
             NULL, CommsFixture::loopSelector
@@ -677,8 +642,6 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_non_existent_host, CommsFixture ) {
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_non_existent_service, CommsFixture ) {
 
-    LOG(DEBUG);
-
     ::yajr::Peer * p = ::yajr::Peer::create(
             "127.0.0.1", boost::lexical_cast<std::string>(65533-kPortOffset), doNothingOnConnect,
             NULL, CommsFixture::loopSelector
@@ -691,8 +654,6 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_non_existent_service, CommsFixture ) {
 }
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_pipe_no_server, CommsFixture ) {
-
-    LOG(DEBUG);
 
     static const char * domainSocket = "/tmp/comms_test_test_pipe_no_server.sock";
 
@@ -732,8 +693,6 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_keepalive, CommsFixture ) {
 }
 
 void pc_no_peers(void) {
-
-    LOG(DEBUG);
 
     /* empty */
     BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
@@ -1062,8 +1021,6 @@ void DestroyOnDisconnect (
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_before_connect, CommsFixture ) {
 
-    LOG(DEBUG);
-
     ::yajr::Peer * p = ::yajr::Peer::create(
             "localhost", boost::lexical_cast<std::string>(65528-kPortOffset), destroyOnCallback,
             NULL, CommsFixture::loopSelector
@@ -1076,8 +1033,6 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_before_connect, CommsFixture
 }
 
 void pc_retrying_client(void) {
-
-    LOG(DEBUG);
 
     /* one listener */
     BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
@@ -1104,8 +1059,6 @@ void pc_retrying_client(void) {
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_before_connect, CommsFixture ) {
 
-    LOG(DEBUG);
-
     ::yajr::Peer * p = ::yajr::Peer::create(
             "localhost", boost::lexical_cast<std::string>(65527-kPortOffset), disconnectOnCallback,
             NULL, CommsFixture::loopSelector
@@ -1118,8 +1071,6 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_before_connect, CommsFixt
 }
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_after_connect, CommsFixture ) {
-
-    LOG(DEBUG);
 
     ::yajr::Listener * l = ::yajr::Listener::create(
             "127.0.0.1", 65526-kPortOffset, doNothingOnConnect,
@@ -1140,8 +1091,6 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_after_connect, CommsFixture 
 }
 
 void pc_retrying_peers(void) {
-
-    LOG(DEBUG);
 
     /* one listener */
     BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
@@ -1169,8 +1118,6 @@ void pc_retrying_peers(void) {
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_after_connect, CommsFixture ) {
 
-    LOG(DEBUG);
-
     ::yajr::Listener * l = ::yajr::Listener::create(
             "127.0.0.1", 65525-kPortOffset, doNothingOnConnect,
             NULL, NULL, CommsFixture::current_loop, CommsFixture::loopSelector
@@ -1191,8 +1138,6 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_after_connect, CommsFixtu
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_server_after_connect, CommsFixture ) {
 
-    LOG(DEBUG);
-
     ::yajr::Listener * l = ::yajr::Listener::create(
             "127.0.0.1", 65524-kPortOffset, destroyOnCallback,
             NULL, NULL, CommsFixture::current_loop, CommsFixture::loopSelector
@@ -1211,8 +1156,6 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_server_after_connect, CommsFixture 
 }
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_server_after_connect, CommsFixture ) {
-
-    LOG(DEBUG);
 
     ::yajr::Listener * l = ::yajr::Listener::create(
             "127.0.0.1", 65523-kPortOffset, disconnectOnCallback,
@@ -1368,8 +1311,6 @@ void CountdownAttemptsOnCallback (
 
 void pc_no_server_and_client_gives_up(void) {
 
-    LOG(DEBUG);
-
     /* no listener */
     BOOST_CHECK_EQUAL(internal::Peer::LoopData::getPeerCount(CommsFixture::current_loop,
                 internal::Peer::LoopData::LISTENING), 0);
@@ -1396,8 +1337,6 @@ void pc_no_server_and_client_gives_up(void) {
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_client_retry_more_than_once, CommsFixture ) {
 
-    LOG(DEBUG);
-
     flakyListener = ::yajr::Listener::create(
             "127.0.0.1", 65522-kPortOffset, disconnectAndStopListeningOnCallback,
             NULL, NULL, CommsFixture::current_loop, CommsFixture::loopSelector
@@ -1417,8 +1356,6 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_client_retry_more_than_once, CommsFixture )
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_for_non_existent_host, CommsFixture ) {
 
-    LOG(DEBUG);
-
     ::yajr::Peer * p = ::yajr::Peer::create(
             "non_existent_host.", boost::lexical_cast<std::string>(65521-kPortOffset), destroyOnCallback,
             NULL, CommsFixture::loopSelector
@@ -1431,8 +1368,6 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_for_non_existent_host, Comms
 }
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_for_non_existent_service, CommsFixture ) {
-
-    LOG(DEBUG);
 
     ::yajr::Peer * p = ::yajr::Peer::create(
             "127.0.0.1", boost::lexical_cast<std::string>(65520-kPortOffset), destroyOnCallback,
@@ -1447,8 +1382,6 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_destroy_client_for_non_existent_service, Co
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_for_non_existent_host, CommsFixture ) {
 
-    LOG(DEBUG);
-
     ::yajr::Peer * p = ::yajr::Peer::create(
             "localhost", boost::lexical_cast<std::string>(65519-kPortOffset), disconnectOnCallback,
             NULL, CommsFixture::loopSelector
@@ -1461,8 +1394,6 @@ BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_for_non_existent_host, Co
 }
 
 BOOST_FIXTURE_TEST_CASE( STABLE_test_disconnect_client_for_non_existent_service, CommsFixture ) {
-
-    LOG(DEBUG);
 
     ::yajr::Peer * p = ::yajr::Peer::create(
             "localhost", boost::lexical_cast<std::string>(65518-kPortOffset), disconnectOnCallback,

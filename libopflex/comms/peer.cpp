@@ -86,11 +86,6 @@ bool Peer::down() {
         return false;
     }
 
-    VLOG(1)
-        << "deleting "
-        << this
-    ;
-
     onDelete();
 
     delete this;
@@ -126,42 +121,6 @@ Peer::~Peer() {
         return;
     }
 
-    VLOG(5)
-        << "{"
-        << static_cast< void * >(this)
-        << "}"
-        << " flags="
-        << std::hex
-        << getHandle()->flags
-        << " UV_CLOSING "
-        << (getHandle()->flags & 0x00001)
-        << " UV_CLOSED "
-        << (getHandle()->flags & 0x00002)
-        << " UV_STREAM_READING "
-        << (getHandle()->flags & 0x00004)
-        << " UV_STREAM_SHUTTING "
-        << (getHandle()->flags & 0x00008)
-        << " UV_STREAM_SHUT "
-        << (getHandle()->flags & 0x00010)
-        << " UV_STREAM_READABLE "
-        << (getHandle()->flags & 0x00020)
-        << " UV_STREAM_WRITABLE "
-        << (getHandle()->flags & 0x00040)
-        << " UV_STREAM_BLOCKING "
-        << (getHandle()->flags & 0x00080)
-        << " UV_STREAM_READ_PARTIAL "
-        << (getHandle()->flags & 0x00100)
-        << " UV_STREAM_READ_EOF "
-        << (getHandle()->flags & 0x00200)
-        << " UV_TCP_NODELAY "
-        << (getHandle()->flags & 0x00400)
-        << " UV_TCP_KEEPALIVE "
-        << (getHandle()->flags & 0x00800)
-        << " UV_TCP_SINGLE_ACCEPT "
-        << (getHandle()->flags & 0x01000)
-        << " UV_HANDLE_IPV6 "
-        << (getHandle()->flags & 0x10000)
-    ;
     assert(!uvRefCnt_);
     assert(!uv_is_active(getHandle()));
 

@@ -29,13 +29,6 @@ MessageFactory::InboundResult(
 
     char const * method = id[rapidjson::SizeType(0)].GetString();
 
-    VLOG(5)
-        << " peer="
-        <<  &peer
-        << " method="
-        <<   method
-    ;
-
 #undef  PERFECT_RET_VAL
 #define PERFECT_RET_VAL(method) \
     new (std::nothrow) InbRes<&method>(peer, result, id)

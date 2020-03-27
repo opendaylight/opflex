@@ -319,7 +319,6 @@ failed_unix_init:
     onError(rc);
 }
 
-
 
 namespace internal {
 /*
@@ -334,9 +333,6 @@ namespace internal {
 
 void on_passive_connection(uv_stream_t * server_handle, int status)
 {
-
-    VLOG(3);
-
     ListeningPeer * listener = Peer::get<ListeningPeer>(server_handle);
 
     if (status) {
@@ -505,9 +501,6 @@ public:
 int ::yajr::comms::internal::ListeningTcpPeer::setAddrFromIpAndPort(
         const std::string& ip_address,
         uint16_t port) {
-
-    VLOG(4);
-
     int rc;
     struct sockaddr_in* addr4;
     struct sockaddr_in6* addr6;

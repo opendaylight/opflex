@@ -160,10 +160,6 @@ void CommunicationPeer::onDisconnect() {
     ;
 
     if (!uv_is_closing(getHandle())) {
-        VLOG(2)
-            << this
-            << " issuing close for tcp handle"
-            ;
         uv_close(getHandle(), on_close);
     }
 
@@ -219,9 +215,6 @@ void CommunicationPeer::onDisconnect() {
 }
 
 void CommunicationPeer::destroy(bool now) {
-    VLOG(1)
-        << this
-    ;
 
     destroying_ = true;
     onDisconnect();
@@ -352,11 +345,6 @@ void CommunicationPeer::readBufferZ(char const * buffer, size_t nread) const {
 
         }
 
-        VLOG(5)
-            << "got: "
-            << chunk_size
-        ;
-
         buffer += chunk_size;
 
         boost::scoped_ptr<yajr::rpc::InboundMessage> msg(
@@ -417,13 +405,6 @@ std::ostream& operator << (
 
 void CommunicationPeer::onWrite() {
 
-    VLOG(5)
-        << this
-        << " Write completed for "
-        << pendingBytes_
-        << " bytes"
-    ;
-
     transport_.callbacks_->onSent_(this);
 
     pendingBytes_ = 0;
@@ -433,16 +414,8 @@ void CommunicationPeer::onWrite() {
 }
 
 int CommunicationPeer::write() const {
-    VLOG(4) << this;
 
     if (pendingBytes_) {
-
-        VLOG(4)
-            << this
-            << "Waiting for "
-            << pendingBytes_
-            << " bytes to flush"
-        ;
         return 0;
     }
 
@@ -453,13 +426,6 @@ int CommunicationPeer::write() const {
 
 int CommunicationPeer::writeIOV(std::vector<iovec>& iov) const {
 
-    VLOG(5)
-        << this
-        << " IOVEC of size "
-        << iov.size()
-        << " on_write "
-        << (void*)on_write
-    ;
     assert(iov.size());
 
     int rc;
@@ -572,10 +538,6 @@ void CommunicationPeer::timeout() {
 
 int comms::internal::CommunicationPeer::choke() const {
 
-    VLOG(4)
-        << this
-    ;
-
     if (choked_) {
 
         LOG(WARNING)
@@ -613,10 +575,6 @@ int comms::internal::CommunicationPeer::choke() const {
 }
 
 int comms::internal::CommunicationPeer::unchoke() const {
-
-    VLOG(4)
-        << this
-    ;
 
     if (!choked_) {
 

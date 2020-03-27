@@ -105,10 +105,6 @@ void Cb< PlainText >::on_read(
 
     CommunicationPeer * peer = comms::internal::Peer::get<CommunicationPeer>(h);
 
-    VLOG(5)
-        << peer
-    ;
-
     if (!peer->connected_) {
         return;
     }
