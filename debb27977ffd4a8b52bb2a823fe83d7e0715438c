@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0d7bc8a0_09101d86",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 2318,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-03-27T17:23:10Z",
+      "side": 1,
+      "message": "const string\u0026",
+      "revId": "debb27977ffd4a8b52bb2a823fe83d7e0715438c",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
