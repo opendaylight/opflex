@@ -9,6 +9,7 @@ pushd libopflex
 make -j2
 make check
 sudo make install
+find . -name test-suite.log|xargs cat
 popd
 
 pushd genie
@@ -39,4 +40,5 @@ pushd agent-ovs
 ./configure --enable-tsan &> /dev/null
 make -j2
 make check
+find . -name test-suite.log|xargs cat
 popd
