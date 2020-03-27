@@ -22,25 +22,26 @@ public:
     /**
      * constructor that takes a Transaction object reference
      */
-    MockRpcConnection(Transaction* pTrans_) : OvsdbConnection(pTrans_) {}
+    MockRpcConnection(Transaction* pTrans_) : OvsdbConnection() {}
 
     /**
      * establish mock connection
      */
-    virtual void connect() { connected = true;}
+    virtual void connect() { setConnected(true);}
 
     /**
      * disconnect mock connection
      */
-    virtual void disconnect() { connected = false;}
+    virtual void disconnect() { setConnected(false);}
 
     /**
      * send transaction
-     * @param tl list of Transaction objects
-     * @param reqId request ID
+     *
+     * @param[in] reqId request ID
+     * @param[in] requests list of Transact messages
+     * @param[in] trans callback
      */
-    void sendTransaction(const list<TransData>& tl,
-                         const uint64_t& reqId);
+    virtual void sendTransaction(const uint64_t& reqId, const list<JsonRpcTransactMessage>& requests, Transaction* trans);
 
     /**
      * destructor

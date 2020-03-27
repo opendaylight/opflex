@@ -236,70 +236,19 @@ public:
 typedef map<string, shared_ptr<TupleDataSet>> row_map;
 
 /**
- * struct used for setting up a JSON/RPC request.
- */
-class TransData {
-public:
-    /**
-     * set of tuple of data to be mapped to rows
-     */
-    set<tuple<string, string, string>> conditions;
-
-    /**
-     * set of columns in table
-     */
-    set<string> columns;
-    /**
-     * map of row data
-     */
-    row_map rows;
-    /**
-     * key value pairs
-     */
-    set<shared_ptr<BaseData>> kvPairs;
-
-    /**
-     * constructor with data
-     */
-    TransData(OvsdbOperation operation_, OvsdbTable table_) :
-        operation(operation_), table(table_) {};
-
-    /**
-     * copy constructor
-     */
-    TransData(const TransData& td) :  conditions(td.conditions),
-            columns(td.columns), rows(td.rows), kvPairs(td.kvPairs),
-            operation(td.operation), table(td.table){};
-
-    /**
-     * operation type, E.g select, insert.
-     */
-    OvsdbOperation getOperation() {
-        return operation;
-    }
-
-    /**
-     * table name
-     */
-    OvsdbTable getTable() {
-        return table;
-    }
-
-private:
-    OvsdbOperation operation;
-    OvsdbTable table;
-};
-
-/**
  * Transact message
  */
 class JsonRpcTransactMessage : public opflex::jsonrpc::JsonRpcMessage {
 public:
     /**
-     * Constract a transaction request
-     * @param td transaction data
+     * Construct a transact request
      */
-    JsonRpcTransactMessage(const TransData& td);
+    JsonRpcTransactMessage(OvsdbOperation operation_, OvsdbTable table_);
+
+    /**
+     * Copy constructor
+     */
+     JsonRpcTransactMessage(const JsonRpcTransactMessage& copy);
 
     /**
      * Serialize payload
@@ -321,9 +270,42 @@ public:
     template <typename T>
     bool operator()(rapidjson::Writer<T> & writer);
 
-private:
 
-    TransData tData;
+    /**
+     * operation type, E.g select, insert.
+     */
+    OvsdbOperation getOperation() const {
+        return operation;
+    }
+
+    /**
+     * table name
+     */
+    OvsdbTable getTable() const {
+        return table;
+    }
+
+    /**
+     * set of tuple of data to be mapped to rows
+     */
+    set<tuple<string, string, string>> conditions;
+
+    /**
+     * set of columns in table
+     */
+    set<string> columns;
+    /**
+     * map of row data
+     */
+    row_map rows;
+    /**
+     * key value pairs
+     */
+    set<shared_ptr<BaseData>> kvPairs;
+
+private:
+    OvsdbOperation operation;
+    OvsdbTable table;
 };
 
 /**
@@ -336,7 +318,7 @@ public:
      * @param tl transaction data
      * @param reqId request ID
      */
-    TransactReq(const list<TransData>& tl, uint64_t reqId);
+    TransactReq(const list<JsonRpcTransactMessage>& tl, uint64_t reqId);
 
     /**
      * Serialize payload
@@ -367,12 +349,12 @@ public:
      * @return
      */
     template <typename T>
-    bool operator()(rapidjson::Writer<T> & writer) {
+    bool operator()(rapidjson::Writer<T> & writer) const {
         writer.StartArray();
         writer.String("Open_vSwitch");
-        for (shared_ptr<JsonRpcTransactMessage>& tr : transList) {
+        for (auto tr : transList) {
             writer.StartObject();
-            (*tr)(writer);
+            tr.serializePayload(writer);
             writer.EndObject();
         }
         writer.EndArray();
@@ -380,7 +362,7 @@ public:
     }
 
 private:
-    list<shared_ptr<JsonRpcTransactMessage>> transList;
+    list<JsonRpcTransactMessage> transList;
     uint64_t reqId;
 };
 

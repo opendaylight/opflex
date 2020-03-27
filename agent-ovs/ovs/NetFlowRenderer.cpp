@@ -93,7 +93,7 @@ namespace opflexagent {
         std::string target = expSt.get()->getDstAddress() + ":";
         std::string port = std::to_string(expSt.get()->getDestinationPort());
         target += port;
-        LOG(DEBUG) << "netflow/ipfix target " << target.c_str() << "version is " << expSt.get()->getVersion() ;
+        LOG(DEBUG) << "netflow/ipfix target " << target.c_str() << " version is " << std::to_string(expSt.get()->getVersion());
 
         if (expSt.get()->getVersion() == CollectorVersionEnumT::CONST_V5) {
             LOG(DEBUG) << "creating netflow";

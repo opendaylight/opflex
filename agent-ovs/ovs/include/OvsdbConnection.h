@@ -16,6 +16,8 @@
 #ifndef OVS_OVSDBCONNECTION_H
 #define OVS_OVSDBCONNECTION_H
 
+#include <atomic>
+
 #include <opflex/rpc/JsonRpcConnection.h>
 #include <opflex/rpc/JsonRpcMessage.h>
 
@@ -50,7 +52,7 @@ class OvsdbConnection : public opflex::jsonrpc::RpcConnection {
      * Construct an OVSDB connection
      * @param pTrans_ transact message
      */
-    OvsdbConnection(Transaction* pTrans_) : opflex::jsonrpc::RpcConnection(), pTrans(pTrans_) {}
+    OvsdbConnection() : opflex::jsonrpc::RpcConnection(), connected(false) {}
 
     /**
      * destructor
@@ -131,11 +133,12 @@ class OvsdbConnection : public opflex::jsonrpc::RpcConnection {
 
     /**
      * send transaction request
-     * @param[in] tl list of TransData objects
+     *
      * @param[in] reqId request ID
+     * @param[in] requests list of Transact messages
+     * @param[in] trans callback
      */
-    virtual void sendTransaction(const list<TransData>& tl, const uint64_t& reqId);
-
+    virtual void sendTransaction(const uint64_t& reqId, const list<JsonRpcTransactMessage>& requests, Transaction* trans);
 
     /**
      * call back for transaction response
@@ -169,16 +172,13 @@ private:
     opflex::util::ThreadManager threadManager;
     uv_async_t connect_async;
     uv_async_t send_req_async;
-    /**
-     * pointer to a Transaction object instance
-     */
-    Transaction* pTrans;
+    unordered_map<uint64_t, Transaction*> transactions;
 
-protected:
+private:
 /**
  * boolean flag to indicate connection state.
  */
-bool connected = false;
+std::atomic<bool> connected;
 };
 
 
