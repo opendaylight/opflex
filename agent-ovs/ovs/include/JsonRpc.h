@@ -51,10 +51,9 @@ void getValue(const Document& val, const list<string>& idx, Value& result);
 
 /**
  * create an RPC connection to a server
- * @param[in] trans a reference to a Transaction object instance
  * @return shared pointer to an RpcConnection object
  */
-shared_ptr<OvsdbConnection> createConnection(Transaction& trans);
+shared_ptr<OvsdbConnection> createConnection();
 
 /**
  * class to handle JSON/RPC transactions without opflex.
@@ -449,7 +448,7 @@ private:
             shared_ptr<erspan_ifc>& pIfc);
 
     template <typename T>
-    inline bool sendRequest(list<T>& tl, uint64_t reqId) {
+    inline bool sendRequest(const list<T>& tl, uint64_t reqId) {
         unique_lock<mutex> lock(pConn->mtx);
         if (!pConn->ready.wait_for(lock, milliseconds(WAIT_TIMEOUT*1000),
                 [=]{return pConn->isConnected();})) {
@@ -457,7 +456,7 @@ private:
             return false;
         }
         responseReceived = false;
-        pConn->sendTransaction(tl, reqId);
+        pConn->sendTransaction(reqId, tl, this);
         return true;
     }
 

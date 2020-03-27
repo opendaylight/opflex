@@ -25,7 +25,7 @@ namespace opflexagent {
 
 
 void OvsdbConnection::send_req_cb(uv_async_t* handle) {
-    req_cb_data* reqCbd = (req_cb_data*)handle->data;
+    auto* reqCbd = (req_cb_data*)handle->data;
     TransactReq* req = reqCbd->req;
     yajr::rpc::MethodName method(req->getMethod().c_str());
     opflex::jsonrpc::PayloadWrapper wrapper(req);
@@ -36,17 +36,16 @@ void OvsdbConnection::send_req_cb(uv_async_t* handle) {
     delete(reqCbd);
 }
 
-void OvsdbConnection::sendTransaction(const list<TransData>& tl,
-        const uint64_t& reqId) {
-    req_cb_data* reqCbd = new req_cb_data();
-    reqCbd->req = new TransactReq(tl, reqId);
+void OvsdbConnection::sendTransaction(const uint64_t& reqId, const list<JsonRpcTransactMessage>& requests, Transaction* trans) {
+    transactions[reqId] = trans;
+    auto* reqCbd = new req_cb_data();
+    reqCbd->req = new TransactReq(requests, reqId);
     reqCbd->peer = getPeer();
     send_req_async.data = (void*)reqCbd;
     uv_async_send(&send_req_async);
 }
 
 void OvsdbConnection::start() {
-
     LOG(DEBUG) << "Starting .....";
     unique_lock<mutex> lock(mtx);
     client_loop = threadManager.initTask("OvsdbConnection");
@@ -68,8 +67,8 @@ void OvsdbConnection::connect_cb(uv_async_t* handle) {
 }
 
 void OvsdbConnection::stop() {
-    uv_close((uv_handle_t*)&connect_async, NULL);
-    uv_close((uv_handle_t*)&send_req_async, NULL);
+    uv_close((uv_handle_t*)&connect_async, nullptr);
+    uv_close((uv_handle_t*)&send_req_async, nullptr);
     peer->destroy();
     yajr::finiLoop(client_loop);
     threadManager.stopTask("OvsdbConnection");
@@ -78,7 +77,7 @@ void OvsdbConnection::stop() {
  void OvsdbConnection::on_state_change(yajr::Peer * p, void * data,
                      yajr::StateChange::To stateChange,
                      int error) {
-    OvsdbConnection* conn = (OvsdbConnection*)data;
+    auto* conn = (OvsdbConnection*)data;
     LOG(DEBUG) << "conn ptr " << hex << conn;
     switch (stateChange) {
         case yajr::StateChange::CONNECT:
@@ -108,7 +107,7 @@ void OvsdbConnection::stop() {
 }
 
 uv_loop_t* OvsdbConnection::loop_selector(void* data) {
-    OvsdbConnection* jRpc = (OvsdbConnection*)data;
+    auto* jRpc = (OvsdbConnection*)data;
     return jRpc->client_loop;
 }
 
@@ -121,9 +120,14 @@ void OvsdbConnection::disconnect() {
     // TODO
 }
 
-void OvsdbConnection::handleTransaction(uint64_t reqId,
-            const rapidjson::Document& payload) {
-    pTrans->handleTransaction(reqId, payload);
+void OvsdbConnection::handleTransaction(uint64_t reqId,  const rapidjson::Document& payload) {
+    auto iter = transactions.find(reqId);
+    if (iter != transactions.end()) {
+        iter->second->handleTransaction(reqId, payload);
+        transactions.erase(iter);
+    } else {
+        LOG(WARNING) << "Unable to find reqId " << reqId;
+    }
 }
 
 }

@@ -51,13 +51,13 @@ public:
     /**
      * Construct a new JSON-RPC message
      *
-     * @param method the method for the message
-     * @param type the type of message
-     * @param id if specified, use as the ID of the message.  The
+     * @param method_ the method for the message
+     * @param type_ the type of message
+     * @param id_ if specified, use as the ID of the message.  The
      * memory is owned by the caller, and must be set for responses.
      */
-    JsonRpcMessage(const std::string& method, MessageType type,
-                   const rapidjson::Value* id = NULL);
+    JsonRpcMessage(const std::string& method_, MessageType type_,
+                   const rapidjson::Value* id_ = NULL) : method(method_), type(type_), id(id_) {}
 
     /**
      * Destroy the message
@@ -81,14 +81,6 @@ public:
      * @return the type for the message
      */
     MessageType getType() const { return type; }
-
-    /**
-     * Get a transaction ID for a request.  If nonzero, allocate a
-     * transaction ID using a counter
-     *
-     * @return the transaction ID for the request
-     */
-    virtual uint64_t getReqXid() { return 0; }
 
     /**
      * Get the ID for this message.  Must only be called on a response
@@ -121,7 +113,7 @@ public:
         return true;
     }
 
-protected:
+private:
     /**
      * The request method associated with the message
      */

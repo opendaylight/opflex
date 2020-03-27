@@ -33,12 +33,10 @@ namespace opflexagent {
         jRpc = unique_ptr<JsonRpc>(new JsonRpc());
         jRpc->start();
         jRpc->connect();
-        if (!jRpc->isConnected()) {
-            return false;
-        }
-        return true;
+        return jRpc->isConnected();
     }
-  void JsonRpcRenderer::cleanup() {
+
+    void JsonRpcRenderer::cleanup() {
         jRpc->stop();
         jRpc.release();
     }

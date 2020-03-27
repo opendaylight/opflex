@@ -75,6 +75,5 @@ libengine_la_SOURCES = \
 	InspectorServerHandler.cpp \
 	InspectorClientImpl.cpp \
 	InspectorClientConn.cpp \
-	InspectorClientHandler.cpp \
-	JsonRpcMessage.cpp
+	InspectorClientHandler.cpp
 

@@ -18,8 +18,12 @@
 
 namespace opflexagent {
 
-JsonRpcTransactMessage::JsonRpcTransactMessage(const TransData& td) : JsonRpcMessage("transact", REQUEST),
-        tData(td) {}
+JsonRpcTransactMessage::JsonRpcTransactMessage(OvsdbOperation operation_, OvsdbTable table_) : JsonRpcMessage("transact", REQUEST),
+    operation(operation_), table(table_) {}
+
+JsonRpcTransactMessage::JsonRpcTransactMessage(const JsonRpcTransactMessage& copy) : JsonRpcMessage("transact", REQUEST),
+    conditions(copy.conditions), columns(copy.columns), rows(copy.rows), kvPairs(copy.kvPairs),
+    operation(copy.getOperation()), table(copy.getTable()) {}
 
 void JsonRpcTransactMessage::serializePayload(yajr::rpc::SendHandler& writer) {
     LOG(DEBUG) << "serializePayload send handler";
@@ -97,15 +101,15 @@ void writePair(rapidjson::Writer<T>& writer, const shared_ptr<BaseData>& bPtr,
 
 template <typename T>
 bool JsonRpcTransactMessage::operator()(rapidjson::Writer<T> & writer) {
-    for (auto& pair : tData.kvPairs) {
+    for (auto& pair : kvPairs) {
         writePair<T>(writer, pair, true);
     }
 
-    if (tData.getOperation() != OvsdbOperation::INSERT) {
+    if (getOperation() != OvsdbOperation::INSERT) {
         writer.String("where");
         writer.StartArray();
-        if (!tData.conditions.empty()) {
-            for (auto elem : tData.conditions) {
+        if (!conditions.empty()) {
+            for (auto elem : conditions) {
                 writer.StartArray();
                 string lhs = get<0>(elem);
                 writer.String(lhs.c_str());
@@ -127,22 +131,22 @@ bool JsonRpcTransactMessage::operator()(rapidjson::Writer<T> & writer) {
         writer.EndArray();
     }
     writer.String("table");
-    writer.String(toString(tData.getTable()));
+    writer.String(toString(getTable()));
     writer.String("op");
-    writer.String(toString(tData.getOperation()));
-    if (!tData.columns.empty()) {
+    writer.String(toString(getOperation()));
+    if (!columns.empty()) {
         writer.String("columns");
         writer.StartArray();
-        for (auto& tmp : tData.columns) {
+        for (auto& tmp : columns) {
             writer.String(tmp.c_str());
         }
         writer.EndArray();
     }
 
-    if (!tData.rows.empty()) {
+    if (!rows.empty()) {
         writer.String("row");
         writer.StartObject();
-        for (auto& row : tData.rows) {
+        for (auto& row : rows) {
             string col = row.first;
             LOG(DEBUG) << "row label " << col;
             writer.String(col.c_str());
@@ -167,12 +171,9 @@ bool JsonRpcTransactMessage::operator()(rapidjson::Writer<T> & writer) {
     return true;
 }
 
-TransactReq::TransactReq(const list<TransData>& tl, uint64_t reqId)
+TransactReq::TransactReq(const list<JsonRpcTransactMessage>& msgs, uint64_t reqId)
     : JsonRpcMessage("transact", REQUEST), reqId(reqId) {
-    for (auto& elem : tl) {
-        shared_ptr<JsonRpcTransactMessage> pTr = make_shared<JsonRpcTransactMessage>(elem);
-        transList.push_back(pTr);
-    }
+    transList = msgs;
 }
 
 void TransactReq::serializePayload(yajr::rpc::SendHandler& writer) {
