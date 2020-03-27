@@ -1688,6 +1688,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
     }
 
     if(endPoint.isExternal()) {
+        LOG(INFO) << "External endpoint update";
         arpMode = AddressResModeEnumT::CONST_FLOOD;
         ndMode = AddressResModeEnumT::CONST_FLOOD;
         unkFloodMode = UnknownFloodModeEnumT::CONST_FLOOD;
@@ -3977,13 +3978,14 @@ IntFlowManager::createGroupMod(uint16_t type, uint32_t groupId,
     uint32_t uplinkPort = getUplinkPort();
     if (type != OFPGC11_DELETE && encapType != ENCAP_NONE) {
         ActionBuilder ab;
-        if((localExternalFdSet.find(groupId) != localExternalFdSet.end()) &&
-               (uplinkPort != OFPP_NONE)) {
-            ofputil_bucket *bkt = createBucket(uplinkPort);
-            actionTunnelMetadata(ab, ENCAP_VLAN);
-            ab.output(uplinkPort)
-                    .build(bkt);
-            ovs_list_push_back(&entry->mod->buckets, &bkt->list_node);
+        if(localExternalFdSet.find(groupId) != localExternalFdSet.end()) {
+            if(uplinkPort != OFPP_NONE) {
+                ofputil_bucket *bkt = createBucket(uplinkPort);
+                actionTunnelMetadata(ab, ENCAP_VLAN);
+                ab.output(uplinkPort)
+                        .build(bkt);
+                ovs_list_push_back(&entry->mod->buckets, &bkt->list_node);
+	    }
         } else if(tunPort != OFPP_NONE) {
             ofputil_bucket *bkt = createBucket(tunPort);
             actionTunnelMetadata(ab, encapType);
@@ -4022,7 +4024,12 @@ updateEndpointFloodGroup(const opflex::modb::URI& fgrpURI,
             epMap[epUUID] = epPort;
             GroupEdit::Entry e = createGroupMod(OFPGC11_MODIFY, fgrpId, epMap);
             switchManager.writeGroupMod(e);
-        }
+        } else if(endPoint.isExternal()) {
+            /* Uplink could've come up.
+             * When uplink goes down, it is handled in the domain change*/
+            GroupEdit::Entry e = createGroupMod(OFPGC11_MODIFY, fgrpId, epMap);
+            switchManager.writeGroupMod(e);
+	}
     } else {
         /* Remove EP attachment to old floodgroup, if any */
         removeEndpointFromFloodGroup(epUUID);
@@ -4277,6 +4284,13 @@ void IntFlowManager::handlePortStatusUpdate(const string& portName,
         updateGroupTable();
     } else if(portName == dropLogIface) {
         handleDropLogPortUpdate();
+    } else if(portName == uplinkIface) {
+        createStaticFlows();
+        std::unordered_set<opflex::modb::URI> domains;
+        agent.getEndpointManager().getLocalExternalDomains(domains);
+        for(const URI &domain:domains) {
+            handleLocalExternalDomainUpdated(domain);
+        }
     } else {
         {
             unordered_set<string> uuids;

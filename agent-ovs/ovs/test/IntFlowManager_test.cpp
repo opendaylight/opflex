@@ -3420,17 +3420,18 @@ void BaseIntFlowManagerFixture::initExpSviBD(const URI& sviBDURI,
     ADDF(Bldr().table(BR).priority(2)
          .actions().mdAct(flow::meta::out::TUNNEL)
          .go(STAT).done());
-    ADDF(Bldr().table(SRC).priority(149)
-         .in(uplink).isVlan(vnid)
-         .actions().popVlan()
-         .load(SEPG, fixedVnid).load(BD, bdId)
-         .load(FD, fdId).load(RD, rdId)
-         .polApplied().go(SVR).done());
-    ADDF(Bldr().table(OUT).priority(10).reg(SEPG, fixedVnid)
-         .isMdAct(flow::meta::out::TUNNEL)
-         .actions().pushVlan().move(SEPG12, VLAN)
-         .outPort(uplink).done());
-
+    if(uplink != OFPP_NONE) {
+        ADDF(Bldr().table(SRC).priority(149)
+             .in(uplink).isVlan(vnid)
+             .actions().popVlan()
+             .load(SEPG, fixedVnid).load(BD, bdId)
+             .load(FD, fdId).load(RD, rdId)
+             .polApplied().go(SVR).done());
+        ADDF(Bldr().table(OUT).priority(10).reg(SEPG, fixedVnid)
+             .isMdAct(flow::meta::out::TUNNEL)
+             .actions().pushVlan().move(SEPG12, VLAN)
+             .outPort(uplink).done());
+    }
     ADDF(Bldr().table(POL).priority(8292).reg(SEPG, fixedVnid)
          .reg(DEPG, fixedVnid).actions().go(STAT).done());
     ADDF(Bldr().table(OUT).priority(10)
@@ -3509,28 +3510,30 @@ void BaseIntFlowManagerFixture::initExpExtSviEp(shared_ptr<Endpoint>& ep,
 
     boost::format epBktFormat(",bucket=bucket_id:%1%,actions=output:%2%");
     ge_bkt_ep5 = (epBktFormat % port % port).str();
-
-    boost::format tunBktFormat =
-            boost::format(",bucket=bucket_id:%1%,"
-                          "actions=push_vlan:0x8100,"
-                          "move:NXM_NX_REG0[0..11]->OXM_OF_VLAN_VID[],"
-                          "output:%2%");
-    ge_bkt_up = (tunBktFormat % uplink % uplink).str();
+    if(uplink != OFPP_NONE) {
+        boost::format tunBktFormat =
+                boost::format(",bucket=bucket_id:%1%,"
+                              "actions=push_vlan:0x8100,"
+                              "move:NXM_NX_REG0[0..11]->OXM_OF_VLAN_VID[],"
+                              "output:%2%");
+        ge_bkt_up = (tunBktFormat % uplink % uplink).str();
+    }
 }
 
 BOOST_FIXTURE_TEST_CASE(extSvi, VxlanIntFlowManagerFixture) {
     setConnected();
     URI extSVIBD("/tenant0/extSvi1");
-    intFlowManager.localExternalDomainUpdated(extSVIBD);
-    portmapper.setPort(ep5->getInterfaceName().get(), 105);
-    portmapper.setPort(105, ep5->getInterfaceName().get());
+    if(ep5->getInterfaceName()) {
+        portmapper.setPort(ep5->getInterfaceName().get(), 105);
+        portmapper.setPort(105, ep5->getInterfaceName().get());
+    }
     initExpStatic();
     initExpSviBD(extSVIBD,1,1);
     initExpFd(1);
     initExpExtSviEp(ep5,1,1);
     exec.Clear();
     exec.ExpectGroup(FlowEdit::ADD, ge_extsvi1 + ge_bkt_ep5 + ge_bkt_up);
-    intFlowManager.endpointUpdated(ep5->getUUID());
+    intFlowManager.localExternalDomainUpdated(extSVIBD);
     WAIT_FOR(exec.IsGroupEmpty(), 500);
     WAIT_FOR_TABLES("create", 500);
 
@@ -3543,6 +3546,48 @@ BOOST_FIXTURE_TEST_CASE(extSvi, VxlanIntFlowManagerFixture) {
     clearExpFlowTables();
     initExpStatic();
     WAIT_FOR_TABLES("delete", 500);
+}
+
+BOOST_FIXTURE_TEST_CASE(extSvi2, VxlanIntFlowManagerFixture) {
+    setConnected();
+    URI extSVIBD("/tenant0/extSvi1");
+    portmapper.erasePort("uplink");
+    if(ep5->getInterfaceName()) {
+        portmapper.setPort(ep5->getInterfaceName().get(), 105);
+        portmapper.setPort(105, ep5->getInterfaceName().get());
+    }
+    epSrc.updateEndpoint(*ep5);
+    initExpStatic();
+    initExpSviBD(extSVIBD,1,1);
+    initExpFd(1);
+    initExpExtSviEp(ep5,1,1);
+    exec.Clear();
+    exec.ExpectGroup(FlowEdit::ADD, ge_extsvi1 + ge_bkt_ep5);
+    intFlowManager.portStatusUpdate("uplink",1024, false);
+    WAIT_FOR(exec.IsGroupEmpty(), 500);
+    WAIT_FOR_TABLES("create_without_uplink", 500);
+
+    portmapper.setPort("uplink", 1024);
+    portmapper.setPort(1024, "uplink");
+    initExpStatic();
+    initExpSviBD(extSVIBD,1,1);
+    initExpFd(1);
+    initExpExtSviEp(ep5,1,1);
+    exec.Clear();
+    exec.ExpectGroup(FlowEdit::MOD, ge_extsvi1 + ge_bkt_up + ge_bkt_ep5);
+    intFlowManager.portStatusUpdate("uplink",1024, false);
+    WAIT_FOR(exec.IsGroupEmpty(), 500);
+    WAIT_FOR_TABLES("uplink_up", 500);
+
+    epSrc.removeEndpoint(ep5->getUUID());
+    exec.Clear();
+    exec.ExpectGroup(FlowEdit::DEL, ge_extsvi1);
+    intFlowManager.endpointUpdated(ep5->getUUID());
+    WAIT_FOR(exec.IsGroupEmpty(), 500);
+    intFlowManager.localExternalDomainUpdated(extSVIBD);
+    clearExpFlowTables();
+    initExpStatic();
+    WAIT_FOR_TABLES("delete_final", 500);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
