@@ -2571,13 +2571,6 @@ void BaseIntFlowManagerFixture::initExpAnycastService(Service &as, int nextHop) 
     string rmac = MAC(rmacArr).toString();
     string mmac("01:00:00:00:00:00/01:00:00:00:00:00");
 
-    initExpPodServiceStats("169.254.169.254", ep0, as);
-    initExpPodServiceStats("169.254.169.254", ep2, as);
-    initExpPodServiceStats("169.254.169.254", ep3, as);
-    initExpPodServiceStats("169.254.169.254", ep4, as);
-    initExpPodServiceStats("169.254.169.254", ep5, as);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep0, as);
-
     if (nextHop) {
         std::stringstream mss;
         mss << "symmetric_l3l4+udp,1024,iter_hash,"
@@ -2600,7 +2593,6 @@ void BaseIntFlowManagerFixture::initExpAnycastService(Service &as, int nextHop) 
              .isIpDst("169.254.169.254")
              .actions()
              .ipDst("169.254.169.1").decTtl()
-             .load(SVCADDR1, 0xa9fea9fe)
              .outPort(17).done());
         ADDF(Bldr().table(SVH).priority(99)
              .ipv6().reg(RD, 1)
@@ -2608,10 +2600,6 @@ void BaseIntFlowManagerFixture::initExpAnycastService(Service &as, int nextHop) 
              .actions()
              .ipv6Dst("fe80::a9:fe:a9:1")
              .decTtl()
-             .load(SVCADDR1, 0xfe800000)
-             .load(SVCADDR2, 0x0)
-             .load(SVCADDR3, 0xa900fe)
-             .load(SVCADDR4, 0xa900fe)
              .outPort(17).done());
 
         ADDF(Bldr().table(SEC).priority(100).ip().in(17)
@@ -2638,7 +2626,6 @@ void BaseIntFlowManagerFixture::initExpAnycastService(Service &as, int nextHop) 
                  .isIpDst("169.254.169.254")
                  .actions()
                  .ipDst("169.254.169.2").decTtl()
-                 .load(SVCADDR1, 0xa9fea9fe)
                  .outPort(17).done());
             ADDF(Bldr().table(SVH).priority(100)
                  .ipv6().reg(RD, 1).reg(OUTPORT, 1)
@@ -2646,10 +2633,6 @@ void BaseIntFlowManagerFixture::initExpAnycastService(Service &as, int nextHop) 
                  .actions()
                  .ipv6Dst("fe80::a9:fe:a9:2")
                  .decTtl()
-                 .load(SVCADDR1, 0xfe800000)
-                 .load(SVCADDR2, 0x0)
-                 .load(SVCADDR3, 0xa900fe)
-                 .load(SVCADDR4, 0xa900fe)
                  .outPort(17).done());
 
             ADDF(Bldr().table(SEC).priority(100).ip().in(17)
@@ -2675,16 +2658,11 @@ void BaseIntFlowManagerFixture::initExpAnycastService(Service &as, int nextHop) 
              .ip().reg(RD, 1).isIpDst("169.254.169.254")
              .actions()
              .ethSrc(rmac).ethDst(mac).decTtl()
-             .load(SVCADDR1, 0xa9fea9fe)
              .outPort(17).done());
         ADDF(Bldr().table(BR).priority(50)
              .ipv6().reg(RD, 1).isIpv6Dst("fe80::a9:fe:a9:fe")
              .actions()
              .ethSrc(rmac).ethDst(mac).decTtl()
-             .load(SVCADDR1, 0xfe800000)
-             .load(SVCADDR2, 0x0)
-             .load(SVCADDR3, 0xa900fe)
-             .load(SVCADDR4, 0xa900fe)
              .outPort(17).done());
 
         ADDF(Bldr().table(SEC).priority(100).ip().in(17)
