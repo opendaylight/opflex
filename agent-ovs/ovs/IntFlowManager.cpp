@@ -2413,6 +2413,7 @@ void IntFlowManager::updatePodSvcFlows (const string &uuid,
         const Service& as = *asWrapper;
         LOG(DEBUG) << "####### pod<-->svc Service ########";
         LOG(DEBUG) << *asWrapper;
+
         for (auto const& sm : as.getServiceMappings()) {
 
             for (const string& epUuid : epUuids) {
@@ -2420,8 +2421,17 @@ void IntFlowManager::updatePodSvcFlows (const string &uuid,
                      = epMgr.getEndpoint(epUuid);
                 if (!epWrapper)
                     continue;
+
                 LOG(DEBUG) << "####### pod<-->svc Endpoint ########";
                 LOG(DEBUG) << *epWrapper;
+
+                if (as.getServiceMode() != Service::LOADBALANCER) {
+                    LOG(DEBUG) << "podsvc not handled for service mode other than LB";
+                    // clear obs and prom metrics during update;
+                    // below will be no-op during create
+                    podSvcFlowRemExpr(epUuid+":"+uuid);
+                    continue;
+                }
 
                 const Endpoint& endPoint = *epWrapper.get();
                 for (const string& epipStr : endPoint.getIPs()) {
@@ -2468,6 +2478,14 @@ void IntFlowManager::updatePodSvcFlows (const string &uuid,
                 LOG(DEBUG) << *asWrapper;
 
                 const Service& as = *asWrapper.get();
+                if (as.getServiceMode() != Service::LOADBALANCER) {
+                    LOG(DEBUG) << "podsvc not handled for service mode other than LB";
+                    // clear obs and prom metrics during update;
+                    // below will be no-op during create
+                    podSvcFlowRemExpr(uuid+":"+svcUuid);
+                    continue;
+                }
+
                 for (auto const& sm : as.getServiceMappings()) {
                     podSvcFlowAddExpr(uuid+":"+svcUuid,
                                       epipStr, sm,
@@ -2613,27 +2631,8 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
                 } else if (as.getServiceMode() == Service::LOCAL_ANYCAST &&
                            ofPort != OFPP_NONE) {
                     serviceDest.action()
-                        .ethDst(macAddr).decTtl();
-                    /**
-                     * For anycast service without any nexthop, embed v4 service
-                     * addr within reg8 in bridge table. This way, the stats table
-                     * flows can just match on reg8 (v4 src addr of service) for
-                     * traffic destined towards services with and without NHs.
-                     * Similarly embed v6 addr in regs 8 to 11.
-                     */
-                    if (serviceAddr.is_v4()) {
-                        serviceDest.action()
-                            .reg(MFF_REG8, serviceAddr.to_v4().to_ulong());
-                    } else {
-                        uint32_t pAddr[4];
-                        in6AddrToLong(serviceAddr, &pAddr[0]);
-                        serviceDest.action()
-                            .reg(MFF_REG8, pAddr[0])
-                            .reg(MFF_REG9, pAddr[1])
-                            .reg(MFF_REG10, pAddr[2])
-                            .reg(MFF_REG11, pAddr[3]);
-                    }
-                    serviceDest.action().output(ofPort);
+                        .ethDst(macAddr).decTtl()
+                        .output(ofPort);
                 }
 
                 serviceDest.build(bridgeFlows);
@@ -2657,22 +2656,23 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
                             .reg(7, link);
                     }
                     ipMap.action().ipDst(nextHopAddr).decTtl();
-                    // For both LB & Anycast, save v4 service address to reg8
-                    // Save v6 addr in regs 8 to 11
-                    if (serviceAddr.is_v4()) {
-                        ipMap.action()
-                            .reg(MFF_REG8, serviceAddr.to_v4().to_ulong());
-                    } else {
-                        uint32_t pAddr[4];
-                        in6AddrToLong(serviceAddr, &pAddr[0]);
-                        ipMap.action()
-                            .reg(MFF_REG8, pAddr[0])
-                            .reg(MFF_REG9, pAddr[1])
-                            .reg(MFF_REG10, pAddr[2])
-                            .reg(MFF_REG11, pAddr[3]);
-                    }
 
                     if (as.getServiceMode() == Service::LOADBALANCER) {
+                        // For LB: save v4 service address to reg8
+                        // Save v6 addr in regs 8 to 11
+                        if (serviceAddr.is_v4()) {
+                            ipMap.action()
+                                .reg(MFF_REG8, serviceAddr.to_v4().to_ulong());
+                        } else {
+                            uint32_t pAddr[4];
+                            in6AddrToLong(serviceAddr, &pAddr[0]);
+                            ipMap.action()
+                                .reg(MFF_REG8, pAddr[0])
+                                .reg(MFF_REG9, pAddr[1])
+                                .reg(MFF_REG10, pAddr[2])
+                                .reg(MFF_REG11, pAddr[3]);
+                        }
+
                         if (zoneId != static_cast<uint16_t>(-1)) {
                             uint32_t metav = as.getInterfaceName()
                                 ? flow::meta::FROM_SERVICE_INTERFACE

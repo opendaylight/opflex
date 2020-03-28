@@ -42,19 +42,16 @@ public:
     ServiceManagerFixture(opflex_elem_t mode = opflex_elem_t::INVALID_MODE)
         : ModbFixture(mode) {
         createObjects();
-        LOG(DEBUG) << "############# SERVICE CREATE START ############";
-        createServices();
-        LOG(DEBUG) << "############# SERVICE CREATE END ############";
     }
 
     virtual ~ServiceManagerFixture() {
     }
 
     void removeServiceObjects(void);
-    void updateServices(void);
+    void updateServices(bool isLB);
     void checkServiceState(bool isCreate);
     void checkServiceExists(bool isCreate);
-    void createServices(void);
+    void createServices(bool isLB);
     Service as;
     /**
      * Following commented commands didnt work in test environment, but will work from a regular terminal:
@@ -79,11 +76,14 @@ void ServiceManagerFixture::removeServiceObjects (void)
     servSrc.removeService(as.getUUID());
 }
 
-void ServiceManagerFixture::createServices (void)
+void ServiceManagerFixture::createServices (bool isLB)
 {
     as.setUUID("ed84daef-1696-4b98-8c80-6b22d85f4dc2");
     as.setDomainURI(URI(rd0->getURI()));
-    as.setServiceMode(Service::LOADBALANCER);
+    if (isLB)
+        as.setServiceMode(Service::LOADBALANCER);
+    else
+        as.setServiceMode(Service::LOCAL_ANYCAST);
 
     sm1.setServiceIP("169.254.169.254");
     sm1.setServiceProto("udp");
@@ -106,9 +106,12 @@ void ServiceManagerFixture::createServices (void)
     servSrc.updateService(as);
 }
 
-void ServiceManagerFixture::updateServices (void)
+void ServiceManagerFixture::updateServices (bool isLB)
 {
-    as.setServiceMode(Service::LOCAL_ANYCAST);
+    if (isLB)
+        as.setServiceMode(Service::LOADBALANCER);
+    else
+        as.setServiceMode(Service::LOCAL_ANYCAST);
     // simulating an update. without clearing the service mappings,
     // service mapping count will increase, since each new SM will
     // have a new service hash before getting added to sm_set
@@ -146,20 +149,18 @@ void ServiceManagerFixture::checkServiceState (bool isCreate)
     BOOST_CHECK(opService);
 
     // Check if service props are fine
-    if (isCreate) {
-        uint8_t mode = ServiceModeEnumT::CONST_LB;
-        BOOST_CHECK_EQUAL(opService.get()->getMode(255), mode);
-    } else {
-        // Wait for the update to get reflected
-        uint8_t mode = ServiceModeEnumT::CONST_ANYCAST;
-        WAIT_FOR_DO_ONFAIL(
-           (opService && (opService.get()->getMode(255) == mode)),
-           500, // usleep(1000) * 500 = 500ms
-           (opService = su.get()->resolveSvcService(as.getUUID())),
-           if (opService) {
-               BOOST_CHECK_EQUAL(opService.get()->getMode(255), mode);
-           });
+    uint8_t mode = ServiceModeEnumT::CONST_ANYCAST;
+    if (Service::LOADBALANCER == as.getServiceMode()) {
+        mode = ServiceModeEnumT::CONST_LB;
     }
+    // Wait for the create/update to get reflected
+    WAIT_FOR_DO_ONFAIL(
+       (opService && (opService.get()->getMode(255) == mode)),
+       500, // usleep(1000) * 500 = 500ms
+       (opService = su.get()->resolveSvcService(as.getUUID())),
+       if (opService) {
+           BOOST_CHECK_EQUAL(opService.get()->getMode(255), mode);
+       });
 
     shared_ptr<modelgbp::svc::Service> pService = opService.get();
     BOOST_CHECK_EQUAL(pService->getDom(""), rd0->getURI().toString());
@@ -214,33 +215,39 @@ void ServiceManagerFixture::checkServiceState (bool isCreate)
         BOOST_CHECK_EQUAL(as.getAttributes().size(), 1);
     }
 
-    // Check observer stats object
     optional<shared_ptr<SvcStatUniverse> > ssu =
                           SvcStatUniverse::resolve(framework);
     BOOST_CHECK(ssu);
-    optional<shared_ptr<SvcCounter> > opServiceCntr =
-                    ssu.get()->resolveGbpeSvcCounter(as.getUUID());
-    BOOST_CHECK(opServiceCntr);
-    shared_ptr<SvcCounter> pServiceCntr = opServiceCntr.get();
+    // Check observer stats object for LB services only
+    if (Service::LOADBALANCER == as.getServiceMode()) {
+        optional<shared_ptr<SvcCounter> > opServiceCntr =
+                        ssu.get()->resolveGbpeSvcCounter(as.getUUID());
+        BOOST_CHECK(opServiceCntr);
+        shared_ptr<SvcCounter> pServiceCntr = opServiceCntr.get();
 
-    const Service::attr_map_t& svcAttr = as.getAttributes();
+        const Service::attr_map_t& svcAttr = as.getAttributes();
 
-    auto nameItr = svcAttr.find("name");
-    if (nameItr != svcAttr.end()) {
-        BOOST_CHECK_EQUAL(pServiceCntr->getName(""),
-                          nameItr->second);
-    }
+        auto nameItr = svcAttr.find("name");
+        if (nameItr != svcAttr.end()) {
+            BOOST_CHECK_EQUAL(pServiceCntr->getName(""),
+                              nameItr->second);
+        }
 
-    auto nsItr = svcAttr.find("namespace");
-    if (nsItr != svcAttr.end()) {
-        BOOST_CHECK_EQUAL(pServiceCntr->getNamespace(""),
-                          nsItr->second);
-    }
+        auto nsItr = svcAttr.find("namespace");
+        if (nsItr != svcAttr.end()) {
+            BOOST_CHECK_EQUAL(pServiceCntr->getNamespace(""),
+                              nsItr->second);
+        }
 
-    auto scopeItr = svcAttr.find("scope");
-    if (scopeItr != svcAttr.end()) {
-        BOOST_CHECK_EQUAL(pServiceCntr->getScope(""),
-                          scopeItr->second);
+        auto scopeItr = svcAttr.find("scope");
+        if (scopeItr != svcAttr.end()) {
+            BOOST_CHECK_EQUAL(pServiceCntr->getScope(""),
+                              scopeItr->second);
+        }
+    } else {
+        WAIT_FOR_DO_ONFAIL(!(ssu.get()->resolveGbpeSvcCounter(as.getUUID())),
+                           500,,
+                           LOG(ERROR) << "svc obj still present uuid: " << as.getUUID(););
     }
 }
 
@@ -257,9 +264,13 @@ void ServiceManagerFixture::checkServiceExists (bool isCreate)
         WAIT_FOR_DO_ONFAIL(su.get()->resolveSvcService(as.getUUID()),
                            500,,
                            LOG(ERROR) << "Service cfg Obj not resolved";);
-        WAIT_FOR_DO_ONFAIL(ssu.get()->resolveGbpeSvcCounter(as.getUUID()),
-                           500,,
-                           LOG(ERROR) << "Service obs Obj not resolved";);
+        if (Service::LOADBALANCER == as.getServiceMode()) {
+            WAIT_FOR_DO_ONFAIL(ssu.get()->resolveGbpeSvcCounter(as.getUUID()),
+                               500,,
+                               LOG(ERROR) << "Service obs Obj not resolved";);
+        } else {
+            BOOST_CHECK(!ssu.get()->resolveGbpeSvcCounter(as.getUUID()));
+        }
     } else {
         WAIT_FOR_DO_ONFAIL(!su.get()->resolveSvcService(as.getUUID()),
                            500,,
@@ -272,8 +283,31 @@ void ServiceManagerFixture::checkServiceExists (bool isCreate)
 
 BOOST_AUTO_TEST_SUITE(ServiceManager_test)
 
-BOOST_FIXTURE_TEST_CASE(testCreate, ServiceManagerFixture) {
+BOOST_FIXTURE_TEST_CASE(testCreateAnycast, ServiceManagerFixture) {
     LOG(DEBUG) << "############# SERVICE CREATE CHECK START ############";
+    LOG(DEBUG) << "#### SERVICE CREATE START ####";
+    createServices(false);
+    LOG(DEBUG) << "#### SERVICE CREATE END ####";
+    checkServiceExists(true);
+    checkServiceState(true);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    const string& output = BaseFixture::getOutputFromCommand(cmd);
+    size_t pos = std::string::npos;
+    pos = output.find("opflex_svc_active_total 0.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output.find("opflex_svc_created_total 0.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output.find("opflex_svc_removed_total 0.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+#endif
+    LOG(DEBUG) << "############# SERVICE CREATE CHECK END ############";
+}
+
+BOOST_FIXTURE_TEST_CASE(testCreateLB, ServiceManagerFixture) {
+    LOG(DEBUG) << "############# SERVICE CREATE CHECK START ############";
+    LOG(DEBUG) << "#### SERVICE CREATE START ####";
+    createServices(true);
+    LOG(DEBUG) << "#### SERVICE CREATE END ####";
     checkServiceExists(true);
     checkServiceState(true);
 #ifdef HAVE_PROMETHEUS_SUPPORT
@@ -290,24 +324,46 @@ BOOST_FIXTURE_TEST_CASE(testCreate, ServiceManagerFixture) {
 }
 
 BOOST_FIXTURE_TEST_CASE(testUpdate, ServiceManagerFixture) {
+    LOG(DEBUG) << "#### SERVICE CREATE START ####";
+    createServices(true);
+    LOG(DEBUG) << "#### SERVICE CREATE END ####";
     LOG(DEBUG) << "############# SERVICE UPDATE START ############";
     checkServiceExists(true);
-    updateServices();
+
+    // update to anycast
+    updateServices(false);
     checkServiceState(false);
 #ifdef HAVE_PROMETHEUS_SUPPORT
-    const string& output = BaseFixture::getOutputFromCommand(cmd);
+    const string& output1 = BaseFixture::getOutputFromCommand(cmd);
     size_t pos = std::string::npos;
-    pos = output.find("opflex_svc_active_total 1.000000");
+    pos = output1.find("opflex_svc_active_total 0.000000");
     BOOST_CHECK_NE(pos, std::string::npos);
-    pos = output.find("opflex_svc_created_total 1.000000");
+    pos = output1.find("opflex_svc_created_total 1.000000");
     BOOST_CHECK_NE(pos, std::string::npos);
-    pos = output.find("opflex_svc_removed_total 0.000000");
+    pos = output1.find("opflex_svc_removed_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+#endif
+
+    // update to lb
+    updateServices(true);
+    checkServiceState(false);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    const string& output2 = BaseFixture::getOutputFromCommand(cmd);
+    pos = std::string::npos;
+    pos = output2.find("opflex_svc_active_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output2.find("opflex_svc_created_total 2.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output2.find("opflex_svc_removed_total 1.000000");
     BOOST_CHECK_NE(pos, std::string::npos);
 #endif
     LOG(DEBUG) << "############# SERVICE UPDATE END ############";
 }
 
-BOOST_FIXTURE_TEST_CASE(testDelete, ServiceManagerFixture) {
+BOOST_FIXTURE_TEST_CASE(testDeleteLB, ServiceManagerFixture) {
+    LOG(DEBUG) << "#### SERVICE CREATE START ####";
+    createServices(true);
+    LOG(DEBUG) << "#### SERVICE CREATE END ####";
     LOG(DEBUG) << "############# SERVICE DELETE START ############";
     checkServiceExists(true);
     removeServiceObjects();
@@ -321,9 +377,11 @@ BOOST_FIXTURE_TEST_CASE(testDelete, ServiceManagerFixture) {
     BOOST_CHECK_NE(pos, std::string::npos);
     pos = output1.find("opflex_svc_removed_total 1.000000");
     BOOST_CHECK_NE(pos, std::string::npos);
+#endif
 
-    createServices();
+    createServices(true);
     checkServiceExists(true);
+#ifdef HAVE_PROMETHEUS_SUPPORT
     const string& output2 = BaseFixture::getOutputFromCommand(cmd);
     pos = output2.find("opflex_svc_active_total 1.000000");
     BOOST_CHECK_NE(pos, std::string::npos);
@@ -331,9 +389,11 @@ BOOST_FIXTURE_TEST_CASE(testDelete, ServiceManagerFixture) {
     BOOST_CHECK_NE(pos, std::string::npos);
     pos = output2.find("opflex_svc_removed_total 1.000000");
     BOOST_CHECK_NE(pos, std::string::npos);
+#endif
 
     removeServiceObjects();
     checkServiceExists(false);
+#ifdef HAVE_PROMETHEUS_SUPPORT
     const string& output3 = BaseFixture::getOutputFromCommand(cmd);
     pos = output3.find("opflex_svc_active_total 0.000000");
     BOOST_CHECK_NE(pos, std::string::npos);
@@ -341,7 +401,27 @@ BOOST_FIXTURE_TEST_CASE(testDelete, ServiceManagerFixture) {
     BOOST_CHECK_NE(pos, std::string::npos);
     pos = output3.find("opflex_svc_removed_total 2.000000");
     BOOST_CHECK_NE(pos, std::string::npos);
+#endif
+    LOG(DEBUG) << "############# SERVICE DELETE END ############";
+}
 
+BOOST_FIXTURE_TEST_CASE(testDeleteAnycast, ServiceManagerFixture) {
+    LOG(DEBUG) << "#### SERVICE CREATE START ####";
+    createServices(false);
+    LOG(DEBUG) << "#### SERVICE CREATE END ####";
+    LOG(DEBUG) << "############# SERVICE DELETE START ############";
+    checkServiceExists(true);
+    removeServiceObjects();
+    checkServiceExists(false);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    const string& output1 = BaseFixture::getOutputFromCommand(cmd);
+    size_t pos = std::string::npos;
+    pos = output1.find("opflex_svc_active_total 0.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output1.find("opflex_svc_created_total 0.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output1.find("opflex_svc_removed_total 0.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
 #endif
     LOG(DEBUG) << "############# SERVICE DELETE END ############";
 }

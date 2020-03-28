@@ -119,6 +119,15 @@ ServiceManager::updateObserverMoDB (const opflexagent::Service& service, bool ad
     optional<shared_ptr<SvcCounter> > opService =
                     ssu.get()->resolveGbpeSvcCounter(service.getUUID());
     if (add) {
+        Service::ServiceMode mode = service.getServiceMode();
+        if (mode != Service::ServiceMode::LOADBALANCER) {
+            LOG(DEBUG) << "Service stats not supported for non-LB services";
+            // clear obs and prom metrics during update;
+            // below will be no-op during create
+            updateObserverMoDB(service, false);
+            return;
+        }
+
         shared_ptr<SvcCounter> pService = nullptr;
         if (opService)
             pService = opService.get();
