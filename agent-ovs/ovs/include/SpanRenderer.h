@@ -57,11 +57,6 @@ public:
      */
     virtual void spanDeleted(shared_ptr<SessionState>& sesSt);
 
-    /**
-     * delete all span artifacts
-     */
-    virtual void spanDeleted();
-
 private:
     /**
      * Compare and update span config
@@ -70,7 +65,6 @@ private:
      */
     void handleSpanUpdate(const opflex::modb::URI& spanURI);
     virtual void sessionDeleted(shared_ptr<SessionState>& sesSt);
-    virtual void sessionDeleted();
     bool deleteErspanPort(const string& name);
     bool deleteMirror(const string& session);
     bool createMirror(const string& session, const set<string>& srcPorts,
@@ -79,7 +73,6 @@ private:
     void updateMirrorConfig(shared_ptr<SessionState> seSt);
     void updateConnectCb(const boost::system::error_code& ec, const opflex::modb::URI& uri);
     void delConnectPtrCb(const boost::system::error_code& ec, shared_ptr<SessionState> pSt);
-    void delConnectCb(const boost::system::error_code& ec);
 };
 }
 #endif //OPFLEX_SPANRENDERER_H

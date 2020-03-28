@@ -59,23 +59,6 @@ namespace opflexagent {
         cleanup();
     }
 
-    void SpanRenderer::spanDeleted() {
-        LOG(DEBUG) << "deleting mirror";
-        unique_lock<mutex> lock(handlerMutex);
-         if (!connect()) {
-            LOG(DEBUG) << "failed to connect, retry in " << CONNECTION_RETRY <<
-                    " seconds";
-            // connection failed, start a timer to try again
-            connection_timer.reset(new deadline_timer(agent.getAgentIOService(),
-                    boost::posix_time::seconds(CONNECTION_RETRY)));
-            connection_timer->async_wait(boost::bind(&SpanRenderer::delConnectCb, this,
-                    boost::asio::placeholders::error));
-            timerStarted = true;
-            return;
-        }
-        sessionDeleted();
-        cleanup();
-    }
     void SpanRenderer::updateConnectCb(const boost::system::error_code& ec,
             const opflex::modb::URI& spanURI) {
         LOG(DEBUG) << "timer update cb";
@@ -102,26 +85,9 @@ namespace opflexagent {
         spanDeleted(pSt);
     }
 
-    void SpanRenderer::delConnectCb(const boost::system::error_code& ec) {
-        if (ec) {
-            connection_timer.reset();
-            return;
-        }
-        LOG(DEBUG) << "timer span del cb";
-        spanDeleted();
-    }
-
     void SpanRenderer::sessionDeleted(shared_ptr<SessionState>& seSt) {
         deleteMirror(seSt->getName());
         // There is only one ERSPAN port.
-        deleteErspanPort(ERSPAN_PORT_NAME);
-    }
-
-    void SpanRenderer::sessionDeleted() {
-        if (!jRpc->deleteMirror(switchName)) {
-            LOG(DEBUG) << "Unable to delete mirror";
-            cleanup();
-        }
         deleteErspanPort(ERSPAN_PORT_NAME);
     }
 
