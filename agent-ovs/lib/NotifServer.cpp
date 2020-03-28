@@ -70,7 +70,7 @@ class NotifServer::session
 public:
     session(ba::io_service& io_service_, std::set<session_ptr>& sessions_)
         : io_service(io_service_), socket(io_service),
-          sessions(sessions_) { }
+          sessions(sessions_), msg_len(0) { }
 
     stream_protocol::socket& get_socket() {
         return socket;

@@ -128,12 +128,7 @@ public:
      * Notify span listeners about a session removal
      * @param seSt shared pointer to a SessionState object
      */
-    void notifyListeners(const shared_ptr<SessionState> seSt);
-
-    /**
-     * Notify span listeners to signal all span deletion
-     */
-    void notifyListeners();
+    void notifyListeners(const shared_ptr<SessionState>& seSt);
 
     /**
      * Listener for changes related to span
@@ -160,13 +155,13 @@ public:
          * process session update
          * @param[in] sess shared pointer to a Session object
          */
-         void processSession(shared_ptr<Session> sess);
+         void processSession(const shared_ptr<Session>& sess);
 
         /**
         * process source group update
         * @param[in] srcGrp a shared pointer to the source group object in MODB.
         */
-        void processSrcGrp(shared_ptr<SrcGrp> srcGrp);
+        void processSrcGrp(const shared_ptr<SrcGrp>& srcGrp);
 
         /**
          * process destination group update
@@ -208,7 +203,6 @@ public:
      * instance of span universe listener class.
      */
     SpanUniverseListener spanUniverseListener;
-    friend class SpanUniverseListener;
 
     /**
      * get the URI of the parent of LocalEp object
@@ -240,7 +234,6 @@ private:
     // list of URIs to send to listeners
     unordered_set<URI> notifyUpdate;
     unordered_set<shared_ptr<SessionState>> notifyDelete;
-    bool isDeletePending = false;
 
 };
 }

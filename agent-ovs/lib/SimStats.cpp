@@ -20,7 +20,7 @@ namespace opflexagent {
 using namespace modelgbp::gbpe;
 
 SimStats::SimStats(opflexagent::Agent& agent_)
-    : agent(agent_), intCounter(0), contractCounter(0),
+    : agent(agent_), timer_interval(0), intCounter(0), contractCounter(0),
       secGrpCounter(0), stopping(false)  {}
 
 SimStats::~SimStats() {}

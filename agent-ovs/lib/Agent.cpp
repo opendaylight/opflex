@@ -81,6 +81,7 @@ Agent::Agent(OFFramework& framework_, const LogParams& _logParams)
       extraConfigManager(framework),
       notifServer(agent_io),rendererFwdMode(opflex_elem_t::INVALID_MODE),
       started(false), presetFwdMode(opflex_elem_t::INVALID_MODE),
+      contractInterval(0), securityGroupInterval(0), interfaceInterval(0),
       spanManager(framework, agent_io),
       netflowManager(framework,agent_io),
       logParams(_logParams) {

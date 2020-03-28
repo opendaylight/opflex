@@ -159,9 +159,10 @@ namespace opflexagent {
                 shared_ptr<SessionState> sessState;
                 auto itr = spanmanager.sess_map.find(uri);
                 if (itr != spanmanager.sess_map.end()) {
-                    spanmanager.notifyDelete.insert(itr->second);
+                    shared_ptr<SessionState> state = itr->second;
+                    spanmanager.notifyDelete.insert(state);
                     spanmanager.sess_map.erase(itr);
-                    LOG(DEBUG) << "dst map size " << itr->second->getDstEndPointMap().size();
+                    LOG(DEBUG) << "dst map size " << state->getDstEndPointMap().size();
                 }
             }
         }
@@ -184,10 +185,6 @@ namespace opflexagent {
         lock_guard<mutex> guard(listener_mutex);
         LOG(DEBUG) << "registering listener";
         spanListeners.push_back(listener);
-        if (isDeletePending) {
-            notifyListeners();
-        }
-        isDeletePending = false;
     }
 
     void SpanManager::unregisterListener(SpanListener* listener) {
@@ -203,19 +200,11 @@ namespace opflexagent {
         }
     }
 
-    void SpanManager::notifyListeners(shared_ptr<SessionState> seSt) {
+    void SpanManager::notifyListeners(const shared_ptr<SessionState>& seSt) {
         lock_guard<mutex> guard(listener_mutex);
         LOG(DEBUG) << "notifying delete listener";
         for (SpanListener *listener : spanListeners) {
             listener->spanDeleted(seSt);
-        }
-    }
-
-    void SpanManager::notifyListeners() {
-        lock_guard<mutex> guard(listener_mutex);
-        LOG(DEBUG) << "notifying delete listener";
-        for (SpanListener* listener : spanListeners) {
-            listener->spanDeleted();
         }
     }
 
@@ -230,7 +219,7 @@ namespace opflexagent {
         }
     }
 
-    void SpanManager::SpanUniverseListener::processSession(shared_ptr<Session> sess) {
+    void SpanManager::SpanUniverseListener::processSession(const shared_ptr<Session>& sess) {
         LOG(DEBUG) << "Process Session " << sess->getURI();
         shared_ptr<SessionState> sessState;
         auto itr = spanmanager.sess_map.find(sess->getURI());
@@ -255,7 +244,7 @@ namespace opflexagent {
         }
     }
 
-    void SpanManager::SpanUniverseListener::processSrcGrp(shared_ptr<SrcGrp> srcGrp) {
+    void SpanManager::SpanUniverseListener::processSrcGrp(const shared_ptr<SrcGrp>& srcGrp) {
         vector<shared_ptr<SrcMember>> srcMemVec;
         srcGrp->resolveSpanSrcMember(srcMemVec);
         for (const shared_ptr<SrcMember>& srcMem : srcMemVec) {
