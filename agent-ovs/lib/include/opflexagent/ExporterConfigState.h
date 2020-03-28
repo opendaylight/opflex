@@ -47,8 +47,9 @@ public:
      * @param uri_ URI to a Session object
      * @param name_ name of Session object
      */
-    ExporterConfigState(const URI& uri_, const string& name_) : dstAddr(""),srcAddr(""),
-        activeFlowTimeOut(0),idleFlowTimeOut(0),samplingRate(0),dstPort(0),uri(uri_), name(name_)
+    ExporterConfigState(const URI& uri_, const string& name_) : dstAddr(""),
+        srcAddr(""), activeFlowTimeOut(0), idleFlowTimeOut(0), samplingRate(0),
+        dstPort(0),uri(uri_), name(name_), version(0), dscp(0)
      { };
     /**
      * get the name of this ExporterConfig

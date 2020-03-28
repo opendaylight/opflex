@@ -136,7 +136,7 @@ public:
      */
     PacketLogHandler(boost::asio::io_service &_io,
             boost::asio::io_service &_clientio):server_io(_io),
-            client_io(_clientio), stopped(false), throttleActive(false){}
+            client_io(_clientio), port(0), stopped(false), throttleActive(false){}
     /**
      * set IPv4 listening address for the socket
      * @param _addr IPv4 address

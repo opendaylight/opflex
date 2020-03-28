@@ -38,7 +38,7 @@ public:
      * Default constructor for containers
      */
     Endpoint() : promiscuousMode(false), discoveryProxyMode(false), natMode(false),
-                 external(false), aapModeAA(false), disableAdv(false) {}
+                 external(false), aapModeAA(false), disableAdv(false), extEncap(0) {}
 
     /**
      * Construct a new Endpoint with the given uuid.  Note that
@@ -49,7 +49,7 @@ public:
      */
     explicit Endpoint(const std::string& uuid_)
         : uuid(uuid_), promiscuousMode(false), discoveryProxyMode(false), natMode(false),
-          external(false), aapModeAA(false), disableAdv(false) {}
+          external(false), aapModeAA(false), disableAdv(false), extEncap(0) {}
 
     /**
      * Get the endpoint group URI associated with this endpoint.  Note
@@ -754,7 +754,7 @@ public:
         void addStaticRoute(const std::string& dest,
                             uint8_t prefixLen,
                             const std::string& nextHop) {
-            staticRoutes.push_back(static_route_t(dest, prefixLen, nextHop));
+            staticRoutes.emplace_back(dest, prefixLen, nextHop);
         }
 
         /**

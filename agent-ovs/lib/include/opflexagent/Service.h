@@ -41,7 +41,7 @@ public:
      * @param uuid_ the unique ID for the service.
      */
     explicit Service(const std::string& uuid_)
-        : uuid(uuid_) {}
+        : uuid(uuid_), serviceMode(LOCAL_ANYCAST) {}
 
     /**
      * Get the UUID for this service

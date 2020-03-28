@@ -152,7 +152,7 @@ IntFlowManager::IntFlowManager(Agent& agent_,
     taskQueue(agent.getAgentIOService()), encapType(ENCAP_NONE),
     floodScope(FLOOD_DOMAIN), tunnelPortStr("4789"),
     virtualRouterEnabled(false), routerAdv(false),
-    virtualDHCPEnabled(false), conntrackEnabled(false),
+    virtualDHCPEnabled(false), conntrackEnabled(false), dropLogRemotePort(0),
     advertManager(agent, *this), isSyncing(false), stopping(false) {
     // set up flow tables
     switchManager.setMaxFlowTables(NUM_FLOW_TABLES);

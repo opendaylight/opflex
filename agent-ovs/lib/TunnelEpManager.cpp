@@ -47,7 +47,7 @@ using boost::posix_time::milliseconds;
 using boost::system::error_code;
 
 TunnelEpManager::TunnelEpManager(Agent* agent_, long timer_interval_)
-    : agent(agent_),
+    : agent(agent_), renderer(nullptr),
       agent_io(agent_->getAgentIOService()),
       timer_interval(timer_interval_), stopping(false), uplinkVlan(0),
       terminationIpIsV4(false) {

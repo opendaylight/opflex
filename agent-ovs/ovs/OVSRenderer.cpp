@@ -67,16 +67,19 @@ OVSRenderer::OVSRenderer(Agent& agent_)
       secGrpStatsManager(&agent_, idGen, accessSwitchManager),
       tableDropStatsManager(&agent_, idGen, intSwitchManager,
               accessSwitchManager),
+      encapType(IntFlowManager::ENCAP_NONE),
       tunnelRemotePort(0), uplinkVlan(0),
       virtualRouter(true), routerAdv(true),
-      connTrack(true), ctZoneRangeStart(0), ctZoneRangeEnd(0),
-      ifaceStatsEnabled(true), ifaceStatsInterval(0),
+      endpointAdvMode(AdvertManager::EPADV_GRATUITOUS_BROADCAST),
+      tunnelEndpointAdvMode(AdvertManager::EPADV_RARP_BROADCAST),
+      virtualDHCP(true), connTrack(true), ctZoneRangeStart(0),
+      ctZoneRangeEnd(0), ifaceStatsEnabled(true), ifaceStatsInterval(0),
       contractStatsEnabled(true), contractStatsInterval(0),
       podsvcStatsEnabled(true), podsvcStatsInterval(0),
       secGroupStatsEnabled(true), secGroupStatsInterval(0),
       tableDropStatsEnabled(true), tableDropStatsInterval(0),
       spanRenderer(agent_), netflowRenderer(agent_), started(false),
-      pktLogger(pktLoggerIO, exporterIO) {
+      dropLogRemotePort(6081), pktLogger(pktLoggerIO, exporterIO) {
 
 }
 

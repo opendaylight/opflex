@@ -70,7 +70,7 @@ AccessFlowManager::AccessFlowManager(Agent& agent_,
                                      CtZoneManager& ctZoneManager_)
     : agent(agent_), switchManager(switchManager_), idGen(idGen_),
       ctZoneManager(ctZoneManager_), taskQueue(agent.getAgentIOService()),
-      conntrackEnabled(false), stopping(false) {
+      conntrackEnabled(false), stopping(false), dropLogRemotePort(0) {
     // set up flow tables
     switchManager.setMaxFlowTables(NUM_FLOW_TABLES);
     populateTableDescriptionMap();

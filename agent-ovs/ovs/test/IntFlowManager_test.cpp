@@ -217,7 +217,7 @@ public:
     string ge_bkt_tun_new;
     string ge_epg0, ge_epg2, ge_extsvi1;
     uint32_t ep2_port;
-    uint32_t ep4_port,ep5_port;
+    uint32_t ep4_port;
     uint32_t tun_port_new;
 };
 

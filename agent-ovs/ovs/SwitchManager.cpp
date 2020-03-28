@@ -36,7 +36,8 @@ SwitchManager::SwitchManager(Agent& agent_,
       portMapper(portMapper_), stateHandler(NULL),
       connectDelayMs(DEFAULT_SYNC_DELAY_ON_CONNECT_MSEC),
       stopping(false), syncEnabled(false), syncing(false),
-      syncInProgress(false), syncPending(false) {
+      syncInProgress(false), syncPending(false),
+      tlvTableDone(false), groupsDone(false) {
 
 }
 
@@ -355,7 +356,7 @@ void SwitchManager::completeSync() {
         std::vector<FlowEdit> diffs =
             stateHandler->reconcileFlows(flowTables, recvFlows);
         for (size_t i = 0; i < flowTables.size(); ++i) {
-            bool success = flowExecutor.Execute(diffs[i]);
+            success = flowExecutor.Execute(diffs[i]);
             if (!success) {
                 LOG(ERROR) << "[" << connection->getSwitchName() << "] "
                            << "Failed to execute diffs on table=" << i;

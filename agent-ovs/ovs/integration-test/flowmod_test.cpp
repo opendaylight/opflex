@@ -36,6 +36,7 @@ public:
         reader.installListenersForConnection(conn);
         cb = boost::bind(&BlockingFlowReader::gotFlow, this, _1, _2);
         gcb = boost::bind(&BlockingFlowReader::gotGroup, this, _1, _2);
+        replyDone = false;
     }
     ~BlockingFlowReader() {
         reader.uninstallListenersForConnection(conn);
@@ -54,7 +55,7 @@ public:
         recvFlows.clear();
         replyDone = false;
         reader.getFlows(tableId, cb);
-        while (replyDone == false) {
+        while (!replyDone) {
             sleep(1);
         }
         flows.swap(recvFlows);
@@ -64,7 +65,7 @@ public:
         recvGroups.clear();
         replyDone = false;
         reader.getGroups(gcb);
-        while (replyDone == false) {
+        while (!replyDone) {
             sleep(1);
         }
         groups.swap(recvGroups);
@@ -99,8 +100,8 @@ public:
 
     void createTestFlows();
 
-    void compareFlows(const FlowEntry& lhs, const FlowEntry& rhs);
-    void removeDefaultFlows(FlowEntryList& newFlows);
+    static void compareFlows(const FlowEntry& lhs, const FlowEntry& rhs);
+    static void removeDefaultFlows(FlowEntryList& newFlows);
 
     SwitchConnection conn;
     BlockingFlowReader rdr;
@@ -113,7 +114,7 @@ BOOST_AUTO_TEST_SUITE(flowmod_test)
 
 BOOST_FIXTURE_TEST_CASE(simple_mod, FlowModFixture) {
     BOOST_REQUIRE(!conn.Connect(OFP13_VERSION));
-    WAIT_FOR(connectDone == true, 5);
+    WAIT_FOR(connectDone, 5);
 
     FlowEdit fe;
     FlowEntryList flows;
@@ -143,7 +144,7 @@ BOOST_FIXTURE_TEST_CASE(simple_mod, FlowModFixture) {
     BOOST_CHECK(fexec.Execute(fe));
     rdr.GetFlows(0, flows);
     removeDefaultFlows(flows);
-    BOOST_CHECK(flows.size() == 0);
+    BOOST_CHECK(flows.empty());
     flows.clear();
 }
 
@@ -163,7 +164,7 @@ void addBucket(uint32_t bucketId, GroupEdit::Entry& entry) {
 
 BOOST_FIXTURE_TEST_CASE(group_mod, FlowModFixture) {
     BOOST_REQUIRE(!conn.Connect(OFP13_VERSION));
-    WAIT_FOR(connectDone == true, 5);
+    WAIT_FOR(connectDone, 5);
 
     GroupEdit::Entry entryIn1(new GroupEdit::GroupMod());
     entryIn1->mod->command = OFPGC11_ADD;
@@ -260,7 +261,7 @@ void FlowModFixture::removeDefaultFlows(FlowEntryList& newFlows) {
     match def;
     match_init_catchall(&def);
 
-    FlowEntryList::iterator itr = newFlows.begin();
+    auto itr = newFlows.begin();
     while (itr != newFlows.end()) {
         if (match_equal(&def, &((*itr)->entry->match))) {
             itr = newFlows.erase(itr);

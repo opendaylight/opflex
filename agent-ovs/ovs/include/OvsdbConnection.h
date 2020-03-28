@@ -50,9 +50,8 @@ class OvsdbConnection : public opflex::jsonrpc::RpcConnection {
     public:
     /**
      * Construct an OVSDB connection
-     * @param pTrans_ transact message
      */
-    OvsdbConnection() : opflex::jsonrpc::RpcConnection(), connected(false) {}
+    OvsdbConnection() : opflex::jsonrpc::RpcConnection(), peer(nullptr), connected(false) {}
 
     /**
      * destructor
