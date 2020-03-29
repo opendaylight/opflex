@@ -9,6 +9,7 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
+#include <string>
 
 #include <opflexagent/NetFlowManager.h>
 #include <opflexagent/logging.h>
@@ -60,33 +61,38 @@ namespace opflexagent {
         // sent to the object itself.
         if (classId == modelgbp::platform::Config::CLASS_ID) {
             optional <shared_ptr<modelgbp::platform::Config>> config_opt =
-                    modelgbp::platform::Config::resolve(netflowmanager.framework, uri);
-             if (config_opt) {
+                modelgbp::platform::Config::resolve(netflowmanager.framework, uri);
+            if (config_opt) {
                 vector <shared_ptr<modelgbp::netflow::ExporterConfig>> netflowexporterVec;
-                 config_opt.get()->resolveNetflowExporterConfig(netflowexporterVec);
-                 for (shared_ptr <modelgbp::netflow::ExporterConfig> newflowexporter : netflowexporterVec) {
-                     auto itr = netflowmanager.exporter_map.find(newflowexporter->getURI());
+                config_opt.get()->resolveNetflowExporterConfig(netflowexporterVec);
+                for (const shared_ptr <modelgbp::netflow::ExporterConfig>& newflowexporter : netflowexporterVec) {
+                    auto itr = netflowmanager.exporter_map.find(newflowexporter->getURI());
                     if (itr == netflowmanager.exporter_map.end()) {
                         LOG(DEBUG) << "creating netflow exporter config " << newflowexporter->getURI();
                         processExporterConfig(newflowexporter);
-                     }
-                   netflowmanager.notifyUpdate.insert(newflowexporter->getURI());
-                  }
-             }
+                    }
+                    netflowmanager.notifyUpdate.insert(newflowexporter->getURI());
+                }
+            }
         } else if (classId == modelgbp::netflow::ExporterConfig::CLASS_ID) {
-            optional<shared_ptr<modelgbp::netflow::ExporterConfig>> exporterconfig =
-                    modelgbp::netflow::ExporterConfig::resolve(netflowmanager.framework, uri);
-            if (exporterconfig) {
-                LOG(DEBUG) << "update on exporterconfig and uri is "
-                           << exporterconfig.get()->getURI()
-                           << " dst address is "
-                           << exporterconfig.get()->getDstAddr()
-                           << " dst port is "
-                           << exporterconfig.get()->getDstPort()
-                           << " version is "
-                           << exporterconfig.get()->getVersion();
+            optional<shared_ptr<modelgbp::netflow::ExporterConfig>> exporterConfigOpt =
+                modelgbp::netflow::ExporterConfig::resolve(netflowmanager.framework, uri);
+            if (exporterConfigOpt) {
+                auto& exporterConfig = exporterConfigOpt.get();
+                if (exporterConfig->isDstAddrSet() &&
+                    exporterConfig->isDstPortSet() &&
+                    exporterConfig->isVersionSet()) {
+                    LOG(DEBUG) << "update on exporterconfig and uri is "
+                               << exporterConfig->getURI()
+                               << " dst address is "
+                               << exporterConfig->getDstAddr()
+                               << " dst port is "
+                               << exporterConfig->getDstPort()
+                               << " version is "
+                               << std::to_string(exporterConfig->getVersion().get());
+                }
                 //process exporter config
-                processExporterConfig(exporterconfig.get());
+                processExporterConfig(exporterConfig);
                 netflowmanager.notifyUpdate.insert(uri);
             } else {
                 LOG(DEBUG) << "exporterconfig removed " << uri;
@@ -104,7 +110,7 @@ namespace opflexagent {
             });
         }
         netflowmanager.notifyUpdate.clear();
-        for (shared_ptr<ExporterConfigState> expSt : netflowmanager.notifyDelete) {
+        for (const shared_ptr<ExporterConfigState>& expSt : netflowmanager.notifyDelete) {
             netflowmanager.taskQueue.dispatch(expSt->getName(), [=]() {
                 netflowmanager.notifyListeners(expSt);
             });
@@ -149,7 +155,7 @@ namespace opflexagent {
         } else {
             return itr->second;
         }
-     }
+    }
 
     void NetFlowManager::NetFlowUniverseListener::processExporterConfig(const shared_ptr<modelgbp::netflow::ExporterConfig>& exporterconfig) {
         shared_ptr<ExporterConfigState> exportState;
@@ -159,36 +165,36 @@ namespace opflexagent {
             netflowmanager.exporter_map.erase(itr);
         }
         exportState = make_shared<ExporterConfigState>(exporterconfig->getURI(), exporterconfig->getName().get());
-        boost::optional<const string& > dstAddr =   exporterconfig->getDstAddr();
-        if(dstAddr) {
-             exportState->setDstAddress(dstAddr.get());
+        boost::optional<const string&> dstAddr =   exporterconfig->getDstAddr();
+        if (dstAddr) {
+            exportState->setDstAddress(dstAddr.get());
         }
         boost::optional<uint32_t> samplingrate = exporterconfig->getSamplingRate();
-        if(samplingrate)
+        if (samplingrate)
         {
             LOG(DEBUG) << "update on exporterconfig and samplingrate is " << samplingrate.get();
             exportState->setSamplingRate(samplingrate.get());
         }
         boost::optional<const uint8_t> ver = exporterconfig->getVersion();
-        if(ver)
+        if (ver)
         {
             exportState->setVersion(ver.get());
         }
         boost::optional<const uint8_t> dscp = exporterconfig->getDscp();
-        if(dscp)
+        if (dscp)
         {
             exportState->setDscp(dscp.get());
         }
-        boost::optional<uint16_t > dstPort =   exporterconfig->getDstPort();
-        if(dstPort) {
-             exportState->setDestinationPort(dstPort.get());
+        boost::optional<uint16_t > dstPort = exporterconfig->getDstPort();
+        if (dstPort) {
+            exportState->setDestinationPort(dstPort.get());
         }
         boost::optional<uint32_t> activeTimeout = exporterconfig->getActiveFlowTimeOut();
-        if(activeTimeout) {
+        if (activeTimeout) {
             exportState->setActiveFlowTimeOut(activeTimeout.get());
         }
         netflowmanager.exporter_map.insert(make_pair(exporterconfig->getURI(), exportState));
     }
- }
+}
 
 

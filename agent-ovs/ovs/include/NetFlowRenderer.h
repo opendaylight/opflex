@@ -56,7 +56,7 @@ public:
      * called when netflow exporterconfig has been deleted
      * @param expSt exporter state
      */
-    virtual void exporterDeleted(shared_ptr<ExporterConfigState> expSt);
+    virtual void exporterDeleted(const shared_ptr<ExporterConfigState>& expSt);
 
 private:
     /**

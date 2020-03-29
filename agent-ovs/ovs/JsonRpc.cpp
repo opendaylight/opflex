@@ -73,8 +73,7 @@ bool JsonRpc::createNetFlow(const string& brUuid, const string& target, const in
     pTdSet.reset(new TupleDataSet(pSet));
     msg1.rows.emplace("add_id_to_interface", pTdSet);
 
-    string uuid_name;
-    generateTempUuid(uuid_name);
+    const string uuid_name = "netflow1";
     msg1.kvPairs.emplace(make_shared<TupleData<string>>("uuid-name", uuid_name));
 
     pSet.clear();
@@ -97,6 +96,9 @@ bool JsonRpc::createNetFlow(const string& brUuid, const string& target, const in
         LOG(DEBUG) << "Error sending message";
         return false;
     }
+    if (!checkForResponse()) {
+        LOG(DEBUG) << "Error getting response";
+    }
     return true;
 }
 
@@ -116,8 +118,7 @@ bool JsonRpc::createIpfix(const string& brUuid, const string& target, const int&
         pTdSet.reset(new TupleDataSet(pSet));
         msg1.rows.emplace("sampling", pTdSet);
     }
-    string uuid_name;
-    generateTempUuid(uuid_name);
+    const string uuid_name = "ipfix1";
     msg1.kvPairs.emplace(make_shared<TupleData<string>>("uuid-name", uuid_name));
 
     tuple<string, string, string> cond1("_uuid", "==", brUuid);
@@ -138,6 +139,10 @@ bool JsonRpc::createIpfix(const string& brUuid, const string& target, const int&
 
     if (!sendRequest(requests, reqId)) {
         LOG(DEBUG) << "Error sending message";
+        return false;
+    }
+    if (!checkForResponse()) {
+        LOG(DEBUG) << "Error getting response";
         return false;
     }
     return true;
@@ -162,6 +167,12 @@ bool JsonRpc::deleteNetFlow(const string& brName) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
+
+    if (!checkForResponse()) {
+        LOG(DEBUG) << "Error getting response";
+        return false;
+    }
+
     return true;
 }
 
@@ -183,6 +194,10 @@ bool JsonRpc::deleteIpfix(const string& brName) {
 
     if (!sendRequest(requests, reqId)) {
         LOG(DEBUG) << "Error sending message";
+        return false;
+    }
+    if (!checkForResponse()) {
+        LOG(DEBUG) << "Error getting response";
         return false;
     }
     return true;

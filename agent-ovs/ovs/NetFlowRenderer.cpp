@@ -39,14 +39,14 @@ namespace opflexagent {
     }
 
     void NetFlowRenderer::exporterUpdated(const opflex::modb::URI& netFlowURI) {
-        LOG(DEBUG) << "NetFlowRenderer exporterupdated";
+        LOG(DEBUG) << "NetFlowRenderer exporter updated";
         handleNetFlowUpdate(netFlowURI);
     }
 
-    void NetFlowRenderer::exporterDeleted(shared_ptr<ExporterConfigState> expSt) {
+    void NetFlowRenderer::exporterDeleted(const shared_ptr<ExporterConfigState>& expSt) {
         LOG(DEBUG) << "deleting exporter";
         unique_lock<mutex> lock(handlerMutex);
-         if (!expSt) {
+        if (!expSt) {
             return;
         }
         if (!connect()) {
@@ -59,11 +59,11 @@ namespace opflexagent {
             timerStarted = true;
             return;
         }
-       if (expSt->getVersion() ==  CollectorVersionEnumT::CONST_V5) {
+        if (expSt->getVersion() ==  CollectorVersionEnumT::CONST_V5) {
             deleteNetFlow();
-       } else if(expSt->getVersion() == CollectorVersionEnumT::CONST_V9) {
-           deleteIpfix();
-       }
+        } else if(expSt->getVersion() == CollectorVersionEnumT::CONST_V9) {
+            deleteIpfix();
+        }
         cleanup();
     }
 
@@ -134,7 +134,9 @@ namespace opflexagent {
     }
 
     bool NetFlowRenderer::createNetFlow(const string &targets, int timeout) {
-        LOG(DEBUG) << "createNetFlow:";
+        // ensure any previous netflow/ipfix destinations are removed first
+        jRpc->deleteNetFlow(switchName);
+        jRpc->deleteIpfix(switchName);
         string brUuid;
         jRpc->getBridgeUuid(switchName, brUuid);
         LOG(DEBUG) << "bridge uuid " << brUuid;
@@ -142,7 +144,10 @@ namespace opflexagent {
         return true;
     }
 
-     bool NetFlowRenderer::createIpfix(const string &targets, int sampling) {
+    bool NetFlowRenderer::createIpfix(const string &targets, int sampling) {
+        // ensure any previous netflow/ipfix destinations are removed first
+        jRpc->deleteNetFlow(switchName);
+        jRpc->deleteIpfix(switchName);
         string brUuid;
         jRpc->getBridgeUuid(switchName, brUuid);
         LOG(DEBUG) << "bridge uuid " << brUuid << "sampling rate is " << sampling;
