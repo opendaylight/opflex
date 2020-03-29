@@ -64,10 +64,8 @@ int SwitchConnection::DecodeFlowRemoved(ofpbuf *msg,
 }
 
 SwitchConnection::SwitchConnection(const std::string& swName) :
-    switchName(swName), ofConn(NULL) {
+    switchName(swName), ofConn(NULL), ofProtoVersion(OFP10_VERSION), isDisconnecting(false) {
     connThread = NULL;
-    ofProtoVersion = OFP10_VERSION;
-    isDisconnecting = false;
 
     pollEventFd = eventfd(0, 0);
 
@@ -108,7 +106,7 @@ SwitchConnection::UnregisterMessageHandler(int msgType,
         MessageHandler *handler)
 {
     mutex_guard lock(connMtx);
-    HandlerMap::iterator itr = msgHandlers.find(msgType);
+    auto itr = msgHandlers.find(msgType);
     if (itr != msgHandlers.end()) {
         itr->second.remove(handler);
     }
@@ -199,7 +197,7 @@ SwitchConnection::GetProtocolVersion() {
     return ofProtoVersion;
 }
 
-std::string SwitchConnection::getSwitchName() {
+const std::string& SwitchConnection::getSwitchName() {
     return switchName;
 }
 
@@ -228,7 +226,7 @@ void
 SwitchConnection::Monitor() {
     LOG(DEBUG) << "Connection monitor started ...";
 
-    bool connLost = (IsConnected() == false);
+    bool connLost = !IsConnected();
     if (!connLost) {
         FireOnConnectListeners();
     }
@@ -389,7 +387,7 @@ void
 SwitchConnection::EchoRequestHandler::Handle(SwitchConnection *swConn,
                                              int, ofpbuf *msg,
                                              struct ofputil_flow_removed*) {
-    const ofp_header *rq = (const ofp_header *)msg->data;
+    const auto *rq = (const ofp_header *)msg->data;
     OfpBuf echoReplyMsg(ofputil_encode_echo_reply(rq));
     swConn->SendMessage(echoReplyMsg);
 }

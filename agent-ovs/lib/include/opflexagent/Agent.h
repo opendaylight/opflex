@@ -38,6 +38,7 @@
 #include <opflex/ofcore/OFConstants.h>
 #include <modelgbp/metadata/metadata.hpp>
 
+#include <atomic>
 #include <set>
 #include <utility>
 #include <string>
@@ -378,7 +379,7 @@ private:
      */
     std::unique_ptr<std::thread> io_service_thread;
 
-    bool started;
+    std::atomic<bool> started;
     opflex_elem_t presetFwdMode;
 
     void loadPlugin(const std::string& name);

@@ -78,7 +78,6 @@ void OvsdbConnection::stop() {
                      yajr::StateChange::To stateChange,
                      int error) {
     auto* conn = (OvsdbConnection*)data;
-    LOG(DEBUG) << "conn ptr " << hex << conn;
     switch (stateChange) {
         case yajr::StateChange::CONNECT:
             conn->setConnected(true);

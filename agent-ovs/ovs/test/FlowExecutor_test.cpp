@@ -29,7 +29,7 @@ using namespace opflexagent;
 class MockExecutorConnection : public SwitchConnection {
 public:
     MockExecutorConnection() : SwitchConnection("mockBridge"),
-        lastXid(0), errReply(ofperr(0)), reconnectReply(false) {
+        lastXid(0), errReply(ofperr(0)), reconnectReply(false), executor(nullptr) {
     }
     ~MockExecutorConnection() {
     }

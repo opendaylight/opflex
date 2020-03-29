@@ -16,6 +16,8 @@
 #include <thread>
 #include <mutex>
 #include <chrono>
+#include <atomic>
+
 
 struct vconn;
 struct ofpbuf;
@@ -142,7 +144,7 @@ public:
     /**
      * Get the name of switch that this connection is for.
      */
-    std::string getSwitchName();
+    const std::string& getSwitchName();
 
     /** Interface: Boost thread */
     void operator()();
@@ -206,7 +208,7 @@ private:
     vconn *ofConn;
     int ofProtoVersion;
 
-    bool isDisconnecting;
+    std::atomic<bool> isDisconnecting;
 
     std::unique_ptr<std::thread> connThread;
     std::mutex connMtx;
@@ -262,6 +264,5 @@ private:
 };
 
 } // namespace opflexagent
-
 
 #endif // OPFLEXAGENT_SWITCHCONNECTION_H_

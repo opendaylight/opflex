@@ -16,13 +16,6 @@
 #ifndef RPC_JSONRPCMESSAGE_H
 #define RPC_JSONRPCMESSAGE_H
 
-#include<set>
-#include<map>
-#include<list>
-
-#include <condition_variable>
-#include <mutex>
-
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 

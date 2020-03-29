@@ -17,6 +17,8 @@
 #define OVS_OVSDBCONNECTION_H
 
 #include <atomic>
+#include <condition_variable>
+#include <mutex>
 
 #include <opflex/rpc/JsonRpcConnection.h>
 #include <opflex/rpc/JsonRpcMessage.h>
