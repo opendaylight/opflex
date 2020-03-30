@@ -476,7 +476,7 @@ private:
                        std::vector<reference_t>*,
                        std::vector<MAC>*> value;
 
-        Value() {}
+        Value() : type(PropertyInfo::STRING), cardinality(PropertyInfo::SCALAR) {}
         Value(const Value& val);
         ~Value();
         Value& operator=(const Value& val);

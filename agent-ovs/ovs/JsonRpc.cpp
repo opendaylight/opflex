@@ -92,12 +92,9 @@ bool JsonRpc::createNetFlow(const string& brUuid, const string& target, const in
     uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests = {msg1, msg2};
 
-    if (!sendRequest(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests, reqId)) {
         LOG(DEBUG) << "Error sending message";
         return false;
-    }
-    if (!checkForResponse()) {
-        LOG(DEBUG) << "Error getting response";
     }
     return true;
 }
@@ -137,12 +134,8 @@ bool JsonRpc::createIpfix(const string& brUuid, const string& target, const int&
     uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests = {msg1, msg2};
 
-    if (!sendRequest(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests, reqId)) {
         LOG(DEBUG) << "Error sending message";
-        return false;
-    }
-    if (!checkForResponse()) {
-        LOG(DEBUG) << "Error getting response";
         return false;
     }
     return true;
@@ -163,16 +156,10 @@ bool JsonRpc::deleteNetFlow(const string& brName) {
     uint64_t reqId = getNextId();
     list<JsonRpcTransactMessage> requests = {msg1};
 
-    if (!sendRequest(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests, reqId)) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
-
-    if (!checkForResponse()) {
-        LOG(DEBUG) << "Error getting response";
-        return false;
-    }
-
     return true;
 }
 
@@ -189,15 +176,10 @@ bool JsonRpc::deleteIpfix(const string& brName) {
     msg1.rows.emplace("ipfix", pTdSet);
 
     uint64_t reqId = getNextId();
-
     const list<JsonRpcTransactMessage> requests = {msg1};
 
-    if (!sendRequest(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests, reqId)) {
         LOG(DEBUG) << "Error sending message";
-        return false;
-    }
-    if (!checkForResponse()) {
-        LOG(DEBUG) << "Error getting response";
         return false;
     }
     return true;
@@ -315,12 +297,8 @@ bool JsonRpc::updateBridgePorts(tuple<string,set<string>> ports,
     uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests = {msg1};
 
-    if (!sendRequest(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests, reqId)) {
         LOG(DEBUG) << "Error sending message";
-        return false;
-    }
-    if (!checkForResponse()) {
-        LOG(DEBUG) << "Error getting response";
         return false;
     }
     return true;
@@ -344,8 +322,7 @@ bool JsonRpc::handleGetBridgePortList(uint64_t reqId,
             brPortSet.emplace(uuidString);
         }
     } else {
-        error = "Error getting port uuid";
-        LOG(WARNING) << error;
+        LOG(WARNING) << "Error getting port uuid";
         return false;
     }
 
@@ -380,8 +357,7 @@ void JsonRpc::getUuidsFromVal(set<string>& uuidSet, const Document& payload, con
             uuidSet.emplace(uuidString);
         }
     } else {
-        error = "Error getting port uuid";
-        LOG(WARNING) << error;
+        LOG(WARNING) << "Error getting port uuid";
         return;
     }
 
@@ -405,12 +381,8 @@ bool JsonRpc::getBridgePortList(const string& bridge, BrPortResult& res) {
     uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests = {msg1};
 
-    if (!sendRequest(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests, reqId)) {
         LOG(DEBUG) << "Error sending message";
-        return false;
-    }
-    if (!checkForResponse()) {
-        LOG(DEBUG) << "Error getting response";
         return false;
     }
 
@@ -427,12 +399,8 @@ bool JsonRpc::getOvsdbMirrorConfig(mirror& mir) {
     uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests1 = {msg1};
 
-    if (!sendRequest(requests1, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests1, reqId)) {
         LOG(DEBUG) << "Error sending message";
-        return false;
-    }
-    if (!checkForResponse()) {
-        LOG(DEBUG) << "Error getting response";
         return false;
     }
     if (!handleMirrorConfig(pResp->reqId, pResp->payload, mir)) {
@@ -451,12 +419,8 @@ bool JsonRpc::getOvsdbMirrorConfig(mirror& mir) {
     reqId = getNextId();
     const list<JsonRpcTransactMessage> requests2 = {msg2};
 
-    if (!sendRequest(requests2, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests2, reqId)) {
         LOG(DEBUG) << "Error sending message";
-        return false;
-    }
-    if (!checkForResponse()) {
-        LOG(DEBUG) << "Error getting response";
         return false;
     }
     unordered_map<string, string> portMap;
@@ -479,18 +443,14 @@ bool JsonRpc::getErspanIfcParams(shared_ptr<erspan_ifc>& pIfc) {
     condSet.emplace(cond1);
     msg1.conditions = condSet;
     msg1.columns.emplace("options");
+
     uint64_t reqId = getNextId();
     list<JsonRpcTransactMessage> requests;
 
-    if (!sendRequest(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests, reqId)) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
-    if (!checkForResponse()) {
-        LOG(DEBUG) << "Error getting response";
-        return false;
-    }
-
     unordered_map<string, string> optMap;
     if (!getErspanOptions(pResp->reqId, pResp->payload, pIfc)) {
         LOG(DEBUG) << "failed to get ERSPAN options";
@@ -631,13 +591,8 @@ void JsonRpc::getPortUuid(const string& name, string& uuid) {
     uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests{msg1};
 
-    if (!sendRequest(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests, reqId)) {
         LOG(WARNING) << "Error sending message";
-        return;
-    }
-
-    if (!checkForResponse()) {
-        LOG(WARNING) << "Error getting response";
         return;
     }
 
@@ -663,15 +618,12 @@ void JsonRpc::getBridgeUuid(const string& name, string& uuid) {
     JsonRpcTransactMessage msg1(OvsdbOperation::SELECT, OvsdbTable::BRIDGE);
     msg1.conditions = condSet;
     msg1.columns.emplace("_uuid");
-    uint64_t reqId = getNextId();
 
+    uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests{msg1};
 
-    if (!sendRequest(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests, reqId)) {
         LOG(DEBUG) << "Error sending message";
-    }
-    if (!checkForResponse()) {
-        LOG(DEBUG) << "Error getting response";
     }
     handleGetBridgeUuidResp(pResp->reqId, pResp->payload, uuid);
 }
@@ -758,7 +710,6 @@ bool JsonRpc::createMirror(const string& brUuid, const string& name) {
     string uuid_name;
     generateTempUuid(uuid_name);
     msg1.kvPairs.emplace(make_shared<TupleData<string>>("uuid-name", uuid_name));
-    uint64_t reqId = getNextId();
 
     // msg2
     tuple<string, string, string> cond1("_uuid", "==", brUuid);
@@ -773,17 +724,13 @@ bool JsonRpc::createMirror(const string& brUuid, const string& name) {
     pTdSet.reset(new TupleDataSet(pSet));
     msg2.rows.emplace("mirrors", pTdSet);
 
+    uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests = {msg1};
 
-    if (!sendRequest(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests, reqId)) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
-    if (!checkForResponse()) {
-        LOG(DEBUG) << "Error getting response";
-        return false;
-    }
-
     return handleCreateMirrorResp(pResp->reqId, pResp->payload);
 }
 
@@ -881,18 +828,12 @@ bool JsonRpc::addErspanPort(const string& bridge, shared_ptr<erspan_ifc> port) {
     msg3.rows.emplace("ports", pTdSet);
 
     uint64_t reqId = getNextId();
-
     const list<JsonRpcTransactMessage> requests = {msg1, msg2, msg3};
 
-    if (!sendRequest(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests, reqId)) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
-    if (!checkForResponse()) {
-        LOG(DEBUG) << "Error getting response";
-        return false;
-    }
-
     return true;
 }
 
@@ -925,18 +866,7 @@ void JsonRpc::handleAddErspanPortResp(uint64_t reqId, const Document& payload) {
     responseReceived = true;
 }
 
-inline bool JsonRpc::checkForResponse() {
-    unique_lock<mutex> lock(pConn->mtx);
-    if (!pConn->ready.wait_for(lock, milliseconds(WAIT_TIMEOUT*1000),
-            [=]{return responseReceived;})) {
-        LOG(DEBUG) << "lock timed out";
-        return false;
-    } else {
-        return true;
-    }
-}
-
-bool JsonRpc::deleteMirror(const string& brName) {
+    bool JsonRpc::deleteMirror(const string& brName) {
     list<string> mirList;
     tuple<string, string, string> cond1("name", "==", brName);
     set<tuple<string, string, string>> condSet;
@@ -951,18 +881,12 @@ bool JsonRpc::deleteMirror(const string& brName) {
     msg.rows.emplace("mirrors", pTdSet);
 
     uint64_t reqId = getNextId();
-
     list<JsonRpcTransactMessage> requests = {msg};
 
-    if (!sendRequest(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests, reqId)) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
-    if (!checkForResponse()) {
-        LOG(DEBUG) << "Error getting response";
-        return false;
-    }
-
     return true;
 }
 

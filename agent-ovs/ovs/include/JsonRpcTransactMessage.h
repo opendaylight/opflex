@@ -49,7 +49,7 @@ public:
      * constructor for data type class
      * @param val_ type T for data type value to be stored
      */
-    DValue(T val_) : val(val_) {}
+    DValue(T val_) : val(val_), type(Dtype::STRING) {}
     /**
      * data of type T
      */
@@ -68,12 +68,12 @@ public:
     /**
      * default constructor
      */
-    DValue() {}
+    DValue() : type(Dtype::STRING) {}
     /**
      * constructor
      * @param val_ string data value
      */
-    DValue(const string& val_) : val(val_) { type = Dtype::STRING; }
+    DValue(const string& val_) : val(val_), type(Dtype::STRING) {}
     /**
      * string data
      */
@@ -92,12 +92,12 @@ public:
     /**
      * default constructor
      */
-    DValue() {}
+    DValue() : val(0), type(Dtype::INTEGER) {}
     /**
      * constructor
      * @param val_ int value of data
      */
-    DValue(int val_) : val(val_) { type = Dtype::INTEGER; }
+    DValue(int val_) : val(val_), type(Dtype::INTEGER) {}
     /**
      * int data
      */
@@ -116,12 +116,12 @@ public:
     /**
      * default constructor
      */
-    DValue() {}
+    DValue() : val(false), type(Dtype::BOOL) {}
     /**
      * constructor for bool data type
      * @param val_ bool data type
      */
-    DValue(bool val_) : val(val_) { type = Dtype::BOOL; }
+    DValue(bool val_) : val(val_), type(Dtype::BOOL) {}
     /**
      * bool data type
      */
@@ -163,13 +163,9 @@ public:
     }
 
     /**
-     * string representation of object
+     * Destructor
      */
-    string toString() {
-        stringstream ss;
-        ss << std::get<0>(data) << " : " << get<1>(data).val << endl;
-        return ss.str();
-    }
+    virtual ~TupleData() {}
 
     /**
      * get the data type
@@ -197,6 +193,9 @@ public:
         label(l) {
         tset.insert(m.begin(), m.end());
     }
+
+    virtual ~TupleDataSet() {}
+
     /**
      * label for collection type, viz. map, set
      */
@@ -205,29 +204,6 @@ public:
      * tuple data
      */
     set<shared_ptr<BaseData>> tset;
-    /**
-     * string representation of object
-     */
-    string toString() {
-        stringstream ss;
-        ss << "label " << label << endl;
-        for (auto& elem : tset) {
-            if (elem->getType() == Dtype::INTEGER) {
-                shared_ptr<TupleData<int>> tPtr =
-                        dynamic_pointer_cast<TupleData<int>>(elem);
-                ss << get<0>(tPtr->data) << " : " << get<1>(tPtr->data).val << endl;
-            } else if (elem->getType() == Dtype::STRING) {
-                shared_ptr<TupleData<string>> tPtr =
-                        dynamic_pointer_cast<TupleData<string>>(elem);
-                ss << get<0>(tPtr->data) << " : " << get<1>(tPtr->data).val << endl;
-            } else if (elem->getType() == Dtype::BOOL) {
-                shared_ptr<TupleData<bool>> tPtr =
-                        dynamic_pointer_cast<TupleData<bool>>(elem);
-                ss << get<0>(tPtr->data) << " : " << get<1>(tPtr->data).val << endl;
-            }
-        }
-        return ss.str();
-    }
 };
 
 /**
@@ -249,6 +225,11 @@ public:
      * Copy constructor
      */
      JsonRpcTransactMessage(const JsonRpcTransactMessage& copy);
+
+     /**
+      * Destructor
+      */
+     virtual ~JsonRpcTransactMessage() {};
 
     /**
      * Serialize payload
@@ -319,6 +300,11 @@ public:
      * @param reqId request ID
      */
     TransactReq(const list<JsonRpcTransactMessage>& tl, uint64_t reqId);
+
+    /**
+     * Destructor
+     */
+    virtual ~TransactReq() {};
 
     /**
      * Serialize payload

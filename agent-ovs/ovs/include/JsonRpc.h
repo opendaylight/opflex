@@ -448,7 +448,7 @@ private:
             shared_ptr<erspan_ifc>& pIfc);
 
     template <typename T>
-    inline bool sendRequest(const list<T>& tl, uint64_t reqId) {
+    inline bool sendRequestAndAwaitResponse(const list<T>& tl, uint64_t reqId) {
         unique_lock<mutex> lock(pConn->mtx);
         if (!pConn->ready.wait_for(lock, milliseconds(WAIT_TIMEOUT*1000),
                 [=]{return pConn->isConnected();})) {
@@ -457,16 +457,17 @@ private:
         }
         responseReceived = false;
         pConn->sendTransaction(reqId, tl, this);
-        return true;
+
+        if (!pConn->ready.wait_for(lock, milliseconds(WAIT_TIMEOUT*1000),
+                                   [=]{return responseReceived;})) {
+            LOG(DEBUG) << "lock timed out";
+            return false;
+        } else {
+            return true;
+        }
     }
 
     static void substituteSet(set<string>& s, const unordered_map<string, string>& portMap);
-
-    /**
-     * checks for response arrival
-     * @return true if response received, false if timed out.
-     */
-    bool checkForResponse();
 
     /**
      * print mirror map values
@@ -487,7 +488,6 @@ private:
     bool responseReceived = false;
     map<string, mirror> mirMap;
     const int WAIT_TIMEOUT = 10;
-    string error;
     shared_ptr<OvsdbConnection> pConn;
     shared_ptr<Response> pResp;
     uint64_t id = 0;
