@@ -77,7 +77,7 @@ static const uint8_t tcpv6_buf[] = {0x04, 0x00, 0x65, 0x58, 0x00, 0x00, 0x01,
 BOOST_FIXTURE_TEST_CASE(arp_test, PacketDecoderFixture) {
     auto pktDecoder = pktLogger.getDecoder();
     ParseInfo p(&pktDecoder);
-    PacketTuple expectedTuple("", "Int-PORT_SECURITY_TABLE", "9e:72:a6:94:18:af", "ff:ff:ff:ff:ff:ff", "ARP", "", "" ,"", "", "");
+    PacketTuple expectedTuple("", "Int-PORT_SECURITY_TABLE", "9e:72:a6:94:18:af", "ff:ff:ff:ff:ff:ff", "ARP", "13.0.0.3", "13.0.0.5" ,"", "", "");
     std::string expected(" MAC=ff:ff:ff:ff:ff:ff:9e:72:a6:94:18:af:ARP ARP_SPA=13.0.0.3 ARP_TPA=13.0.0.5 ARP_OP=1");
     pktDecoder.decode(arp_buf, 66, p);
     std::string dropReason;

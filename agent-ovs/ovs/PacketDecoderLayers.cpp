@@ -146,9 +146,9 @@ int ARPLayer::configure() {
     addField("protSize", 8, 40, PDF::FLDTYPE_BYTES, 0, 0, -1, 0, 0);
     addField("opCode", 16, 48, PDF::FLDTYPE_BYTES, 0, 0, -1, 3, 0);
     addField("senderMac", 48, 64, PDF::FLDTYPE_MAC, 0, 0, -1, 0, 0);
-    addField("senderv4", 32, 112, PDF::FLDTYPE_IPv4ADDR, 0, 0, -1, 1, 0);
+    addField("senderv4", 32, 112, PDF::FLDTYPE_IPv4ADDR, 0, 0, -1, 1, 5);
     addField("tgtMac", 48, 144, PDF::FLDTYPE_MAC, 0, 0, -1, 0, 0);
-    addField("tgtv4", 32, 192, PDF::FLDTYPE_IPv4ADDR, 0, 0, -1, 2, 0);
+    addField("tgtv4", 32, 192, PDF::FLDTYPE_IPv4ADDR, 0, 0, -1, 2, 6);
     return 0;
 }
 
