@@ -606,8 +606,10 @@ void AdvertManager::onEndpointAdvTimer(const boost::system::error_code& ec) {
         }
     }
 
-    if (!pendingEps.empty() || !pendingServices.empty())
+    if (!pendingEps.empty() || !pendingServices.empty()) {
+        guard.unlock();
         doScheduleEpAdv(repeat_dis(urng));
+    }
 }
 
 void AdvertManager::sendTunnelEpAdvs(const string& uuid) {

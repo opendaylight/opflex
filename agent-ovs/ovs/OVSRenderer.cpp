@@ -72,6 +72,7 @@ OVSRenderer::OVSRenderer(Agent& agent_)
       virtualRouter(true), routerAdv(true),
       endpointAdvMode(AdvertManager::EPADV_GRATUITOUS_BROADCAST),
       tunnelEndpointAdvMode(AdvertManager::EPADV_RARP_BROADCAST),
+      tunnelEndpointAdvIntvl(300),
       virtualDHCP(true), connTrack(true), ctZoneRangeStart(0),
       ctZoneRangeEnd(0), ifaceStatsEnabled(true), ifaceStatsInterval(0),
       contractStatsEnabled(true), contractStatsInterval(0),
