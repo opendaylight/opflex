@@ -61,6 +61,13 @@ module[epdr]
         {
             parent[class=epdr/L3Discovered]
         }
+        named
+        {
+            parent[class=*;]
+            {
+                component[member=ip]
+            }
+        }
 
     }
 

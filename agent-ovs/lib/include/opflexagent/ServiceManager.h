@@ -30,9 +30,11 @@
 #ifdef HAVE_PROMETHEUS_SUPPORT
 #include <opflexagent/PrometheusManager.h>
 #endif
+#include <modelgbp/observer/SvcStatUniverse.hpp>
 
 namespace opflexagent {
 
+using namespace modelgbp::gbpe;
 class Agent;
 
 /**
@@ -139,7 +141,16 @@ private:
      * @param service  the state of service
      * @param add      indicates if service is added or removed
      */
-    void updateObserverMoDB(const Service& service, bool add);
+    void updateSvcObserverMoDB(const Service& service, bool add);
+
+    /**
+     * Update service target observer in modb
+     *
+     * @param service  the state of service
+     * @param add      indicates if service is added or removed
+     */
+    void updateSvcTargetObserverMoDB(const Service& service, bool add,
+                      shared_ptr<modelgbp::gbpe::SvcCounter> pService);
 
     // reference to opflex agent
     Agent& agent;

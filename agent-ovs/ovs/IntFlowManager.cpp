@@ -1651,7 +1651,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
         switchManager.clearFlows(uuid, OUT_TABLE_ID);
         removeEndpointFromFloodGroup(uuid);
         agent.getSnatManager().delEndpoint(uuid);
-        updatePodSvcFlows(uuid, false, false);
+        updatePodSvcStatsFlows(uuid, false, false);
         return;
     }
     const Endpoint& endPoint = *epWrapper.get();
@@ -1720,7 +1720,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
         hasForwardingInfo = true;
     } else {
         // Add stats flows between "ep to svc" and "svc to ep"
-        updatePodSvcFlows(uuid, false, true);
+        updatePodSvcStatsFlows(uuid, false, true);
 
         if (hasForwardingInfo)
             fd = agent.getPolicyManager().getFDForGroup(epgURI.get());
@@ -2226,7 +2226,7 @@ updatePodSvcStatsCounters (const uint64_t &cookie,
 }
 
 // Clear pod svc objects
-void IntFlowManager::clearPodSvcCounters (const std::string& uuid)
+void IntFlowManager::clearPodSvcStatsCounters (const std::string& uuid)
 {
     Mutator mutator(agent.getFramework(), "policyelement");
     bool isEpToSvc = !strcmp(uuid.substr(0,7).c_str(),
@@ -2245,9 +2245,9 @@ void IntFlowManager::clearPodSvcCounters (const std::string& uuid)
 }
 
 // Add/del stats flows between "ep to svc" and "svc to ep"
-void IntFlowManager::updatePodSvcFlows (const string &uuid,
-                                        const bool &is_svc,
-                                        const bool &is_add)
+void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
+                                             const bool &is_svc,
+                                             const bool &is_add)
 {
     const std::lock_guard<mutex> lock(podSvcMutex);
 
@@ -2269,8 +2269,8 @@ void IntFlowManager::updatePodSvcFlows (const string &uuid,
         switchManager.clearFlows(uuid, STATS_TABLE_ID);
         // Qualifying the names given to idGen with eptosvc/svctoep
         // so that stat's infra's genIdList_ is unique per direction
-        clearPodSvcCounters("eptosvc:"+uuid);
-        clearPodSvcCounters("svctoep:"+uuid);
+        clearPodSvcStatsCounters("eptosvc:"+uuid);
+        clearPodSvcStatsCounters("svctoep:"+uuid);
         idGen.erase(ID_NMSPC_PODSVC, "eptosvc:"+uuid);
         idGen.erase(ID_NMSPC_PODSVC, "svctoep:"+uuid);
         podSvcUuidCkMap.erase(uuid);
@@ -2512,7 +2512,7 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
         switchManager.clearFlows(uuid, SERVICE_REV_TABLE_ID);
         switchManager.clearFlows(uuid, SERVICE_DST_TABLE_ID);
         switchManager.clearFlows(uuid, SERVICE_NEXTHOP_TABLE_ID);
-        updatePodSvcFlows(uuid, true, false);
+        updatePodSvcStatsFlows(uuid, true, false);
         idGen.erase(ID_NMSPC_SERVICE, uuid);
         return;
     }
@@ -2551,7 +2551,7 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
             ctMark |= 1 << 31;
 
         // Add stats flows between "ep to svc" and "svc to ep"
-        updatePodSvcFlows(uuid, true, true);
+        updatePodSvcStatsFlows(uuid, true, true);
 
         for (auto const& sm : as.getServiceMappings()) {
             if (!sm.getServiceIP())

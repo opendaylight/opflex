@@ -553,7 +553,7 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
     os << "{"
        << "\"uuid\":\"83f18f0b-80f7-46e2-b06c-4d9487b0c754\","
        << "\"mac\":\"10:ff:00:a3:01:00\","
-       << "\"ip\":[\"10.0.0.1\",\"10.0.0.2\"],"
+       << "\"ip\":[\"10.0.0.1\",\"10.0.0.2\",\"10.0.0.3\"],"
        << "\"interface-name\":\"veth0\","
        << "\"endpoint-group\":\"/PolicyUniverse/PolicySpace/test/GbpEpGroup/epg/\","
        << "\"security-group\":["
@@ -586,6 +586,19 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
         .addElement("EprL3Ep")
         .addElement(rduri.toString())
         .addElement("10.0.0.2").build();
+    URI l3epdr_1 = URIBuilder()
+        .addElement("EpdrL3Discovered")
+        .addElement("EpdrLocalL3Ep")
+        .addElement("10.0.0.1").build();
+    URI l3epdr_2 = URIBuilder()
+        .addElement("EpdrL3Discovered")
+        .addElement("EpdrLocalL3Ep")
+        .addElement("10.0.0.2").build();
+    URI l3epdr_3 = URIBuilder()
+        .addElement("EpdrL3Discovered")
+        .addElement("EpdrLocalL3Ep")
+        .addElement("10.0.0.3").build();
+
 
     URI sgc1 = URIBuilder()
         .addElement("PolicyUniverse")
@@ -642,6 +655,9 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr_1), 500);
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr_2), 500);
     WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr), 500);
+    WAIT_FOR(hasPolicyEntry<LocalL3Ep>(framework, l3epdr_1), 500);
+    WAIT_FOR(hasPolicyEntry<LocalL3Ep>(framework, l3epdr_2), 500);
+    WAIT_FOR(hasPolicyEntry<LocalL3Ep>(framework, l3epdr_3), 500);
     WAIT_FOR(hasPolicyEntry<SecurityGroupContext>(framework, l2sgc_1), 500);
     WAIT_FOR(hasPolicyEntry<SecurityGroupContext>(framework, l2sgc_2), 500);
     WAIT_FOR(hasPolicyEntry<SecurityGroupContext>(framework, l31sgc_1), 500);
@@ -651,7 +667,7 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
     WAIT_FOR(hasPolicyEntry<ReportedEpAttribute>(framework, epattr_1), 500);
     WAIT_FOR(hasPolicyEntry<ReportedEpAttribute>(framework, epattr_2), 500);
 
-    // Check updates to existing file: attr delete, sec grp delete
+    // Check updates to existing file: attr delete, sec grp delete, IP delete
     fs::ofstream os2(path1);
     os2 << "{"
        << "\"uuid\":\"83f18f0b-80f7-46e2-b06c-4d9487b0c754\","
@@ -670,6 +686,9 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
 
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr_1), 500);
     WAIT_FOR(hasEPREntry<L3Ep>(framework, l3epr_2), 500);
+    WAIT_FOR(hasPolicyEntry<LocalL3Ep>(framework, l3epdr_1), 500);
+    WAIT_FOR(hasPolicyEntry<LocalL3Ep>(framework, l3epdr_2), 500);
+    WAIT_FOR(!hasPolicyEntry<LocalL3Ep>(framework, l3epdr_3), 500);
     WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr), 500);
     WAIT_FOR(hasPolicyEntry<SecurityGroupContext>(framework, l2sgc_1), 500);
     WAIT_FOR(!hasPolicyEntry<SecurityGroupContext>(framework, l2sgc_2), 500);
@@ -693,8 +712,16 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
         << "}" << std::endl;
     os3.close();
 
+    URI l3epdr_4 = URIBuilder()
+        .addElement("EpdrL3Discovered")
+        .addElement("EpdrLocalL3Ep")
+        .addElement("10.0.0.4").build();
+
     WAIT_FOR(!hasEPREntry<L3Ep>(framework, l3epr_1), 500);
     WAIT_FOR(!hasEPREntry<L3Ep>(framework, l3epr_2), 500);
+    WAIT_FOR(!hasPolicyEntry<LocalL3Ep>(framework, l3epdr_1), 500);
+    WAIT_FOR(!hasPolicyEntry<LocalL3Ep>(framework, l3epdr_2), 500);
+    WAIT_FOR(hasPolicyEntry<LocalL3Ep>(framework, l3epdr_4), 500);
     WAIT_FOR(!hasEPREntry<L2Ep>(framework, l2epr), 500);
     WAIT_FOR(!hasPolicyEntry<SecurityGroupContext>(framework, l2sgc_1), 500);
     WAIT_FOR(!hasPolicyEntry<SecurityGroupContext>(framework, l2sgc_2), 500);
@@ -750,12 +777,14 @@ BOOST_FIXTURE_TEST_CASE( fssource, FSEndpointFixture ) {
     os4.close();
 
     WAIT_FOR(hasEPREntry<L2Ep>(framework, l2epr2), 500);
+    WAIT_FOR(hasPolicyEntry<LocalL3Ep>(framework, l3epdr_3), 500);
     WAIT_FOR(hasPolicyEntry<ReportedEpAttribute>(framework, epattr_1), 500);
 
     // check for removing an endpoint
     fs::remove(path2);
 
     WAIT_FOR(!hasEPREntry<L2Ep>(framework, l2epr2), 500);
+    WAIT_FOR(!hasPolicyEntry<LocalL3Ep>(framework, l3epdr_3), 500);
     WAIT_FOR(!hasPolicyEntry<ReportedEpAttribute>(framework, epattr_1), 500);
 
     watcher.stop();

@@ -476,12 +476,12 @@ module[gbpe]
         {
             parent[class=*;]
             {
-                component[member=uuid]
+                component[member=ip]
             }
         }
 
-        # A unique pod identifer
-        member[uuid; type=reference/UUID]
+        # A unique IP of pod
+        member[ip; type=address/IP]
 
         # name of the pod: taken from attr for k8s OR intf-name for openstack
         member[name; type=ascii/String]

@@ -16,7 +16,6 @@
 #include <modelgbp/svc/ServiceModeEnumT.hpp>
 #include <modelgbp/svc/ConnTrackEnumT.hpp>
 #include <modelgbp/gbpe/EncapTypeEnumT.hpp>
-#include <modelgbp/observer/SvcStatUniverse.hpp>
 
 namespace opflexagent {
 
@@ -98,11 +97,55 @@ void ServiceManager::removeDomains(const Service& service) {
     }
 }
 
+/* Populate MODB with service target observer */
+void
+ServiceManager::updateSvcTargetObserverMoDB (const opflexagent::Service& service,
+                                             bool add,
+                                             shared_ptr<SvcCounter> pSvcCounter)
+{
+    using namespace opflex::modb;
+    using modelgbp::observer::SvcStatUniverse;
+
+    LOG(DEBUG) << "Updating obs modb for service target: " << service.getUUID()
+               << " add: " << add;
+
+    std::vector<shared_ptr<SvcTargetCounter> > out;
+    if (add) {
+        pSvcCounter->resolveGbpeSvcTargetCounter(out);
+    }
+
+    for (const auto& sm : service.getServiceMappings()) {
+        for (const auto& ip : sm.getNextHopIPs()) {
+            optional<shared_ptr<SvcTargetCounter> > opSvcTarget =
+                                pSvcCounter->resolveGbpeSvcTargetCounter(ip);
+            if (add) {
+                shared_ptr<SvcTargetCounter> pSvcTarget = nullptr;
+                if (!opSvcTarget) {
+                    pSvcTarget = pSvcCounter->addGbpeSvcTargetCounter(ip);
+                } else {
+                    pSvcTarget = opSvcTarget.get();
+                }
+                for (size_t idx=0; idx < out.size(); idx++) {
+                    if (out[idx]->getIp("") == ip)
+                        out.erase(out.begin()+idx);
+                }
+            } else {
+                if (opSvcTarget) {
+                    opSvcTarget.get()->remove();
+                }
+            }
+        }
+    }
+
+    // Remove deleted service targets
+    for (auto& pSvcTarget : out)
+        pSvcTarget->remove();
+}
+
 /* Populate MODB with service observer */
 void
-ServiceManager::updateObserverMoDB (const opflexagent::Service& service, bool add)
+ServiceManager::updateSvcObserverMoDB (const opflexagent::Service& service, bool add)
 {
-    using namespace modelgbp::gbpe;
     using namespace opflex::modb;
     using modelgbp::observer::SvcStatUniverse;
 
@@ -124,7 +167,7 @@ ServiceManager::updateObserverMoDB (const opflexagent::Service& service, bool ad
             LOG(DEBUG) << "Service stats not supported for non-LB services";
             // clear obs and prom metrics during update;
             // below will be no-op during create
-            updateObserverMoDB(service, false);
+            updateSvcObserverMoDB(service, false);
             return;
         }
 
@@ -153,13 +196,18 @@ ServiceManager::updateObserverMoDB (const opflexagent::Service& service, bool ad
             pService->unsetNamespace();
 
         auto scopeItr = svcAttr.find("scope");
-        if (scopeItr != svcAttr.end())
+        if (scopeItr != svcAttr.end()) {
             pService->setScope(scopeItr->second);
-        else
+            // For cluster services, create service targets as well
+            if (scopeItr->second == "cluster")
+                updateSvcTargetObserverMoDB(service, true, pService);
+        } else
             pService->unsetScope();
 
     } else {
         if (opService) {
+            // For external services, svc target removal will be noop
+            updateSvcTargetObserverMoDB(service, false, opService.get());
             opService.get()->remove();
 #ifdef HAVE_PROMETHEUS_SUPPORT
             prometheusManager.decSvcCounter();
@@ -175,7 +223,6 @@ void
 ServiceManager::updateConfigMoDB (const opflexagent::Service& service, bool add)
 {
     using namespace modelgbp::svc;
-    using namespace modelgbp::gbpe;
     using namespace opflex::modb;
     Mutator mutator(framework, "policyelement");
 
@@ -323,7 +370,7 @@ void ServiceManager::updateService(const Service& service) {
     updateConfigMoDB(service, false);
     updateConfigMoDB(service, true);
 
-    updateObserverMoDB(service, true);
+    updateSvcObserverMoDB(service, true);
 
     guard.unlock();
     notifyListeners(uuid);
@@ -335,7 +382,7 @@ void ServiceManager::removeService(const std::string& uuid) {
     if (it != aserv_map.end()) {
         // update interface name to service mapping
         ServiceState& as = it->second;
-        updateObserverMoDB(*as.service, false);
+        updateSvcObserverMoDB(*as.service, false);
         updateConfigMoDB(*as.service, false);
         removeIfaces(*as.service);
         removeDomains(*as.service);

@@ -39,6 +39,9 @@ namespace opflexagent {
 
 class Agent;
 
+typedef std::unordered_map<std::string,
+                        std::shared_ptr<const Endpoint>> ip_ep_map_t;
+
 /**
  * The endpoint manager is responsible for maintaining the state
  * related to endpoints.  It discovers new endpoints on the system and
@@ -174,6 +177,13 @@ public:
      * endpoints.
      */
     void getEndpointUUIDs( /* out */ std::unordered_set<std::string>& eps);
+
+    /**
+     * Get IP to local EP map
+     *
+     * @return IP to local EP map
+     */
+    const ip_ep_map_t& getIPLocalEpMap(void);
 
     /**
      * Get the endpoints that are on a particular access interface
@@ -456,6 +466,11 @@ private:
      * Map endpoint group URI to a set of endpoint UUIDs
      */
     group_ep_map_t group_ep_map;
+
+    /**
+     * Map IPs to local endpoints
+     */
+    ip_ep_map_t ip_local_ep_map;
 
     /**
      * Map remote endpoint URI to remote endpoint uuid
