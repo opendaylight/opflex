@@ -36,17 +36,15 @@ public:
     /**
      * Start the renderer
      * @param swName Switch to connect to
+     * @param conn OVSDB connection
      */
-    virtual void start(const std::string& swName);
+    virtual void start(const std::string& swName, OvsdbConnection* conn);
     /**
      * connect to OVSDB
      * @return boolean denoting success(true) of failure
      */
     virtual bool connect();
-    /**
-     * cleanup of resources
-     */
-    void cleanup();
+
     /**
      * unipue pointer to a JsonRpc object instance
      */
@@ -57,10 +55,6 @@ protected:
      * reference to instance of Agent
      */
     Agent &agent;
-    /**
-     * TaskQueue for managing tasks
-     */
-    TaskQueue taskQueue;
     /**
      * mutex for thread synchronization
      */
@@ -81,6 +75,10 @@ protected:
      * switch name
      */
      std::string switchName;
+    /**
+     * OVSDB connection
+     */
+     OvsdbConnection* conn;
 };
 }
 #endif //OPFLEX_JSONRPCRENDERER_H

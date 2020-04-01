@@ -20,18 +20,15 @@ namespace opflexagent {
  */
 class MockJsonRpc : public JsonRpc {
 public:
-    MockJsonRpc() : JsonRpc() {}
+    MockJsonRpc(OvsdbConnection* conn) : JsonRpc(conn) {}
     virtual ~MockJsonRpc() {}
 
     virtual void start() {
         LOG(DEBUG) << "Starting MockJsonRpc ...";
-        shared_ptr<OvsdbConnection> ptr = make_shared<MockRpcConnection>(this);
-        setRpcConnectionPtr(ptr);
-        getRpcConnectionPtr()->start();
     }
 
     virtual void connect() {
-        getRpcConnectionPtr()->connect();
+        getConnection()->connect();
     }
 };
 

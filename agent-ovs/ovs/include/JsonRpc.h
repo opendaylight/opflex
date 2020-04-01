@@ -50,12 +50,6 @@ static const string ERSPAN_PORT_NAME("erspan");
 void getValue(const Document& val, const list<string>& idx, Value& result);
 
 /**
- * create an RPC connection to a server
- * @return shared pointer to an RpcConnection object
- */
-shared_ptr<OvsdbConnection> createConnection();
-
-/**
  * class to handle JSON/RPC transactions without opflex.
  */
 class JsonRpc : public Transaction {
@@ -171,6 +165,12 @@ public:
     };
 
     /**
+     * Constructor
+     *
+     * @param conn_ OVSDB connection
+     */
+    JsonRpc(OvsdbConnection* conn_) : conn(conn_) {}
+    /**
      * destructor
      */
     virtual ~JsonRpc() {}
@@ -205,16 +205,6 @@ public:
      * @param[out] uuid of the port or empty string.
      */
     void getPortUuid(const string& name, string& uuid);
-
-    /**
-     * initialize the module
-     */
-    virtual void start();
-
-    /**
-     * stop the module
-     */
-    void stop();
 
     /**
      * create a tcp connection to peer
@@ -325,7 +315,7 @@ public:
      * @param[out] brPtr shared pointer to result struct
      * @return true id success, false otherwise
      */
-    bool handleGetBridgePortList(uint64_t reqId, const rapidjson::Document& payload,
+    static bool handleGetBridgePortList(uint64_t reqId, const rapidjson::Document& payload,
             shared_ptr<BrPortResult>& brPtr);
 
     /**
@@ -344,7 +334,7 @@ public:
      * @param[out] mir mirror info
      * @return true id success, false otherwise
      */
-    bool handleMirrorConfig(uint64_t reqId, const rapidjson::Document& payload,
+    static bool handleMirrorConfig(uint64_t reqId, const rapidjson::Document& payload,
             mirror& mir);
 
     /**
@@ -391,15 +381,9 @@ public:
 
     /**
      * get rpc connection pointer
-     * @return shared pointer to rpc connection object
+     * @return pointer to OVSDB connection
      */
-    shared_ptr<OvsdbConnection>& getRpcConnectionPtr() { return pConn; }
-
-    /**
-     * set rpc connection pointer
-     * @param rPtr shared pointer to rpc connection object
-     */
-    void setRpcConnectionPtr(shared_ptr<OvsdbConnection>& rPtr) { pConn = rPtr; }
+    OvsdbConnection* getConnection() { return conn; }
 
     /**
      * set the next request ID
@@ -417,8 +401,7 @@ private:
      * @param[in] index an index into the Value struct
      * @param[out] uuidSet set of UUIDs extracted from the Value struct
      */
-    void getUuidsFromVal(set<string>& uuidSet, const Document& payload,
-                const string& index);
+    static void getUuidsFromVal(set<string>& uuidSet, const Document& payload, const string& index);
 
     /**
      * get the list of port names and UUIDs from the Value struct
@@ -427,15 +410,7 @@ private:
      * @param[out] portMap unordered map of port UUID as key and name as value
      * @return bool false if there is a problem getting the value, true otherwise
      */
-    static bool getPortList(const uint64_t reqId, const Document& payload,
-                unordered_map<string, string>& portMap);
-
-    /**
-     * generate a UUID for use by OVSDB when creating new artifacts.
-     * This UUID conforms to OVSDB format for temp UUIDs.
-     * @param[out] uuid temp UUID
-     */
-    static void generateTempUuid(string& uuid);
+    static bool getPortList(const uint64_t reqId, const Document& payload, unordered_map<string, string>& portMap);
 
     /**
      * get ERSPAN interface options from Value struct
@@ -444,21 +419,20 @@ private:
      * @param[out] pIfc empty shared pointer to ERSPAN
      * interface struct
      */
-    static bool getErspanOptions(const uint64_t reqId, const Document& payload,
-            shared_ptr<erspan_ifc>& pIfc);
+    static bool getErspanOptions(const uint64_t reqId, const Document& payload, shared_ptr<erspan_ifc>& pIfc);
 
     template <typename T>
     inline bool sendRequestAndAwaitResponse(const list<T>& tl, uint64_t reqId) {
-        unique_lock<mutex> lock(pConn->mtx);
-        if (!pConn->ready.wait_for(lock, milliseconds(WAIT_TIMEOUT*1000),
-                [=]{return pConn->isConnected();})) {
+        unique_lock<mutex> lock(conn->mtx);
+        if (!conn->ready.wait_for(lock, milliseconds(WAIT_TIMEOUT*1000),
+                [=]{return conn->isConnected();})) {
             LOG(DEBUG) << "lock timed out";
             return false;
         }
         responseReceived = false;
-        pConn->sendTransaction(reqId, tl, this);
+        conn->sendTransaction(reqId, tl, this);
 
-        if (!pConn->ready.wait_for(lock, milliseconds(WAIT_TIMEOUT*1000),
+        if (!conn->ready.wait_for(lock, milliseconds(WAIT_TIMEOUT*1000),
                                    [=]{return responseReceived;})) {
             LOG(DEBUG) << "lock timed out";
             return false;
@@ -488,7 +462,7 @@ private:
     bool responseReceived = false;
     map<string, mirror> mirMap;
     const int WAIT_TIMEOUT = 10;
-    shared_ptr<OvsdbConnection> pConn;
+    OvsdbConnection* conn;
     shared_ptr<Response> pResp;
     uint64_t id = 0;
 };

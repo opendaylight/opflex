@@ -30,14 +30,17 @@ void OvsdbConnection::send_req_cb(uv_async_t* handle) {
     yajr::rpc::MethodName method(req->getMethod().c_str());
     opflex::jsonrpc::PayloadWrapper wrapper(req);
     yajr::rpc::OutboundRequest outr =
-            yajr::rpc::OutboundRequest(wrapper, &method, req->getReqId(), reqCbd->peer);
+        yajr::rpc::OutboundRequest(wrapper, &method, req->getReqId(), reqCbd->peer);
     outr.send();
     delete(req);
     delete(reqCbd);
 }
 
 void OvsdbConnection::sendTransaction(const uint64_t& reqId, const list<JsonRpcTransactMessage>& requests, Transaction* trans) {
-    transactions[reqId] = trans;
+    {
+        unique_lock<mutex> lock(transactionMutex);
+        transactions[reqId] = trans;
+    }
     auto* reqCbd = new req_cb_data();
     reqCbd->req = new TransactReq(requests, reqId);
     reqCbd->peer = getPeer();
@@ -120,6 +123,7 @@ void OvsdbConnection::disconnect() {
 }
 
 void OvsdbConnection::handleTransaction(uint64_t reqId,  const rapidjson::Document& payload) {
+    unique_lock<mutex> lock(transactionMutex);
     auto iter = transactions.find(reqId);
     if (iter != transactions.end()) {
         iter->second->handleTransaction(reqId, payload);

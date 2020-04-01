@@ -27,9 +27,9 @@ namespace opflexagent {
 
     }
 
-    void NetFlowRenderer::start(const std::string& swName) {
+    void NetFlowRenderer::start(const std::string& swName, OvsdbConnection* conn) {
         LOG(DEBUG) << "starting NetFlowRenderer renderer";
-        JsonRpcRenderer::start(swName);
+        JsonRpcRenderer::start(swName, conn);
         agent.getNetFlowManager().registerListener(this);
     }
 
@@ -64,7 +64,6 @@ namespace opflexagent {
         } else if(expSt->getVersion() == CollectorVersionEnumT::CONST_V9) {
             deleteIpfix();
         }
-        cleanup();
     }
 
     void NetFlowRenderer::handleNetFlowUpdate(const opflex::modb::URI& netFlowURI) {
@@ -87,7 +86,6 @@ namespace opflexagent {
                                                      boost::asio::placeholders::error, netFlowURI));
             timerStarted = true;
             LOG(DEBUG) << "conn timer " << connection_timer << ", timerStarted: " << timerStarted;
-            cleanup();
             return;
         }
         std::string target = expSt.get()->getDstAddress() + ":";
@@ -100,14 +98,11 @@ namespace opflexagent {
             uint32_t timeout = expSt.get()->getActiveFlowTimeOut();
             LOG(DEBUG) << "netflow timeout " << timeout;
             createNetFlow(target, timeout);
-            cleanup();
-
         } else if (expSt.get()->getVersion() ==
                    CollectorVersionEnumT::CONST_V9) {
             LOG(DEBUG) << "creating IPFIX";
             uint32_t sampling = expSt.get()->getSamplingRate();
             createIpfix(target, sampling);
-            cleanup();
         }
     }
 
@@ -116,7 +111,6 @@ namespace opflexagent {
         if (!jRpc->deleteNetFlow(switchName))
         {
             LOG(DEBUG) << "Unable to delete netflow";
-            cleanup();
             return false;
         }
         return true;
@@ -127,7 +121,6 @@ namespace opflexagent {
         if (!jRpc->deleteIpfix(switchName))
         {
             LOG(DEBUG) << "Unable to delete ipfix";
-            cleanup();
             return false;
         }
         return true;

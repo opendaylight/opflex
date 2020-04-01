@@ -38,8 +38,9 @@ public:
     /**
      * Start the renderer
      * @param swName Switch to connect to
+     * @param conn OVSDB connection
      */
-    virtual void start(const std::string& swName);
+    virtual void start(const std::string& swName, OvsdbConnection* conn);
 
     /**
      * Module stop
