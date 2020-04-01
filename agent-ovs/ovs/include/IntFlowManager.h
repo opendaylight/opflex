@@ -551,15 +551,15 @@ private:
      * @param is_svc true if the uuid belongs to svc
      * @param is_add true if the svc/ep is added
      */
-    void updatePodSvcFlows(const std::string &uuid,
-                           const bool &is_svc,
-                           const bool &is_add);
+    void updatePodSvcStatsFlows(const std::string &uuid,
+                                const bool &is_svc,
+                                const bool &is_add);
     /**
      * Clear podsvc counter objects
      *
      * @param key The unique key to identify (pod,svc)
      */
-    void clearPodSvcCounters(const std::string& key);
+    void clearPodSvcStatsCounters(const std::string& key);
 
     /*
      * Update podsvc counter objects

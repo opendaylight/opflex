@@ -240,6 +240,15 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     unordered_set<uri_set_t> notifySecGroupSets;
     EndpointListener::uri_set_t notifyExtDomSets;
 
+    // Refresh IP to EP map for this endpoint, to track delete/update
+    // of this IP list
+    for (const string& ip : es.endpoint->getIPs()) {
+        if (!validateIp(ip))
+            continue;
+        if (ip_local_ep_map.find(ip) != ip_local_ep_map.end())
+            ip_local_ep_map.erase(ip);
+    }
+
     // update security group mapping
     const set<URI>& oldSecGroups = es.endpoint->getSecurityGroups();
     const set<URI>& secGroups = endpoint.getSecurityGroups();
@@ -338,6 +347,12 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
         }
         for (const URI& locall3ep : es.locall3EPs) {
             LocalL3Ep::remove(framework, locall3ep);
+        }
+        for (const string& ip : es.endpoint->getIPs()) {
+            if (!validateIp(ip))
+                continue;
+            if (ip_local_ep_map.find(ip) != ip_local_ep_map.end())
+                ip_local_ep_map.erase(ip);
         }
         for (const URI& l2ep : es.l2EPs) {
             // The contained objects dont get deleted during make check tests.
@@ -930,12 +945,17 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid,
             for (const string& ip : es.endpoint->getIPs()) {
                 if (!validateIp(ip)) continue;
                 shared_ptr<LocalL3Ep> l3e = l3d.get()
-                    ->addEpdrLocalL3Ep(uuid);
-                l3e->setIp(ip)
-                    .setMac(mac.get());
+                    ->addEpdrLocalL3Ep(ip);
+                l3e->setMac(mac.get());
                 newlocall3eps.insert(l3e->getURI());
             }
         }
+    }
+
+    for (const string& ip : es.endpoint->getIPs()) {
+        if (!validateIp(ip))
+            continue;
+        ip_local_ep_map[ip] = es.endpoint;
     }
 
     // remove any stale local EPs
@@ -1331,6 +1351,11 @@ void EndpointManager::getEndpointsByIface(const std::string& ifaceName,
                                           /* out */ str_uset_t& eps) {
     unique_lock<mutex> guard(ep_mutex);
     getEps(ifaceName, iface_ep_map, eps);
+}
+
+const ip_ep_map_t& EndpointManager::getIPLocalEpMap (void) {
+    unique_lock<mutex> guard(ep_mutex);
+    return ip_local_ep_map;
 }
 
 void EndpointManager::getEndpointUUIDs( /* out */ str_uset_t& eps) {

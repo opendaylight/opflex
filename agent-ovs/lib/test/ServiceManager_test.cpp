@@ -101,6 +101,7 @@ void ServiceManagerFixture::createServices (bool isLB)
     as.addServiceMapping(sm2);
 
     as.addAttribute("name", "coredns");
+    as.addAttribute("scope", "cluster");
     as.addAttribute("namespace", "kube-system");
 
     servSrc.updateService(as);
@@ -134,6 +135,7 @@ void ServiceManagerFixture::updateServices (bool isLB)
 
     as.clearAttributes();
     as.addAttribute("name", "core-dns");
+    as.addAttribute("scope", "cluster");
 
     servSrc.updateService(as);
 }
@@ -204,15 +206,15 @@ void ServiceManagerFixture::checkServiceState (bool isCreate)
     std::vector<shared_ptr<ServiceAttribute> > outSA;
     pService->resolveSvcServiceAttribute(outSA);
     if (isCreate) {
-        BOOST_CHECK_EQUAL(outSA.size(), 2);
-        BOOST_CHECK_EQUAL(as.getAttributes().size(), 2);
+        BOOST_CHECK_EQUAL(outSA.size(), 3);
+        BOOST_CHECK_EQUAL(as.getAttributes().size(), 3);
     } else {
         // remove + add can lead to bulking, so wait till the state becomes fine
-        WAIT_FOR_DO_ONFAIL((outSA.size() == 1),
+        WAIT_FOR_DO_ONFAIL((outSA.size() == 2),
             500, // usleep(1000) * 500 = 500ms
             outSA.clear();pService->resolveSvcServiceAttribute(outSA),
-            BOOST_CHECK_EQUAL(outSA.size(), 1););
-        BOOST_CHECK_EQUAL(as.getAttributes().size(), 1);
+            BOOST_CHECK_EQUAL(outSA.size(), 2););
+        BOOST_CHECK_EQUAL(as.getAttributes().size(), 2);
     }
 
     optional<shared_ptr<SvcStatUniverse> > ssu =
@@ -267,7 +269,17 @@ void ServiceManagerFixture::checkServiceExists (bool isCreate)
         if (Service::LOADBALANCER == as.getServiceMode()) {
             WAIT_FOR_DO_ONFAIL(ssu.get()->resolveGbpeSvcCounter(as.getUUID()),
                                500,,
-                               LOG(ERROR) << "Service obs Obj not resolved";);
+                               LOG(ERROR) << "SvcCounter obs Obj not resolved";);
+            optional<shared_ptr<SvcCounter> > opSvcCounter =
+                                ssu.get()->resolveGbpeSvcCounter(as.getUUID());
+            BOOST_CHECK(opSvcCounter);
+            for (const auto& sm : as.getServiceMappings()) {
+                for (const auto& ip : sm.getNextHopIPs()) {
+                    WAIT_FOR_DO_ONFAIL(opSvcCounter.get()->resolveGbpeSvcTargetCounter(ip),
+                                       500,,
+                                       LOG(ERROR) << "SvcTargetCounter obs Obj not resolved";);
+                }
+            }
         } else {
             BOOST_CHECK(!ssu.get()->resolveGbpeSvcCounter(as.getUUID()));
         }
