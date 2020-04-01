@@ -8,11 +8,8 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <list>
-
 #include <boost/test/unit_test.hpp>
 
-#include "OvsdbConnection.h"
 #include <opflexagent/logging.h>
 #include <opflexagent/test/BaseFixture.h>
 #include <SpanRenderer.h>
@@ -27,23 +24,26 @@ BOOST_AUTO_TEST_SUITE(SpanRenderer_test)
 
 class MockSpanRenderer : public SpanRenderer {
 public:
-    MockSpanRenderer(Agent& agent) : SpanRenderer(agent) {}
+    MockSpanRenderer(Agent& agent) : SpanRenderer(agent), conn(nullptr) {
+    }
     virtual ~MockSpanRenderer() {};
 
     bool connect() {
-         // connect to OVSDB
-         // If connection fails, a timer is started to retry and
-         // back off at periodic intervals.
-         if (timerStarted) {
-             LOG(DEBUG) << "Canceling timer";
-             connection_timer->cancel();
-             timerStarted = false;
-         }
-         jRpc.reset(new MockJsonRpc());
-         jRpc->start();
-         jRpc->connect();
-         return true;
+        // connect to OVSDB
+        // If connection fails, a timer is started to retry and
+        // back off at periodic intervals.
+        if (timerStarted) {
+            LOG(DEBUG) << "Canceling timer";
+            connection_timer->cancel();
+            timerStarted = false;
+        }
+        conn.reset(new MockRpcConnection());
+        jRpc.reset(new MockJsonRpc(conn.get()));
+        jRpc->connect();
+        return true;
     }
+
+    unique_ptr<OvsdbConnection> conn;
 };
 
 class SpanRendererFixture : public BaseFixture {

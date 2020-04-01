@@ -174,12 +174,8 @@ private:
     uv_async_t connect_async;
     uv_async_t send_req_async;
     unordered_map<uint64_t, Transaction*> transactions;
-
-private:
-/**
- * boolean flag to indicate connection state.
- */
-std::atomic<bool> connected;
+    std::atomic<bool> connected;
+    mutex transactionMutex;
 };
 
 

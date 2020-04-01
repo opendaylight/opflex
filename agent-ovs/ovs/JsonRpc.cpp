@@ -23,60 +23,45 @@
 
 #include "JsonRpc.h"
 #include <opflexagent/logging.h>
-
 #include "OvsdbConnection.h"
 
-#include <random>
-
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
 #include <boost/lexical_cast.hpp>
 
-
 using namespace std::chrono;
-
-std::random_device json_rng;
-std::mt19937 json_urng(json_rng());
 
 namespace opflexagent {
 
 using namespace opflex::jsonrpc;
 using namespace rapidjson;
-using boost::uuids::to_string;
-using boost::uuids::basic_random_generator;
 
 void JsonRpc::handleTransaction(uint64_t reqId, const Document& payload) {
     pResp.reset(new Response(reqId, payload));
     // TODO - generically check payload of response for errors and log
     responseReceived = true;
-    pConn->ready.notify_all();
+    conn->ready.notify_all();
 }
 
 bool JsonRpc::createNetFlow(const string& brUuid, const string& target, const int& timeout, bool addidtointerface ) {
-    shared_ptr<TupleData<string>> tPtr =
-        make_shared<TupleData<string>>("", target);
-    set<shared_ptr<BaseData>> pSet;
-    pSet.emplace(tPtr);
-    shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet));
+    vector<TupleData> tuples;
+    tuples.emplace_back("", target);
+    TupleDataSet tdSet(tuples);
     JsonRpcTransactMessage msg1(OvsdbOperation::INSERT, OvsdbTable::NETFLOW);
-    msg1.rows.emplace("targets", pTdSet);
+    msg1.rows["targets"] = tdSet;
 
-    shared_ptr<TupleData<int>> iTimeout = make_shared<TupleData<int>>("", timeout);
-    pSet.clear();
-    pSet.emplace(iTimeout);
-    pTdSet.reset(new TupleDataSet(pSet));
-    msg1.rows.emplace("active_timeout", pTdSet);
+    TupleData iTimeout("", timeout);
 
-    shared_ptr<TupleData<bool>> bAddIdToInterface = make_shared<TupleData<bool>>("", addidtointerface);
-    pSet.clear();
-    pSet.emplace(bAddIdToInterface);
-    pTdSet.reset(new TupleDataSet(pSet));
-    msg1.rows.emplace("add_id_to_interface", pTdSet);
+    tuples.clear();
+    tuples.emplace_back("", timeout);
+    tdSet = TupleDataSet(tuples);
+    msg1.rows["active_timeout"] = tdSet;
+
+    tuples.clear();
+    tuples.emplace_back("", addidtointerface);
+    tdSet = TupleDataSet(tuples);
+    msg1.rows["add_id_to_interface"] = tdSet;
 
     const string uuid_name = "netflow1";
-    msg1.kvPairs.emplace(make_shared<TupleData<string>>("uuid-name", uuid_name));
-
-    pSet.clear();
+    msg1.kvPairs.emplace_back("uuid-name", uuid_name);
 
     JsonRpcTransactMessage msg2(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
     tuple<string, string, string> cond1("_uuid", "==", brUuid);
@@ -84,10 +69,10 @@ bool JsonRpc::createNetFlow(const string& brUuid, const string& target, const in
     condSet.emplace(cond1);
     msg2.conditions = condSet;
 
-    tPtr.reset(new TupleData<string>("named-uuid", uuid_name));
-    pSet.emplace(tPtr);
-    pTdSet.reset(new TupleDataSet(pSet));
-    msg2.rows.emplace("netflow", pTdSet);
+    tuples.clear();
+    tuples.emplace_back("named-uuid", uuid_name);
+    tdSet = TupleDataSet(tuples);
+    msg2.rows.emplace("netflow", tdSet);
 
     uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests = {msg1, msg2};
@@ -100,36 +85,29 @@ bool JsonRpc::createNetFlow(const string& brUuid, const string& target, const in
 }
 
 bool JsonRpc::createIpfix(const string& brUuid, const string& target, const int& sampling) {
-    shared_ptr<TupleData<string>> tPtr =
-        make_shared<TupleData<string>>("", target);
-    set<shared_ptr<BaseData>> pSet;
-    pSet.emplace(tPtr);
-    shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet));
+    vector<TupleData> tuples;
+    tuples.emplace_back("", target);
+    TupleDataSet tdSet(tuples);
     JsonRpcTransactMessage msg1(OvsdbOperation::INSERT, OvsdbTable::IPFIX);
-    msg1.rows.emplace("targets", pTdSet);
+    msg1.rows.emplace("targets", tdSet);
     if (sampling != 0) {
-        shared_ptr<TupleData<int>> iSampling =
-            make_shared<TupleData<int>>("", sampling);
-        pSet.clear();
-        pSet.emplace(iSampling);
-        pTdSet.reset(new TupleDataSet(pSet));
-        msg1.rows.emplace("sampling", pTdSet);
+        tuples.clear();
+        tuples.emplace_back("", sampling);
+        tdSet = TupleDataSet(tuples);
+        msg1.rows.emplace("sampling", tdSet);
     }
     const string uuid_name = "ipfix1";
-    msg1.kvPairs.emplace(make_shared<TupleData<string>>("uuid-name", uuid_name));
+    msg1.kvPairs.emplace_back("uuid-name", uuid_name);
 
-    tuple<string, string, string> cond1("_uuid", "==", brUuid);
-    set<tuple<string, string, string>> condSet;
-    condSet.emplace(cond1);
-
-    pSet.clear();
     JsonRpcTransactMessage msg2(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
+    set<tuple<string, string, string>> condSet;
+    condSet.emplace("_uuid", "==", brUuid);
     msg2.conditions = condSet;
 
-    tPtr.reset(new TupleData<string>("named-uuid", uuid_name));
-    pSet.emplace(tPtr);
-    pTdSet.reset(new TupleDataSet(pSet));
-    msg2.rows.emplace("ipfix", pTdSet);
+    tuples.clear();
+    tuples.emplace_back("named-uuid", uuid_name);
+    tdSet = TupleDataSet(tuples);
+    msg2.rows.emplace("ipfix", tdSet);
 
     uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests = {msg1, msg2};
@@ -142,16 +120,15 @@ bool JsonRpc::createIpfix(const string& brUuid, const string& target, const int&
 }
 
 bool JsonRpc::deleteNetFlow(const string& brName) {
-    tuple<string, string, string> cond1("name", "==", brName);
     set<tuple<string, string, string>> condSet;
-    condSet.emplace(cond1);
+    condSet.emplace("name", "==", brName);
 
     JsonRpcTransactMessage msg1(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
     msg1.conditions = condSet;
 
-    set<shared_ptr<BaseData>> pSet;
-    shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet, "set"));
-    msg1.rows.emplace("netflow", pTdSet);
+    vector<TupleData> tuples;
+    TupleDataSet tdSet(tuples, "set");
+    msg1.rows.emplace("netflow", tdSet);
 
     uint64_t reqId = getNextId();
     list<JsonRpcTransactMessage> requests = {msg1};
@@ -171,9 +148,9 @@ bool JsonRpc::deleteIpfix(const string& brName) {
     JsonRpcTransactMessage msg1(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
     msg1.conditions = condSet;
 
-    set<shared_ptr<BaseData>> pSet;
-    shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet, "set"));
-    msg1.rows.emplace("ipfix", pTdSet);
+    vector<TupleData> tuples;
+    TupleDataSet tdSet(tuples, "set");
+    msg1.rows.emplace("ipfix", tdSet);
 
     uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests = {msg1};
@@ -262,7 +239,7 @@ void JsonRpc::handleGetBridgeMirrorUuidResp(uint64_t reqId, const Document& payl
         }
     }
     printMirMap(mirMap);
-    pConn->ready.notify_all();
+    conn->ready.notify_all();
     responseReceived = true;
 }
 
@@ -285,14 +262,12 @@ bool JsonRpc::updateBridgePorts(tuple<string,set<string>> ports,
     set<tuple<string, string, string>> condSet;
     condSet.emplace(cond1);
     msg1.conditions = condSet;
-    set<shared_ptr<BaseData>> pSet;
+    vector<TupleData> tuples;
     for (auto& elem : brPorts) {
-        shared_ptr<TupleData<string>> tPtr =
-                make_shared<TupleData<string>>("uuid", elem);
-        pSet.emplace(tPtr);
+        tuples.emplace_back("uuid", elem);
     }
-    shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet, "set"));
-    msg1.rows.emplace("ports", pTdSet);
+    TupleDataSet tdSet(tuples, "set");
+    msg1.rows.emplace("ports", tdSet);
 
     uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests = {msg1};
@@ -348,13 +323,12 @@ void JsonRpc::getUuidsFromVal(set<string>& uuidSet, const Document& payload, con
     Value val;
     opflexagent::getValue(payload, ids, val);
     if (!val.IsNull() && val.IsString()) {
-        string valStr(val.GetString());
+        const string valStr(val.GetString());
         ids = {"0", "rows", "0", index, "1"};
         val.SetObject();
         opflexagent::getValue(payload, ids, val);
         if (valStr == "uuid") {
-            string uuidString(val.GetString());
-            uuidSet.emplace(uuidString);
+            uuidSet.emplace(valStr);
         }
     } else {
         LOG(WARNING) << "Error getting port uuid";
@@ -362,10 +336,8 @@ void JsonRpc::getUuidsFromVal(set<string>& uuidSet, const Document& payload, con
     }
 
     if (val.IsArray()) {
-        for (Value::ConstValueIterator itr1 = val.Begin();
-             itr1 != val.End(); itr1++) {
-            string uuidString((*itr1)[1].GetString());
-            uuidSet.emplace(uuidString);
+        for (Value::ConstValueIterator itr1 = val.Begin(); itr1 != val.End(); itr1++) {
+            uuidSet.emplace((*itr1)[1].GetString());
         }
     }
 }
@@ -661,68 +633,58 @@ bool JsonRpc::createMirror(const string& brUuid, const string& name) {
 
     JsonRpcTransactMessage msg1(OvsdbOperation::INSERT, OvsdbTable::MIRROR);
 
-    set<shared_ptr<BaseData>> pSet;
+    vector<TupleData> tuples;
     // src ports
     set<tuple<string,string>> rdata;
     populatePortUuids(mir.src_ports, portUuidMap, rdata);
     for (auto pair : rdata) {
-        shared_ptr<TupleData<string>> tPtr =
-            make_shared<TupleData<string>>(get<0>(pair).c_str(), get<1>(pair).c_str());
-        pSet.emplace(tPtr);
+        tuples.emplace_back(get<0>(pair).c_str(), get<1>(pair).c_str());
     }
-    shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet, "set"));
-    msg1.rows.emplace("select_src_port", pTdSet);
+    TupleDataSet tdSet(tuples, "set");
+    msg1.rows.emplace("select_src_port", tdSet);
 
     // dst ports
     rdata.clear();
-    pSet.clear();
+    tuples.clear();
     populatePortUuids(mir.dst_ports, portUuidMap, rdata);
     for (auto pair : rdata) {
-        shared_ptr<TupleData<string>> tPtr =
-            make_shared<TupleData<string>>(get<0>(pair).c_str(), get<1>(pair).c_str());
-        pSet.emplace(tPtr);
+        tuples.emplace_back(get<0>(pair).c_str(), get<1>(pair).c_str());
     }
-    pTdSet.reset(new TupleDataSet(pSet, "set"));
-    msg1.rows.emplace("select_dst_port", pTdSet);
+    tdSet = TupleDataSet(tuples, "set");
+    msg1.rows.emplace("select_dst_port", tdSet);
 
     // output ports
-    pSet.clear();
+    tuples.clear();
     rdata.clear();
     ports.clear();
     ports.insert(ERSPAN_PORT_NAME);
     populatePortUuids(ports, portUuidMap, rdata);
     for (auto pair : rdata) {
-        shared_ptr<TupleData<string>> tPtr =
-                make_shared<TupleData<string>>(get<0>(pair).c_str(), get<1>(pair).c_str());
-        pSet.emplace(tPtr);
+        tuples.emplace_back(get<0>(pair).c_str(), get<1>(pair).c_str());
     }
-    pTdSet.reset(new TupleDataSet(pSet, "set"));
-    msg1.rows.emplace("output_port", pTdSet);
+    tdSet = TupleDataSet(tuples, "set");
+    msg1.rows.emplace("output_port", tdSet);
 
     // name
-    pSet.clear();
-    shared_ptr<TupleData<string>> tPtr =
-        make_shared<TupleData<string>>("", name);
-    pSet.emplace(tPtr);
-    pTdSet.reset(new TupleDataSet(TupleDataSet(pSet)));
-    msg1.rows.emplace("name", pTdSet);
+    tuples.clear();
+    tuples.emplace_back("", name);
+    tdSet = TupleDataSet(tuples);
+    msg1.rows.emplace("name", tdSet);
 
-    string uuid_name;
-    generateTempUuid(uuid_name);
-    msg1.kvPairs.emplace(make_shared<TupleData<string>>("uuid-name", uuid_name));
+    const string uuid_name = "mirror1";
+    msg1.kvPairs.emplace_back("uuid-name", uuid_name);
 
     // msg2
     tuple<string, string, string> cond1("_uuid", "==", brUuid);
     set<tuple<string, string, string>> condSet;
     condSet.emplace(cond1);
 
-    pSet.clear();
+    tuples.clear();
     JsonRpcTransactMessage msg2(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
     msg2.conditions = condSet;
-    tPtr.reset(new TupleData<string>("named-uuid", uuid_name));
-    pSet.emplace(tPtr);
-    pTdSet.reset(new TupleDataSet(pSet));
-    msg2.rows.emplace("mirrors", pTdSet);
+    tuples.emplace_back("named-uuid", uuid_name);
+    tdSet = TupleDataSet(tuples);
+    msg2.rows.emplace("mirrors", tdSet);
 
     uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests = {msg1};
@@ -734,78 +696,57 @@ bool JsonRpc::createMirror(const string& brUuid, const string& name) {
     return handleCreateMirrorResp(pResp->reqId, pResp->payload);
 }
 
-inline void JsonRpc::generateTempUuid(string& tempUuid) {
-    tempUuid = to_string(basic_random_generator<mt19937>(json_urng)());
-    tempUuid.insert(0,"row");
-    std::regex hyph ("-");
-    string underscore("_");
-    std::regex_replace(tempUuid, hyph, underscore);
-}
-
 bool JsonRpc::addErspanPort(const string& bridge, shared_ptr<erspan_ifc> port) {
     JsonRpcTransactMessage msg1(OvsdbOperation::INSERT, OvsdbTable::PORT);
-    shared_ptr<TupleData<string>> tPtr =
-        make_shared<TupleData<string>>("", port->name);
-    set<shared_ptr<BaseData>> pSet;
-    pSet.emplace(tPtr);
-    shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet));
-    msg1.rows.emplace("name", pTdSet);
+    vector<TupleData> tuples;
+    tuples.emplace_back("", port->name);
+    TupleDataSet tdSet(tuples);
+    msg1.rows.emplace("name", tdSet);
 
     // uuid-name
-    string uuid_name;
-    generateTempUuid(uuid_name);
-    msg1.kvPairs.emplace(make_shared<TupleData<string>>("uuid-name", uuid_name));
+    const string uuid_name = "port1";
+    msg1.kvPairs.emplace_back("uuid-name", uuid_name);
 
     // interfaces
-    string named_uuid;
-    generateTempUuid(named_uuid);
-    tPtr.reset(new TupleData<string>("named-uuid", named_uuid));
-    pSet.clear();
-    pSet.emplace(tPtr);
-    pTdSet.reset(new TupleDataSet(TupleDataSet(pSet)));
-    msg1.rows.emplace("interfaces", pTdSet);
+    tuples.clear();
+    const string named_uuid = "interface1";
+    tuples.emplace_back("named-uuid", named_uuid);
+    tdSet = TupleDataSet(tuples);
+    msg1.rows.emplace("interfaces", tdSet);
 
     // uuid-name
     JsonRpcTransactMessage msg2(OvsdbOperation::INSERT, OvsdbTable::INTERFACE);
-    msg2.kvPairs.emplace(make_shared<TupleData<string>>("uuid-name", named_uuid));
+    msg2.kvPairs.emplace_back("uuid-name", named_uuid);
 
     // row entries
     // name
-    tPtr.reset(new TupleData<string>("", port->name));
-    pSet.clear();
-    pSet.emplace(tPtr);
-    pTdSet.reset(new TupleDataSet(pSet));
-    msg2.rows.emplace("name", pTdSet);
+    tuples.clear();
+    tuples.emplace_back("", port->name);
+    tdSet = TupleDataSet(tuples);
+    msg2.rows.emplace("name", tdSet);
 
     // options depend upon version
-    pSet.clear();
-    tPtr.reset(new TupleData<string>("erspan_ver", std::to_string(port->erspan_ver)));
-    pSet.emplace(tPtr);
-    tPtr.reset(new TupleData<string>("key", std::to_string(port->key)));
-    pSet.emplace(tPtr);
-    tPtr.reset(new TupleData<string>("remote_ip", port->remote_ip));
-    pSet.emplace(tPtr);
+    tuples.clear();
+    tuples.emplace_back("erspan_ver", std::to_string(port->erspan_ver));
+    tuples.emplace_back("key", std::to_string(port->key));
+    tuples.emplace_back("remote_ip", port->remote_ip);
     if (port->erspan_ver == 1) {
-        tPtr.reset(new TupleData<string>("erspan_idx",
-            std::to_string(static_pointer_cast<erspan_ifc_v1>(port)->erspan_idx)));
-        pSet.emplace(tPtr);
+        tuples.emplace_back("erspan_idx",
+                            std::to_string(static_pointer_cast<erspan_ifc_v1>(port)->erspan_idx));
     } else if (port->erspan_ver == 2) {
-        tPtr.reset(new TupleData<string>("erspan_hwid",
-            std::to_string(static_pointer_cast<erspan_ifc_v2>(port)->erspan_hw_id)));
-        pSet.emplace(tPtr);
-        tPtr.reset(new TupleData<string>("erspan_dir",
-                std::to_string(static_pointer_cast<erspan_ifc_v2>(port)->erspan_dir)));
-        pSet.emplace(tPtr);
+        tuples.emplace_back("erspan_hwid",
+                            std::to_string(static_pointer_cast<erspan_ifc_v2>(port)->erspan_hw_id));
+        tuples.emplace_back("erspan_dir",
+                            std::to_string(static_pointer_cast<erspan_ifc_v2>(port)->erspan_dir));
     }
-    pTdSet.reset(new TupleDataSet(pSet, "map"));
-    msg2.rows.emplace("options", pTdSet);
+    tdSet = TupleDataSet(tuples, "map");
+    msg2.rows.emplace("options", tdSet);
 
     // type
-    tPtr.reset(new TupleData<string>("", "erspan"));
-    pSet.clear();
-    pSet.emplace(tPtr);
-    pTdSet.reset(new TupleDataSet(pSet));
-    msg2.rows.emplace("type", pTdSet);
+    tuples.clear();
+    tuples.emplace_back("", "erspan");
+    tdSet = TupleDataSet(tuples);
+    msg2.rows.emplace("type", tdSet);
 
     // get bridge port list and add erspan port to it.
     BrPortResult res;
@@ -817,15 +758,13 @@ bool JsonRpc::addErspanPort(const string& bridge, shared_ptr<erspan_ifc> port) {
     condSet.emplace(cond1);
 
     JsonRpcTransactMessage msg3(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
-    pSet.clear();
+    tuples.clear();
     for (const auto& elem : res.portUuids) {
-        tPtr.reset(new TupleData<string>("uuid", elem));
-        pSet.emplace(tPtr);
+        tuples.emplace_back("uuid", elem);
     }
-    tPtr.reset(new TupleData<string>("named-uuid", uuid_name));
-    pSet.emplace(tPtr);
-    pTdSet.reset(new TupleDataSet(pSet, "set"));
-    msg3.rows.emplace("ports", pTdSet);
+    tuples.emplace_back("named-uuid", uuid_name);
+    tdSet = TupleDataSet(tuples, "set");
+    msg3.rows.emplace("ports", tdSet);
 
     uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests = {msg1, msg2, msg3};
@@ -866,7 +805,7 @@ void JsonRpc::handleAddErspanPortResp(uint64_t reqId, const Document& payload) {
     responseReceived = true;
 }
 
-    bool JsonRpc::deleteMirror(const string& brName) {
+bool JsonRpc::deleteMirror(const string& brName) {
     list<string> mirList;
     tuple<string, string, string> cond1("name", "==", brName);
     set<tuple<string, string, string>> condSet;
@@ -875,10 +814,10 @@ void JsonRpc::handleAddErspanPortResp(uint64_t reqId, const Document& payload) {
     JsonRpcTransactMessage msg(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
     msg.conditions = condSet;
 
-    set<shared_ptr<BaseData>> pSet;
-    shared_ptr<TupleDataSet> pTdSet = make_shared<TupleDataSet>(TupleDataSet(pSet, "set"));
-    pTdSet->label = "set";
-    msg.rows.emplace("mirrors", pTdSet);
+    vector<TupleData> tuples;
+    TupleDataSet tdSet(tuples, "set");
+    tdSet.label = "set";
+    msg.rows.emplace("mirrors", tdSet);
 
     uint64_t reqId = getNextId();
     list<JsonRpcTransactMessage> requests = {msg};
@@ -894,25 +833,14 @@ void JsonRpc::addMirrorData(const string& name, const mirror& mir) {
     mirMap.emplace(make_pair(name, mir));
 }
 
-void JsonRpc::start() {
-    LOG(DEBUG) << "Starting .....";
-    pConn = opflexagent::createConnection();
-    pConn->start();
-}
-
-void JsonRpc::stop() {
-    pConn->stop();
-    pConn.reset();
-}
-
 void JsonRpc::connect() {
-    pConn->connect();
+    conn->connect();
 }
 
 bool JsonRpc::isConnected() {
-    unique_lock<mutex> lock(pConn->mtx);
-    if (!pConn->ready.wait_for(lock, milliseconds(WAIT_TIMEOUT*1000),
-        [=]{return pConn->isConnected();})) {
+    unique_lock<mutex> lock(conn->mtx);
+    if (!conn->ready.wait_for(lock, milliseconds(WAIT_TIMEOUT*1000),
+        [=]{return conn->isConnected();})) {
         LOG(DEBUG) << "lock timed out, no connection";
         return false;
     }
@@ -986,10 +914,6 @@ void getValue(const Document& val, const list<string>& idx, Value& result) {
         }
     }
     result = tmpVal;
-}
-
-std::shared_ptr<OvsdbConnection> createConnection() {
-    return make_shared<OvsdbConnection>();
 }
 
 } // namespace opflexagemt

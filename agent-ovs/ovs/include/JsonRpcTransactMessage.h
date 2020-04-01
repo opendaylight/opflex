@@ -40,159 +40,102 @@ enum class OvsdbOperation {SELECT, INSERT, UPDATE};
 enum class OvsdbTable {PORT, INTERFACE, BRIDGE, IPFIX, NETFLOW, MIRROR};
 
 /**
- * Data template for JSON/RPC data representation
+ * Class to represent JSON/RPC tuple data.
  */
-template<typename T>
-class DValue {
-public:
-    /**
-     * constructor for data type class
-     * @param val_ type T for data type value to be stored
-     */
-    DValue(T val_) : val(val_), type(Dtype::STRING) {}
-    /**
-     * data of type T
-     */
-    T val;
-    /**
-     * data type enum
-     */
-    Dtype type;
-};
-
-/**
- * specialization of data template for string
- */
-template<> class DValue<string> {
-public:
-    /**
-     * default constructor
-     */
-    DValue() : type(Dtype::STRING) {}
-    /**
-     * constructor
-     * @param val_ string data value
-     */
-    DValue(const string& val_) : val(val_), type(Dtype::STRING) {}
-    /**
-     * string data
-     */
-    string val;
-    /**
-     * data type
-     */
-    Dtype type;
-};
-
-/**
- * specialization of data template for int
- */
-template<> class DValue<int> {
-public:
-    /**
-     * default constructor
-     */
-    DValue() : val(0), type(Dtype::INTEGER) {}
-    /**
-     * constructor
-     * @param val_ int value of data
-     */
-    DValue(int val_) : val(val_), type(Dtype::INTEGER) {}
-    /**
-     * int data
-     */
-    int val;
-    /**
-     * data type enum
-     */
-    Dtype type;
-};
-
-/**
- * specialization of data template for bool
- */
-template<> class DValue<bool> {
-public:
-    /**
-     * default constructor
-     */
-    DValue() : val(false), type(Dtype::BOOL) {}
-    /**
-     * constructor for bool data type
-     * @param val_ bool data type
-     */
-    DValue(bool val_) : val(val_), type(Dtype::BOOL) {}
-    /**
-     * bool data type
-     */
-    bool val;
-    /**
-     * data type enum
-     */
-    Dtype type;
-};
-
-/**
- * abstract class for data types.
- */
-class BaseData {
-public:
-    /**
-     * get the type of data
-     * @return enum Dtype
-     */
-    virtual Dtype getType() = 0;
-    /**
-     * virtual destructor
-     */
-    virtual ~BaseData() {}
-};
- /**
-  * Class to represent JSON/RPC tuple data.
-  */
-template<typename T>
-class TupleData : public BaseData {
+class TupleData {
 public:
     /**
      * constructor
-     * @param key the key string
-     * @param val data type T
+     * @param key_ the key string
+     * @param val value
      */
-    TupleData(string key, T val) {
-        data = make_tuple<string, DValue<T>>(std::move(key), DValue<T>(val));
-    }
+    TupleData(const string& key_, const string& val) : key(key_), type(Dtype::STRING), sVal(val), iVal(-1), bVal(false) {}
+
+    /**
+     * constructor
+     * @param key_ the key string
+     * @param val value
+     */
+    TupleData(const string& key_, bool val) : key(key_), type(Dtype::STRING), iVal(-1), bVal(val) {}
+    /**
+     * constructor
+     * @param key_ the key string
+     * @param val value
+     */
+    TupleData(const string& key_, int val) : key(key_), type(Dtype::STRING), iVal(val), bVal(false) {}
+
+    /**
+     * Copy constructor
+     *
+     * @param copy Object to copy from
+     */
+    TupleData(const TupleData& copy) : key(copy.key), type(copy.type), sVal(copy.sVal), iVal(copy.iVal), bVal(copy.bVal) {}
 
     /**
      * Destructor
      */
     virtual ~TupleData() {}
 
+    /** Get key */
+    const string& getKey() const {
+        return key;
+    }
+
     /**
      * get the data type
      * @return enum Dtype
      */
-    virtual Dtype getType() {
-        return get<1>(data).type;
+     Dtype getType() const {
+        return type;
     }
 
     /**
-     * data stored as tuple of key value pair
+     * Get the value when set to string type
      */
-    tuple<string, DValue<T>> data;
+    const string& getStringValue() const {
+         return sVal;
+     }
+
+    /**
+     * Get the value when set to bool type
+     */
+     bool getBoolValue() const {
+         return bVal;
+     }
+
+    /**
+     * Get the value when set to int type
+     */
+     int getIntValue() const {
+         return iVal;
+     }
+
+private:
+    string key;
+    Dtype type;
+    string sVal;
+    int iVal;
+    bool bVal;
 };
 
 /**
  * class for representing JSON/RPC tuple data set
  */
-class TupleDataSet  {
+class TupleDataSet {
 public:
+    /**
+     * Default constructor
+     */
+    TupleDataSet() {}
+    /**
+     * Copy constructor
+     */
+    TupleDataSet(const TupleDataSet& s) : label(s.label), tuples(s.tuples) {}
+
     /**
      * constructor that takes a tuple
      */
-    TupleDataSet(set<shared_ptr<BaseData>>& m, string l = "") :
-        label(l) {
-        tset.insert(m.begin(), m.end());
-    }
+    TupleDataSet(const vector<TupleData>& m, string l = "") : label(l), tuples(m) {}
 
     virtual ~TupleDataSet() {}
 
@@ -203,13 +146,13 @@ public:
     /**
      * tuple data
      */
-    set<shared_ptr<BaseData>> tset;
+    vector<TupleData> tuples;
 };
 
 /**
  * struct representing row data for JSON/RPC requests
  */
-typedef map<string, shared_ptr<TupleDataSet>> row_map;
+typedef map<string, TupleDataSet> row_map;
 
 /**
  * Transact message
@@ -282,7 +225,7 @@ public:
     /**
      * key value pairs
      */
-    set<shared_ptr<BaseData>> kvPairs;
+    vector<TupleData> kvPairs;
 
 private:
     OvsdbOperation operation;

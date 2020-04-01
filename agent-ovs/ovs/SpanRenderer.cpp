@@ -24,13 +24,11 @@ namespace opflexagent {
     using namespace std;
     using modelgbp::gbp::DirectionEnumT;
 
-    SpanRenderer::SpanRenderer(Agent& agent_) : JsonRpcRenderer(agent_) {
+    SpanRenderer::SpanRenderer(Agent& agent_) : JsonRpcRenderer(agent_) {}
 
-    }
-
-    void SpanRenderer::start(const std::string& swName) {
+    void SpanRenderer::start(const std::string& swName, OvsdbConnection* conn) {
         LOG(DEBUG) << "starting span renderer";
-        JsonRpcRenderer::start(swName);
+        JsonRpcRenderer::start(swName, conn);
         agent.getSpanManager().registerListener(this);
     }
 
@@ -56,7 +54,6 @@ namespace opflexagent {
             return;
         }
         sessionDeleted(seSt);
-        cleanup();
     }
 
     void SpanRenderer::updateConnectCb(const boost::system::error_code& ec,
@@ -112,7 +109,6 @@ namespace opflexagent {
                                                      boost::asio::placeholders::error, spanURI));
             timerStarted = true;
             LOG(DEBUG) << "conn timer " << connection_timer << ", timerStarted: " << timerStarted;
-            cleanup();
             return;
         }
 
@@ -133,7 +129,6 @@ namespace opflexagent {
                 sessionDeleted(seSt.get());
             }
             LOG(DEBUG) << "No mirror config";
-            cleanup();
             return;
         }
 
@@ -158,7 +153,6 @@ namespace opflexagent {
                 dstPort.size() != mir.dst_ports.size()) {
             LOG(DEBUG) << "updating mirror config";
             updateMirrorConfig(seSt.get());
-            cleanup();
             return;
         }
 
@@ -170,13 +164,11 @@ namespace opflexagent {
                 srcPort.erase(itr);
             } else {
                 updateMirrorConfig(seSt.get());
-                cleanup();
                 return;
             }
         }
         if (!srcPort.empty()) {
             updateMirrorConfig(seSt.get());
-            cleanup();
             return;
         }
 
@@ -186,13 +178,11 @@ namespace opflexagent {
                 dstPort.erase(itr);
             } else {
                 updateMirrorConfig(seSt.get());
-                cleanup();
                 return;
             }
         }
         if (!dstPort.empty()) {
             updateMirrorConfig(seSt.get());
-            cleanup();
             return;
         }
 
@@ -215,7 +205,6 @@ namespace opflexagent {
         if (pEp->remote_ip == ipAddr ||
             pEp->erspan_ver != seSt.get()->getVersion()) {
             updateMirrorConfig(seSt.get());
-            cleanup();
             return;
         }
     }
@@ -254,7 +243,6 @@ namespace opflexagent {
         LOG(DEBUG) << "deleting mirror";
         if (!jRpc->deleteMirror(switchName)) {
             LOG(DEBUG) << "Unable to delete mirror";
-            cleanup();
             return false;
         }
         return true;

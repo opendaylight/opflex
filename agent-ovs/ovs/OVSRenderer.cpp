@@ -161,9 +161,6 @@ void OVSRenderer::start() {
     }
     intFlowManager.start();
     intFlowManager.registerModbListeners();
-    if (getAgent().isFeatureEnabled(FeatureList::ERSPAN))
-        spanRenderer.start(intBridgeName);
-    netflowRenderer.start(intBridgeName);
 
     if (accessBridgeName != "") {
         accessFlowManager.start();
@@ -333,6 +330,13 @@ void OVSRenderer::start() {
         signal_thread.join();
         exit(0);
     }
+
+    ovsdbConnection.reset(new OvsdbConnection());
+    ovsdbConnection->start();
+
+    if (getAgent().isFeatureEnabled(FeatureList::ERSPAN))
+        spanRenderer.start(intBridgeName, ovsdbConnection.get());
+    netflowRenderer.start(intBridgeName, ovsdbConnection.get());
 }
 
 void OVSRenderer::stop() {
@@ -366,6 +370,8 @@ void OVSRenderer::stop() {
     if (getAgent().isFeatureEnabled(FeatureList::ERSPAN))
         spanRenderer.stop();
     netflowRenderer.stop();
+
+    ovsdbConnection->stop();
 
     if (encapType == IntFlowManager::ENCAP_VXLAN ||
         encapType == IntFlowManager::ENCAP_IVXLAN) {

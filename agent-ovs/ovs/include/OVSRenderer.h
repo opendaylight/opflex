@@ -10,7 +10,6 @@
  */
 
 #include <opflexagent/Renderer.h>
-#include "SwitchConnection.h"
 #include "IntFlowManager.h"
 #include "AccessFlowManager.h"
 #include "FlowReader.h"
@@ -125,6 +124,7 @@ private:
     bool tableDropStatsEnabled;
     long tableDropStatsInterval;
 
+    std::unique_ptr<OvsdbConnection> ovsdbConnection;
     SpanRenderer spanRenderer;
     NetFlowRenderer netflowRenderer;
 
