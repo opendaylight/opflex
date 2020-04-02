@@ -139,9 +139,12 @@ int main(int argc, char** argv) {
         if (vm.count("query"))
             queries = vm["query"].as<std::vector<string> >();
         truncate = vm["width"].as<int>();
-    } catch (po::unknown_option& e) {
+    } catch (const po::unknown_option& e) {
         std::cerr << e.what() << std::endl;
         return 1;
+    } catch (const std::bad_cast& e) {
+        std::cerr << e.what() << std::endl;
+        return 2;
     }
 
     if (truncate < 0) truncate = 0;

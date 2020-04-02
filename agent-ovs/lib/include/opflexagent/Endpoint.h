@@ -49,7 +49,11 @@ public:
      */
     explicit Endpoint(const std::string& uuid_)
         : uuid(uuid_), promiscuousMode(false), discoveryProxyMode(false), natMode(false),
-          external(false), aapModeAA(false), disableAdv(false), extEncap(0) {}
+          external(false), aapModeAA(false), disableAdv(false), extEncap(0) {
+#ifdef HAVE_PROMETHEUS_SUPPORT
+        attr_hash = 0;
+#endif
+    }
 
     /**
      * Get the endpoint group URI associated with this endpoint.  Note

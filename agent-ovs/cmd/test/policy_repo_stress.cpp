@@ -322,9 +322,12 @@ int main(int argc, char** argv) {
         if (vm.count("no_ssl")) {
             use_ssl = false;
         }
-    } catch (po::unknown_option& e) {
+    } catch (const po::unknown_option& e) {
         std::cerr << e.what() << std::endl;
         return 1;
+    } catch (const std::bad_cast& e) {
+        std::cerr << e.what() << std::endl;
+        return 2;
     }
 
     LOG(INFO) << "Starting " << num_agents << " agents with domain "

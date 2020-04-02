@@ -99,6 +99,9 @@ int main(int argc, char** argv) {
     } catch (const po::unknown_option& e) {
         std::cerr << e.what() << std::endl;
         return 1;
+    } catch (const std::bad_cast& e) {
+        std::cerr << e.what() << std::endl;
+        return 2;
     }
 
     initLogging(level_str, false /*syslog*/, log_file, "framework-stress");

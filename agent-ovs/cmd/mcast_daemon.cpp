@@ -163,9 +163,12 @@ int main(int argc, char** argv) {
         if (vm.count("syslog")) {
             logToSyslog = true;
         }
-    } catch (po::unknown_option& e) {
+    } catch (const po::unknown_option& e) {
         std::cerr << e.what() << std::endl;
         return 1;
+    } catch (const std::bad_cast& e) {
+        std::cerr << e.what() << std::endl;
+        return 2;
     }
 
     if (daemon)

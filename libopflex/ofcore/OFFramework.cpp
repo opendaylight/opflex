@@ -41,8 +41,8 @@ using std::string;
 class OFFramework::OFFrameworkImpl {
 public:
     OFFrameworkImpl()
-        : db(threadManager), processor(&db, threadManager), started(false),
-          mode(opflex::ofcore::OFConstants::OpflexElementMode::STITCHED_MODE)
+        : db(threadManager), processor(&db, threadManager), mutator_key(0),
+          started(false), mode(opflex::ofcore::OFConstants::OpflexElementMode::STITCHED_MODE)
           {}
     ~OFFrameworkImpl() {}
 
