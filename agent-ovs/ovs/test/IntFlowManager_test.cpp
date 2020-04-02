@@ -2846,7 +2846,7 @@ void BaseIntFlowManagerFixture::initExpLBService(Service &as1,
     initExpPodServiceStats("169.254.169.254", ep2, as1, "udp", 53, 5353);
     initExpPodServiceStats("169.254.169.254", ep3, as1, "udp", 53, 5353);
     initExpPodServiceStats("169.254.169.254", ep4, as1, "udp", 53, 5353);
-    initExpPodServiceStats("169.254.169.254", ep5, as1, "udp", 53, 5353);
+    //initExpPodServiceStats("169.254.169.254", ep5, as1, "udp", 53, 5353);
     initExpPodServiceStats("fe80::a9:fe:a9:fe", ep0, as2, "tcp", 80, 80);
 
     if (exposed) {
