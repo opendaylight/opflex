@@ -208,7 +208,11 @@ PrometheusManager::PrometheusManager(Agent &agent_,
                                      rddrop_last_genId{0},
                                      sgclassifier_last_genId{0},
                                      contract_last_genId{0},
-                                     disabled{true} {}
+                                     disabled{true}
+{
+    //Init state to avoid coverty warnings
+    init();
+}
 
 // create all ep counter families during start
 void PrometheusManager::createStaticCounterFamiliesEp (void)
@@ -785,6 +789,99 @@ void PrometheusManager::start (bool exposeLocalHostOnly)
     for (const auto& allow : agent.getPrometheusEpAttributes())
         allowed += allow+",";
     LOG(DEBUG) << "Agent config's allowed ep attributes: " << allowed;
+}
+
+// initialize state of PrometheusManager instance
+void PrometheusManager::init ()
+{
+    {
+        const lock_guard<mutex> lock(ep_counter_mutex);
+        counter_ep_create_ptr = nullptr;
+        counter_ep_remove_ptr = nullptr;
+        gauge_ep_total_ptr = nullptr;
+        counter_ep_create_family_ptr = nullptr;
+        counter_ep_remove_family_ptr = nullptr;
+        gauge_ep_total_family_ptr = nullptr;
+        for (EP_METRICS metric=EP_RX_BYTES;
+                metric < EP_METRICS_MAX;
+                    metric = EP_METRICS(metric+1)) {
+            gauge_ep_family_ptr[metric] = nullptr;
+        }
+    }
+
+    {
+        const lock_guard<mutex> lock(svc_counter_mutex);
+        counter_svc_create_ptr = nullptr;
+        counter_svc_remove_ptr = nullptr;
+        gauge_svc_total_ptr = nullptr;
+        counter_svc_create_family_ptr = nullptr;
+        counter_svc_remove_family_ptr = nullptr;
+        gauge_svc_total_family_ptr = nullptr;
+    }
+
+    {
+        const lock_guard<mutex> lock(podsvc_counter_mutex);
+        for (PODSVC_METRICS metric=PODSVC_METRICS_MIN;
+                metric <= PODSVC_METRICS_MAX;
+                    metric = PODSVC_METRICS(metric+1)) {
+            gauge_podsvc_family_ptr[metric] = nullptr;
+        }
+    }
+
+    {
+        const lock_guard<mutex> lock(ofpeer_stats_mutex);
+        for (OFPEER_METRICS metric=OFPEER_METRICS_MIN;
+                metric <= OFPEER_METRICS_MAX;
+                    metric = OFPEER_METRICS(metric+1)) {
+            gauge_ofpeer_family_ptr[metric] = nullptr;
+        }
+    }
+
+    {
+        const lock_guard<mutex> lock(remote_ep_mutex);
+        for (REMOTE_EP_METRICS metric=REMOTE_EP_METRICS_MIN;
+                metric <= REMOTE_EP_METRICS_MAX;
+                    metric = REMOTE_EP_METRICS(metric+1)) {
+            gauge_remote_ep_family_ptr[metric] = nullptr;
+            remote_ep_gauge_map[metric] = nullptr;
+        }
+    }
+
+    {
+        const lock_guard<mutex> lock(rddrop_stats_mutex);
+        for (RDDROP_METRICS metric=RDDROP_METRICS_MIN;
+                metric <= RDDROP_METRICS_MAX;
+                    metric = RDDROP_METRICS(metric+1)) {
+            gauge_rddrop_family_ptr[metric] = nullptr;
+        }
+    }
+
+    {
+        const lock_guard<mutex> lock(table_drop_counter_mutex);
+        for (TABLE_DROP_METRICS metric = TABLE_DROP_BYTES;
+                metric <= TABLE_DROP_METRICS_MAX;
+                    metric = TABLE_DROP_METRICS(metric+1)) {
+            gauge_table_drop_family_ptr[metric] = nullptr;
+        }
+    }
+
+    {
+        const lock_guard<mutex> lock(sgclassifier_stats_mutex);
+        for (SGCLASSIFIER_METRICS metric=SGCLASSIFIER_METRICS_MIN;
+                metric <= SGCLASSIFIER_METRICS_MAX;
+                    metric = SGCLASSIFIER_METRICS(metric+1)) {
+            gauge_sgclassifier_family_ptr[metric] = nullptr;
+        }
+    }
+
+    {
+        const lock_guard<mutex> lock(contract_stats_mutex);
+        for (CONTRACT_METRICS metric=CONTRACT_METRICS_MIN;
+                metric <= CONTRACT_METRICS_MAX;
+                    metric = CONTRACT_METRICS(metric+1)) {
+            gauge_contract_family_ptr[metric] = nullptr;
+        }
+    }
 }
 
 // Stop of PrometheusManager instance
