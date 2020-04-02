@@ -243,8 +243,8 @@ PodSvcStatsManagerFixture::testFlowAge (PolicyStatsManager *statsManager,
     if (isOld && isFlowStateReAdd) {
         guard.lock();
         BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.oldFlowCounterMap.size(), 0);
-        // 16 flows based on config, -2 aged flows
-        BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 15);
+        // 15 flows based on config, -2 aged flows
+        BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 13);
         guard.unlock();
 
         boost::system::error_code ec;
@@ -254,13 +254,13 @@ PodSvcStatsManagerFixture::testFlowAge (PolicyStatsManager *statsManager,
         // 2 flows get readded to new map
         guard.lock();
         BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.oldFlowCounterMap.size(), 0);
-        BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 17);
+        BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 15);
         guard.unlock();
     }
 
     if (!isOld && !isFlowStateReAdd) {
         guard.lock();
-        BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 17);
+        BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 15);
         guard.unlock();
 
         for (auto age = 0; age < PolicyStatsManager::MAX_AGE; age++) {
@@ -284,7 +284,7 @@ PodSvcStatsManagerFixture::testFlowAge (PolicyStatsManager *statsManager,
         statsManager->on_timer(ec);
 
         guard.lock();
-        BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 17);
+        BOOST_CHECK_EQUAL(podsvcStatsManager.statsState.newFlowCounterMap.size(), 15);
         guard.unlock();
     }
 
@@ -641,9 +641,12 @@ void PodSvcStatsManagerFixture::checkPodSvcObsObj (bool add)
 bool PodSvcStatsManagerFixture::checkNewFlowMapSize (void)
 {
     std::lock_guard<std::mutex> lock(podsvcStatsManager.pstatMtx);
-    // 6 eps with 6 ipv4 + 2 ipv6
-    // 2 svc mappings with 1 v6 and 1v4
-    if (podsvcStatsManager.statsState.newFlowCounterMap.size() == 17)
+    // We have 4 eps with "5 ipv4" + "2 ipv6"...
+    // and 2 svc mappings with "1 ipv6" and "1 ipv4"
+    // => 5*1*2 + 2*1*2 = 14 flows
+    // Also there are 2 default entries but only 1 has send_flow_rem
+    // So totally we have 15 flows in STATS table for which we collect stats
+    if (podsvcStatsManager.statsState.newFlowCounterMap.size() == 15)
         return true;
     return false;
 }

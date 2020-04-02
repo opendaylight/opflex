@@ -2434,6 +2434,10 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
                 }
 
                 const Endpoint& endPoint = *epWrapper.get();
+                if (endPoint.isExternal()) {
+                    LOG(DEBUG) << "pod<-->svc flows not handled for external endpoints";
+                    continue;
+                }
                 for (const string& epipStr : endPoint.getIPs()) {
                     podSvcFlowAddExpr(epUuid+":"+uuid,
                                       epipStr, sm,
@@ -2466,6 +2470,11 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
         LOG(DEBUG) << *epWrapper;
 
         const Endpoint& endPoint = *epWrapper.get();
+        if (endPoint.isExternal()) {
+            LOG(DEBUG) << "pod<-->svc flows not handled for external endpoints";
+            return;
+        }
+
         for (const string& epipStr : endPoint.getIPs()) {
 
             for (const string& svcUuid : svcUuids) {
