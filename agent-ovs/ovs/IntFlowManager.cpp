@@ -3051,6 +3051,15 @@ void IntFlowManager::handleSnatUpdate(const string& snatUuid) {
     protoVec.push_back(6);
     protoVec.push_back(17);
     uint8_t dmac[6];
+    uint8_t ifcMac[6];
+    bool hasIfcMac = as.getInterfaceMAC() != boost::none;
+
+    if (!hasIfcMac) {
+        LOG(ERROR) << "missing inteface mac in snat "
+                   << as;
+        return;
+    }
+    as.getInterfaceMAC().get().toUIntArray(ifcMac);
 
     /**
      * Either redirect to snat rev table for local snat processing or
@@ -3082,6 +3091,7 @@ void IntFlowManager::handleSnatUpdate(const string& snatUuid) {
                         else
                             maskedFlow.priority(199);
                         maskedFlow.inPort(snatPort)
+                                  .ethDst(ifcMac)
                                   .ipDst(addr)
                                   .proto(protocol)
                                   .tpDst(m.first, m.second);
