@@ -2850,6 +2850,7 @@ void BaseIntFlowManagerFixture::initExpLBService(Service &as1,
 
     if (exposed) {
         ADDF(Bldr().table(SEC).priority(90).in(17).isVlan(4003)
+             .isEthDst(mac)
              .actions()
              .popVlan().load(SEPG, 4003).load(RD, 1)
              .meta(flow::meta::POLICY_APPLIED |

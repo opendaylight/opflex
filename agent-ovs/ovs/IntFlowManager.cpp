@@ -2867,6 +2867,11 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
             FlowBuilder svcIface;
             svcIface.priority(90)
                 .inPort(ofPort);
+            if (as.getServiceMAC() != boost::none) {
+                uint8_t svcMac[6];
+                as.getServiceMAC().get().toUIntArray(svcMac);
+                svcIface.ethDst(svcMac);
+            }
             if (as.getIfaceVlan()) {
                 svcIface.vlan(as.getIfaceVlan().get());
                 svcIface.action().popVlan();
