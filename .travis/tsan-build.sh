@@ -39,6 +39,7 @@ pushd agent-ovs
 ./autogen.sh &> /dev/null
 ./configure --enable-tsan &> /dev/null
 make -j2
+sudo make install
 make check
 find . -name test-suite.log|xargs cat
 popd
