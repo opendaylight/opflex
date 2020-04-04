@@ -645,6 +645,8 @@ void Agent::start() {
         framework.overrideObservableReporting(modelgbp::gbpe::EpToSvcCounter::CLASS_ID, false);
         framework.overrideObservableReporting(modelgbp::gbpe::SvcToEpCounter::CLASS_ID, false);
         framework.overrideObservableReporting(modelgbp::gbpe::TableDropCounter::CLASS_ID, false);
+        framework.overrideObservableReporting(modelgbp::gbpe::SvcCounter::CLASS_ID, false);
+        framework.overrideObservableReporting(modelgbp::gbpe::SvcTargetCounter::CLASS_ID, false);
     }
 }
 
