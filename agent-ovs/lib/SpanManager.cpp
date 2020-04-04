@@ -51,12 +51,6 @@ namespace opflexagent {
         }
     }
 
-    static void print_set(SessionState::srcEpSet const& m) {
-        for (auto const &elem: m) {
-             LOG(DEBUG) << "{" << elem << "}\n";
-        }
-    }
-
     ostream& operator<<(ostream& os,
              const SourceEndPoint& sEp) {
         os << "name: " << sEp.getName() << " port: " << sEp.getPort()
@@ -304,15 +298,13 @@ namespace opflexagent {
         }
     }
 
-    void SessionState::addDstEndPoint
-                         (const URI& uri, shared_ptr<DstEndPoint> dEp) {
+    void SessionState::addDstEndPoint(const URI& uri, const shared_ptr<DstEndPoint>& dEp) {
         lock_guard<recursive_mutex> guard(opflexagent::SpanManager::updates);
         LOG(DEBUG) << "Add dst IP " << dEp->getAddress();
         dstEndPoints.emplace(uri, dEp);
     }
 
-    void SessionState::addSrcEndPoint
-                   (shared_ptr<SourceEndPoint> srcEp) {
+    void SessionState::addSrcEndPoint(const shared_ptr<SourceEndPoint>& srcEp) {
         lock_guard<recursive_mutex> guard(opflexagent::SpanManager::updates);
         LOG(DEBUG) << "Adding src end point" << *srcEp;
         srcEndPoints.emplace(srcEp);
@@ -414,7 +406,7 @@ namespace opflexagent {
     }
 
     void SpanManager::SpanUniverseListener::
-        addEndPoint(shared_ptr<LocalEp> lEp, shared_ptr<L2Ep> l2Ep, const srcMemInfo& sInfo) {
+        addEndPoint(const shared_ptr<LocalEp>& lEp, const shared_ptr<L2Ep>& l2Ep, const srcMemInfo& sInfo) {
         LOG(DEBUG) << "get parent lEp " << (lEp ? "set" : "null") <<
                       " l2Ep " << (l2Ep ? "set" : "null");
         optional<URI> parent = SpanManager::getSession(lEp);
@@ -432,7 +424,6 @@ namespace opflexagent {
                                                           sInfo.dir);
                     sesSt->addSrcEndPoint(srcEp);
                     spanmanager.notifyUpdate.insert(sess.get()->getURI());
-                    print_set(sesSt->getSrcEndPointSet());
                 }
             }
         }

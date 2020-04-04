@@ -121,8 +121,8 @@ class SessionState {
              * @param src2 shared pointer to source end point 2
              * @return bool true if comparison passes.
              */
-            bool operator()(std::shared_ptr<SourceEndPoint> src1,
-                    std::shared_ptr<SourceEndPoint> src2) const {
+            bool operator()(const std::shared_ptr<SourceEndPoint>& src1,
+                            const std::shared_ptr<SourceEndPoint>& src2) const {
                 return src1->getPort() == src2->getPort();
             }
         };
@@ -168,13 +168,13 @@ class SessionState {
          * @param uri uri pointing to the DstSummary object
          * @param dEp shared pointer to a DstEndPoint object.
          */
-        void addDstEndPoint(const URI& uri, shared_ptr<DstEndPoint> dEp);
+        void addDstEndPoint(const URI& uri, const shared_ptr<DstEndPoint>& dEp);
 
         /**
          * add a source end point to the internal map
          * @param srcEp shared pointer to a SourceEndPoint object.
          */
-        void addSrcEndPoint(shared_ptr<SourceEndPoint> srcEp);
+        void addSrcEndPoint(const shared_ptr<SourceEndPoint>& srcEp);
 
         /**
          * get the source end point set reference

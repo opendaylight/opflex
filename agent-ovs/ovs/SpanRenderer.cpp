@@ -282,17 +282,19 @@ namespace opflexagent {
     bool SpanRenderer::deleteErspanPort(const string& name) {
         string erspanUuid;
         jRpc->getPortUuid(ERSPAN_PORT_NAME, erspanUuid);
-        LOG(DEBUG) << ERSPAN_PORT_NAME << " uuid: " << erspanUuid;
-        JsonRpc::BrPortResult res;
-        if (jRpc->getBridgePortList(switchName, res)) {
-            LOG(DEBUG) << "br UUID " << res.brUuid;
-            for (auto& elem : res.portUuids) {
-                LOG(DEBUG) << elem;
-            }
+        if (erspanUuid.empty()) {
+            LOG(WARNING) << "Can't find port named " << ERSPAN_PORT_NAME;
+            return false;
         }
 
-        tuple<string, set<string>> ports =
-                make_tuple(res.brUuid, res.portUuids);
+        LOG(DEBUG) << ERSPAN_PORT_NAME << " uuid: " << erspanUuid;
+        JsonRpc::BrPortResult res;
+        if (!jRpc->getBridgePortList(switchName, res)) {
+            LOG(DEBUG) << "Unable to retrieve port list on " << switchName;
+            return false;
+        }
+
+        tuple<string, set<string>> ports = make_tuple(res.brUuid, res.portUuids);
         jRpc->updateBridgePorts(ports, erspanUuid, false);
         return true;
     }

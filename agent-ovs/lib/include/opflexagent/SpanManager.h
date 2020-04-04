@@ -187,7 +187,7 @@ public:
           * @param[in] l2Ep shared pointer to L2EP object
           * @param[in] s struct for source member info params
           */
-          void addEndPoint(shared_ptr<LocalEp> lEp, shared_ptr<L2Ep> l2Ep, const srcMemInfo& i);
+          void addEndPoint(const shared_ptr<LocalEp>& lEp, const shared_ptr<L2Ep>& l2Ep, const srcMemInfo& i);
 
           /**
            * process EP group
