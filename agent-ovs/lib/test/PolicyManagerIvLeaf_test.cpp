@@ -300,10 +300,10 @@ BOOST_FIXTURE_TEST_CASE( redirect_action_rules, PolicyIvLeafFixture ) {
                     ((*rIter)->getRedirectDestGrpURI() ==
                      redirDstGrp1->getURI()));
         pm.getPolicyDestGroup(redirDstGrp1->getURI(),redirList,
-                              hashOpt,hashParam);
+                              hashParam,hashOpt);
         WAIT_FOR_DO(redirList.size()==2, 500, redirList.clear();
                     pm.getPolicyDestGroup(redirDstGrp1->getURI(),redirList,
-                                          hashOpt,hashParam));
+                                          hashParam,hashOpt));
         for(auto it = redirList.begin(); it != redirList.end(); it++, ctr++){
             BOOST_CHECK((it->get()->getIp() == testIps[ctr]) &&
                         (it->get()->getMac() == testMacs[ctr]) &&
@@ -345,7 +345,7 @@ BOOST_FIXTURE_TEST_CASE( redirect_action_rules, PolicyIvLeafFixture ) {
     WAIT_FOR_DO((redirList.size()==3),1000,
                 redirList.clear();
                 pm.getPolicyDestGroup(redirDstGrp1->getURI(),redirList,
-                                      hashOpt, hashParam));
+                                      hashParam, hashOpt));
     for(auto it = redirList.begin(); it != redirList.end(); it++, ctr++) {
         BOOST_CHECK((it->get()->getIp() == testIps[ctr]) &&
                     (it->get()->getMac() == testMacs[ctr]) &&

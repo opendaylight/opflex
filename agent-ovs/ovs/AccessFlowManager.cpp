@@ -803,27 +803,23 @@ void AccessFlowManager::packetDropFlowConfigUpdated(const opflex::modb::URI& dro
         fb.ethType(dropFlowCfg.get()->getEthType(0));
     }
     if(dropFlowCfg.get()->isInnerSrcAddressSet()) {
-        const std::string &innerSrc =
-                dropFlowCfg.get()->getInnerSrcAddress("");
-        address addr = address::from_string(innerSrc);
+	address addr = address::from_string(
+                dropFlowCfg.get()->getInnerSrcAddress(""));
         fb.ipSrc(addr);
     }
     if(dropFlowCfg.get()->isInnerDstAddressSet()) {
-        const std::string &innerDst =
-                dropFlowCfg.get()->getInnerDstAddress("");
-        address addr = address::from_string(innerDst);
+        address addr = address::from_string(
+                dropFlowCfg.get()->getInnerDstAddress(""));
         fb.ipDst(addr);
     }
     if(dropFlowCfg.get()->isOuterSrcAddressSet()) {
-        const std::string &outerSrc =
-                dropFlowCfg.get()->getOuterSrcAddress("");
-        address addr = address::from_string(outerSrc);
+        address addr = address::from_string(
+                dropFlowCfg.get()->getOuterSrcAddress(""));
         fb.outerIpSrc(addr);
     }
     if(dropFlowCfg.get()->isOuterDstAddressSet()) {
-        const std::string &outerDst =
-                dropFlowCfg.get()->getOuterSrcAddress("");
-        address addr = address::from_string(outerDst);
+        address addr = address::from_string(
+                dropFlowCfg.get()->getOuterDstAddress(""));
         fb.outerIpDst(addr);
     }
     if(dropFlowCfg.get()->isTunnelIdSet()) {
