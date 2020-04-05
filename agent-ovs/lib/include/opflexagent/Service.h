@@ -231,6 +231,20 @@ public:
     }
 
     /**
+     * Check if the scope is external
+     *
+     * @return returns true if the scope is external
+     */
+    bool isExternal (void) const {
+        const Service::attr_map_t& svcAttr = getAttributes();
+        auto scopeItr = svcAttr.find("scope");
+        if (scopeItr != svcAttr.end())
+            if (scopeItr->second == "ext")
+                return true;
+        return false;
+    }
+
+    /**
      * A mapping for this service from a forwarding domain scope to a
      * corresponding interface.
      */

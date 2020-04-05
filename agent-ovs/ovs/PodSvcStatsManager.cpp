@@ -258,7 +258,7 @@ updatePodSvcStatsObjects(PodSvcCounterMap_t *newCountersMap) {
         const PodSvcFlowMatchKey_t& flowKey = itr->first;
         FlowStats_t&  newCounters = itr->second;
         if (newCounters.packet_count.get() != 0) {
-            intFlowManager.updatePodSvcStatsCounters(
+            intFlowManager.updateSvcStatsCounters(
                                      flowKey.cookie,
                                      newCounters.packet_count.get(),
                                      newCounters.byte_count.get());

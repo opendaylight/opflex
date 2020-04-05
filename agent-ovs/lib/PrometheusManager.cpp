@@ -225,15 +225,15 @@ void PrometheusManager::createStaticCounterFamiliesEp (void)
     /* Counter family to track the total calls made to EpCounter update/remove
      * from other clients */
     auto& counter_ep_create_family = BuildCounter()
-                         .Name("opflex_ep_created_total")
-                         .Help("Total number of local EP creates")
+                         .Name("opflex_endpoint_created_total")
+                         .Help("Total number of local endpoint creates")
                          .Labels({})
                          .Register(*registry_ptr);
     counter_ep_create_family_ptr = &counter_ep_create_family;
 
     auto& counter_ep_remove_family = BuildCounter()
-                         .Name("opflex_ep_removed_total")
-                         .Help("Total number of local EP deletes")
+                         .Name("opflex_endpoint_removed_total")
+                         .Help("Total number of local endpoint deletes")
                          .Labels({})
                          .Register(*registry_ptr);
     counter_ep_remove_family_ptr = &counter_ep_remove_family;
@@ -517,7 +517,7 @@ void PrometheusManager::createStaticGaugeFamiliesEp (void)
     // during Register().
 
     auto& gauge_ep_total_family = BuildGauge()
-                         .Name("opflex_active_local_endpoints")
+                         .Name("opflex_endpoint_active_total")
                          .Help("Total active local end point count")
                          .Labels({})
                          .Register(*registry_ptr);

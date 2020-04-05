@@ -41,6 +41,24 @@ void IdGenerator::setAllocHook(const std::string& nmspc,
     nitr->second.allocHook = allocHook;
 }
 
+// The below method doesnt do any alloc if ID isnt created already
+uint32_t IdGenerator::getIdNoAlloc (const string& nmspc, const string& str) {
+    lock_guard<mutex> guard(id_mutex);
+    NamespaceMap::iterator nitr = namespaces.find(nmspc);
+    if (nitr == namespaces.end()) {
+        LOG(ERROR) << "ID requested for unknown namespace: " << nmspc;
+        return -1;
+    }
+
+    IdMap& idmap = nitr->second;
+    IdMap::Str2IdMap::const_iterator it = idmap.ids.find(str);
+    if (it == idmap.ids.end()) {
+        return -1;
+    }
+
+    return it->second;
+}
+
 uint32_t IdGenerator::getId(const string& nmspc, const string& str) {
     lock_guard<mutex> guard(id_mutex);
     NamespaceMap::iterator nitr = namespaces.find(nmspc);
