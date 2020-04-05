@@ -97,6 +97,23 @@ void ServiceManager::removeDomains(const Service& service) {
     }
 }
 
+static void clearSvcCounterStats (shared_ptr<SvcCounter> pSvc,
+                                  shared_ptr<SvcTargetCounter> pSvcTgt)
+{
+    auto stRxPktCount = pSvcTgt->getRxpackets(0);
+    auto stRxByteCount = pSvcTgt->getRxbytes(0);
+    auto stTxPktCount = pSvcTgt->getTxpackets(0);
+    auto stTxByteCount = pSvcTgt->getTxbytes(0);
+    auto sRxPktCount = pSvc->getRxpackets(0);
+    auto sRxByteCount = pSvc->getRxbytes(0);
+    auto sTxPktCount = pSvc->getTxpackets(0);
+    auto sTxByteCount = pSvc->getTxbytes(0);
+    pSvc->setRxpackets(sRxPktCount - stRxPktCount)
+         .setRxbytes(sRxByteCount - stRxByteCount)
+         .setTxpackets(sTxPktCount - stTxPktCount)
+         .setTxbytes(sTxByteCount - stTxByteCount);
+}
+
 /* Populate MODB with service target observer */
 void
 ServiceManager::updateSvcTargetObserverMoDB (const opflexagent::Service& service,
@@ -131,6 +148,7 @@ ServiceManager::updateSvcTargetObserverMoDB (const opflexagent::Service& service
                 }
             } else {
                 if (opSvcTarget) {
+                    clearSvcCounterStats(pSvcCounter, opSvcTarget.get());
                     opSvcTarget.get()->remove();
                 }
             }
@@ -138,8 +156,10 @@ ServiceManager::updateSvcTargetObserverMoDB (const opflexagent::Service& service
     }
 
     // Remove deleted service targets
-    for (auto& pSvcTarget : out)
+    for (auto& pSvcTarget : out) {
+        clearSvcCounterStats(pSvcCounter, pSvcTarget);
         pSvcTarget->remove();
+    }
 }
 
 /* Populate MODB with service observer */

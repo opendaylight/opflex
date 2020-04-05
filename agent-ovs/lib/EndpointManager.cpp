@@ -1001,7 +1001,10 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid,
  * This is needed since we want to generate URI without the EPR prefixes of the EP */
 static URI formSecGroupURI (SecurityGroupContext& sgc)
 {
-    const auto& sg = sgc.getSecGroup("");
+    boost::optional<const std::string&> sgOpt = sgc.getSecGroup();
+    if (!sgOpt)
+        return URIBuilder().build();
+    const auto& sg = sgOpt.get();
     size_t spaceStart = sg.find("PolicySpace") + 12;
     size_t gsgStart = sg.rfind("GbpSecGroup");
     size_t nameStart = gsgStart + 12;
