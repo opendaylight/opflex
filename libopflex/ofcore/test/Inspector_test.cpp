@@ -51,7 +51,10 @@ public:
 
     ~InspectorFixture() {
         inspector.stop();
-        std::remove(SOCK_NAME.c_str());
+        int rc = std::remove(SOCK_NAME.c_str());
+        if (0 != rc) {
+            LOG(WARNING) << "Problems removing " << SOCK_NAME << " rc = " << rc;
+        }
     }
 
     Inspector inspector;

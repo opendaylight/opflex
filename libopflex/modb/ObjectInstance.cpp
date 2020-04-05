@@ -81,7 +81,11 @@ ObjectInstance::Value::Value(const Value& val)
 }
 
 ObjectInstance::Value::~Value() {
-    clear();
+    try {
+        clear();
+    } catch (const boost::bad_get& e) {
+        // should never hapen
+    }
 }
 
 void ObjectInstance::Value::clear() {
@@ -133,8 +137,7 @@ bool ObjectInstance::unset(prop_id_t prop_id,
                            PropertyInfo::property_type_t type,
                            PropertyInfo::cardinality_t cardinality) {
     type = normalize(type);
-    prop_map_t::iterator it =
-        prop_map.find(make_tuple(type, cardinality, prop_id));
+    auto it = prop_map.find(make_tuple(type, cardinality, prop_id));
     if (it == prop_map.end()) return false;
 
     prop_map.erase(it);
@@ -157,7 +160,7 @@ uint64_t ObjectInstance::getUInt64(prop_id_t prop_id,
 }
 
 size_t ObjectInstance::getUInt64Size(prop_id_t prop_id) const {
-    prop_map_t::const_iterator it =
+    auto it =
         prop_map.find(make_tuple(PropertyInfo::U64,
                                  PropertyInfo::VECTOR,
                                  prop_id));
@@ -181,7 +184,7 @@ const MAC& ObjectInstance::getMAC(prop_id_t prop_id,
 }
 
 size_t ObjectInstance::getMACSize(prop_id_t prop_id) const {
-    prop_map_t::const_iterator it =
+    auto it =
         prop_map.find(make_tuple(PropertyInfo::MAC,
                                  PropertyInfo::VECTOR,
                                  prop_id));
@@ -205,7 +208,7 @@ int64_t ObjectInstance::getInt64(prop_id_t prop_id,
 }
 
 size_t ObjectInstance::getInt64Size(prop_id_t prop_id) const {
-    prop_map_t::const_iterator it =
+    auto it =
         prop_map.find(make_tuple(PropertyInfo::S64,
                                  PropertyInfo::VECTOR,
                                  prop_id));
@@ -229,7 +232,7 @@ const string& ObjectInstance::getString(prop_id_t prop_id,
 }
 
 size_t ObjectInstance::getStringSize(prop_id_t prop_id) const {
-    prop_map_t::const_iterator it =
+    auto it =
         prop_map.find(make_tuple(PropertyInfo::STRING,
                                  PropertyInfo::VECTOR,
                                  prop_id));
@@ -253,7 +256,7 @@ reference_t ObjectInstance::getReference(prop_id_t prop_id,
 }
 
 size_t ObjectInstance::getReferenceSize(prop_id_t prop_id) const {
-    prop_map_t::const_iterator it =
+    auto it =
         prop_map.find(make_tuple(PropertyInfo::REFERENCE,
                                  PropertyInfo::VECTOR,
                                  prop_id));
@@ -504,15 +507,13 @@ bool operator!=(const ObjectInstance::Value& lhs,
 bool operator==(const ObjectInstance& lhs, const ObjectInstance& rhs) {
     BOOST_FOREACH(const ObjectInstance::prop_map_t::value_type& v,
                   lhs.prop_map) {
-        ObjectInstance::prop_map_t::const_iterator it =
-            rhs.prop_map.find(v.first);
+        auto it = rhs.prop_map.find(v.first);
         if (it == rhs.prop_map.end()) return false;
         if (v.second != it->second) return false;
     }
     BOOST_FOREACH(ObjectInstance::prop_map_t::value_type v,
                   rhs.prop_map) {
-        ObjectInstance::prop_map_t::const_iterator it =
-            lhs.prop_map.find(v.first);
+        auto it = lhs.prop_map.find(v.first);
         if (it == rhs.prop_map.end()) return false;
     }
     return true;

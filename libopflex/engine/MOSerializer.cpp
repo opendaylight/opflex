@@ -783,6 +783,8 @@ void MOSerializer::displayUnresolvedObject(std::ostream& ostream,
             pit->second.getName().size() > maxPropName)
             maxPropName = pit->second.getName().size();
 
+        std::streamsize origWidth = ostream.width(maxPropName);
+
         switch (pit->second.getType()) {
             case modb::PropertyInfo::STRING:
             case modb::PropertyInfo::S64:
@@ -857,6 +859,8 @@ void MOSerializer::displayUnresolvedObject(std::ostream& ostream,
                                    children[pit->second.getClassId()]);
                 break;
         }
+        // restore stream width
+        ostream.width(origWidth);
     }
 
     std::map<modb::class_id_t, std::vector<modb::URI> >::iterator clsit;

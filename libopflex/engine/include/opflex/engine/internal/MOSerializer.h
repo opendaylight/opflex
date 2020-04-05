@@ -524,11 +524,11 @@ private:
     /**
      * Deserialize an enum
      */
-    void deserialize_enum(modb::mointernal::StoreClient& client,
-                          const modb::PropertyInfo& pinfo,
-                          const rapidjson::Value& v,
-                          modb::mointernal::ObjectInstance& oi,
-                          bool scalar);
+    static void deserialize_enum(modb::mointernal::StoreClient& client,
+                                const modb::PropertyInfo& pinfo,
+                                const rapidjson::Value& v,
+                                modb::mointernal::ObjectInstance& oi,
+                                bool scalar);
 
     /**
      * Display a particular object
