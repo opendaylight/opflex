@@ -68,6 +68,16 @@ public:
     uint32_t getId(const std::string& nmspc, const std::string& str);
 
     /**
+     * Return the ID if its already present. Wont allocate a new ID if not
+     * present. Wont touch the eraseid map as well.
+     *
+     * @param nmspc Namespace to get an ID from
+     * @param str string to get an ID for
+     * @return -1 if not found, the actual id if found
+     */
+    uint32_t getIdNoAlloc(const std::string& nmspc, const std::string& str);
+
+    /**
      * Remove the ID assignment for a given string, and move it to the
      * erased list
      *

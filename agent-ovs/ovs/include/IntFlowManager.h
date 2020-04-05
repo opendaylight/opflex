@@ -485,14 +485,14 @@ public:
     /**
      * Calls by PolicyStatsManager to update stats
      *
-     * @param cookie flow.cookie formed by "podsvc" idgen. This
-     *               uniquely identifies the pod<-->svc combination.
-     * @param pkts   aggregated packets per (pod,svc)
-     * @param bytes  aggregated bytes per (pod,svc)
+     * @param cookie flow.cookie formed by "svcstat" idgen. This
+     *               uniquely identifies the pod<-->svc or *<-->svc-tgt combination.
+     * @param pkts   aggregated packets per combination
+     * @param bytes  aggregated bytes per combination
      */
-    void updatePodSvcStatsCounters(const uint64_t &cookie,
-                                   const uint64_t &pkts,
-                                   const uint64_t &bytes);
+    void updateSvcStatsCounters(const uint64_t &cookie,
+                                const uint64_t &pkts,
+                                const uint64_t &bytes);
     /**
      * Get the cookie used for PodSvc Flows.
      * @param uuid UUID of the Ep
@@ -503,7 +503,7 @@ public:
     bool getPodSvcUuidCookie(const std::string & uuid,
                              bool ep_to_svc,
                              uint64_t &cookie) {
-        const std::lock_guard<mutex> lock(podSvcMutex);
+        const std::lock_guard<mutex> lock(svcStatMutex);
         if(podSvcUuidCkMap.find(uuid) == podSvcUuidCkMap.end()) {
             return false;
         }
@@ -545,7 +545,29 @@ private:
     void handleServiceUpdate(const std::string& uuid);
 
     /**
-     * Update flow tables due to changes in a service/ep.
+     * Update service stats flows for metric collection
+     *
+     * @param uuid UUID of the changed service/ep
+     * @param is_svc true if the uuid belongs to svc
+     * @param is_add true if the svc/ep is added
+     */
+    void updateSvcStatsFlows(const std::string &uuid,
+                             const bool &is_svc,
+                             const bool &is_add);
+
+    /**
+     * Update any<-->svc-tgt flows due to changes in a service/ep.
+     *
+     * @param uuid UUID of the changed service/ep
+     * @param is_svc true if the uuid belongs to svc
+     * @param is_add true if the svc/ep is added
+     */
+    void updateSvcTgtStatsFlows(const std::string &uuid,
+                                const bool &is_svc,
+                                const bool &is_add);
+
+    /**
+     * Update pod<-->svc flows due to changes in a service/ep.
      *
      * @param uuid UUID of the changed service/ep
      * @param is_svc true if the uuid belongs to svc
@@ -554,6 +576,23 @@ private:
     void updatePodSvcStatsFlows(const std::string &uuid,
                                 const bool &is_svc,
                                 const bool &is_add);
+
+    /**
+     * Clear svc counter and children stats
+     *
+     * @param uuid The uuid of svc
+     */
+    void clearSvcStatsCounters(const std::string& uuid);
+
+    /**
+     * Clear svc-tgt counters
+     *
+     * @param uuid The uuid of svc
+     * @param nhip The ip of svc-tgt
+     */
+    void clearSvcTgtStatsCounters(const std::string& uuid,
+                                  const std::string& nhip);
+
     /**
      * Clear podsvc counter objects
      *
@@ -562,14 +601,36 @@ private:
     void clearPodSvcStatsCounters(const std::string& key);
 
     /*
-     * Update podsvc counter objects
+     * Update svctgt counter objects
      */
     typedef std::unordered_map<std::string, std::string> attr_map;
+    void updateSvcTgtStatsCounters(const uint64_t &cookie,
+                                   const bool &isAnyToSvc,
+                                   const string& idStr,
+                                   const uint64_t &pkts,
+                                   const uint64_t &bytes,
+                                   const attr_map &ep_attr_map);
+
+    /*
+     * Update podsvc counter objects
+     */
     void updatePodSvcStatsCounters(const uint64_t &cookie,
+                                   const bool &isEpToSvc,
+                                   const string& idStr,
                                    const uint64_t &pkts,
                                    const uint64_t &bytes,
                                    const attr_map &ep_attr_map,
                                    const attr_map &svc_attr_map);
+
+    /*
+     * Update svc counter objects
+     */
+    void updateSvcStatsCounters(const bool &isIngress,
+                                const string& uuid,
+                                const uint64_t &pkts,
+                                const uint64_t &bytes,
+                                const bool &add);
+
     /*
      * Update podsvc counter attributes
      */
@@ -763,8 +824,22 @@ private:
      * of same pod<-->svc uuid will use these cookies */
     unordered_map<std::string, pair<uint64_t, uint64_t>> podSvcUuidCkMap;
 
-    // Lock to safe guard podsvc related state
-    std::mutex podSvcMutex;
+    /* Cookie cleanup of any<-->svc flows:
+     * The key for every cookie is per NH svc-tgt.
+     * svctoan:svc-tgt:svcuuid:nhip
+     * and
+     * antosvc:svc-tgt:svcuuid:nhip
+     * If a service is removed, or if NH is deleted or if EP IP is removed
+     * of if EP becomes external, then the flows get deleted.
+     * The cookie will get freed up during cleanup timer of IntFlowManager as
+     * part of idgen garbage collection. Since this timer kicks off once every
+     * 180 seconds, caching the svc:nh-ip state to do faster cleanup.
+     * This state is also used for cleanup of stats from observer MOs.
+     */
+    unordered_map<std::string, unordered_set<std::string>> svc_nh_map;
+
+    // Lock to safe guard svcstat related state
+    std::mutex svcStatMutex;
 
     /*
      * Map of flood-group URI to the endpoints associated with it.
