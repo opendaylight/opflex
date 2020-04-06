@@ -16,6 +16,24 @@
       "revId": "928baf7c917cb34dc3461226b0133ec8433cb851",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ff5714fc_83ae58da",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1491,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2020-04-06T20:56:28Z",
+      "side": 1,
+      "message": "This is to allow flexibility when adding allowed subnbets for extPol. Usually they would be associated with single EPG. But by doing a longest prefix match we can have overlapping subnets. So say a default subnet 0.0.0.0/0 using EPG-A and a more specific 100.100.100.0/24 using EPG-B",
+      "parentUuid": "b2937f1a_9eb18176",
+      "revId": "928baf7c917cb34dc3461226b0133ec8433cb851",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
     }
   ]
 }
