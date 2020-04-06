@@ -161,8 +161,15 @@ module[inv]
             }
         }
 
-        # An IP address
+        # An IP address or subnet
         member[ip; type=address/IP]
+        # Prefix length for if IP address is a subnet
+        member[prefixLen; type=scalar/UInt8]
+        # In case of subnet the next-hop IP address
+        member[nextHopIP; type=address/IP]
+        # In case of subnet the next-hop MAC
+        member[nextHopMac; type=address/MAC]
+
     }
 
     class[IpMapping;
@@ -417,7 +424,7 @@ module[inv]
         }
     }
 
-    # an endpoint with network identifiers
+    # an endpoint with network identifiers or a remote subnet
     class[RemoteInventoryEp;
           super=inv/InventoryEp;
           concrete;
