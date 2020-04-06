@@ -34,6 +34,24 @@
       "revId": "928baf7c917cb34dc3461226b0133ec8433cb851",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "87f69080_0b4bac14",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1491,
+      "author": {
+        "id": 8289
+      },
+      "writtenOn": "2020-04-06T21:34:15Z",
+      "side": 1,
+      "message": "We should do LPM I agree.You are adding non-tunnel flows with prefix as the priority, why the exception for tunDst? Also I think outport is missing for non-tunnel Ips.",
+      "parentUuid": "ff5714fc_83ae58da",
+      "revId": "928baf7c917cb34dc3461226b0133ec8433cb851",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
     }
   ]
 }
