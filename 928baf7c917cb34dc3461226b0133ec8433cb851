@@ -52,6 +52,24 @@
       "revId": "928baf7c917cb34dc3461226b0133ec8433cb851",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e606bb86_619a6a7f",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1491,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2020-04-06T21:45:22Z",
+      "side": 1,
+      "message": "because tunDst will not have overlap. existing remote eps are 32 bit. for CSR may be we can\nhave multiple EPGs but as of now they are not ready so I am not sure what support is needed besides the fact that we know the CSR gw IP and MAC.\nYes no output port for non-tunnel. Its goes over veth_host. see the flow I removed that was allow all, this basically provides a mechanism to do the same based on subnets. Mandeep wanted me to use remote EP model rather than add something new to the model.",
+      "parentUuid": "87f69080_0b4bac14",
+      "revId": "928baf7c917cb34dc3461226b0133ec8433cb851",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
     }
   ]
 }
