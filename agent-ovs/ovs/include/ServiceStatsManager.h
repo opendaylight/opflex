@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Include file for pod <--> svc stats manager
+ * Include file for service stats manager
  *
  * Copyright (c) 2020 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -13,8 +13,8 @@
 #include "PolicyStatsManager.h"
 
 #pragma once
-#ifndef OPFLEXAGENT_PodSvcStatsManager_H
-#define OPFLEXAGENT_PodSvcStatsManager_H
+#ifndef OPFLEXAGENT_ServiceStatsManager_H
+#define OPFLEXAGENT_ServiceStatsManager_H
 
 namespace opflexagent {
 
@@ -24,7 +24,7 @@ class Agent;
  * Periodically query an OpenFlow switch for policy counters and stats
  * and distribute them as needed to other components for reporting.
  */
-class PodSvcStatsManager : public PolicyStatsManager {
+class ServiceStatsManager : public PolicyStatsManager {
 public:
     /**
      * Instantiate a new policy stats manager that will use the
@@ -38,7 +38,7 @@ public:
      * @param timer_interval the interval for the stats timer in
      * milliseconds
      */
-    PodSvcStatsManager(Agent* agent, IdGenerator& idGen,
+    ServiceStatsManager(Agent* agent, IdGenerator& idGen,
                          SwitchManager& switchManager,
                          IntFlowManager& intFlowManager,
                          long timer_interval = 30000);
@@ -46,7 +46,7 @@ public:
     /**
      * Destroy the policy stats manager and clean up all state
      */
-    virtual ~PodSvcStatsManager();
+    virtual ~ServiceStatsManager();
 
     /**
      * Start the policy stats manager
@@ -79,13 +79,13 @@ public:
 
 private:
     /**
-     * Type used as a key for Pod-Svc counter maps
+     * Type used as a key for service counter maps
      */
-    struct PodSvcFlowMatchKey_t {
+    struct ServiceFlowMatchKey_t {
         /**
-         * Trivial constructor for pod<-->svc match key
+         * Trivial constructor for service match key
          */
-        PodSvcFlowMatchKey_t(uint32_t k1) {
+        ServiceFlowMatchKey_t(uint32_t k1) {
             cookie = k1;
         }
 
@@ -97,47 +97,47 @@ private:
         /**
          * equality operator
          */
-        bool operator==(const PodSvcFlowMatchKey_t &other) const;
+        bool operator==(const ServiceFlowMatchKey_t &other) const;
     };
 
     /**
-     * Hasher for PodSvcFlowMatchKey_t
+     * Hasher for ServiceFlowMatchKey_t
      */
-    struct PodSvcKeyHasher {
+    struct ServiceKeyHasher {
         /**
          * Hash for FlowMatch Key
          */
-        size_t operator()(const PodSvcFlowMatchKey_t& k) const noexcept;
+        size_t operator()(const ServiceFlowMatchKey_t& k) const noexcept;
     };
 
-    /** map flow to Pod-Svc info and counters */
-    typedef std::unordered_map<PodSvcFlowMatchKey_t, 
+    /** map flow to service info and counters */
+    typedef std::unordered_map<ServiceFlowMatchKey_t,
                                FlowStats_t,
-                               PodSvcKeyHasher> PodSvcCounterMap_t;
+                               ServiceKeyHasher> ServiceCounterMap_t;
 
-    // Flow state of all pod<-->svc flows in stats table
+    // Flow state of all service flows in stats table
     flowCounterState_t statsState;
 
     /**
-     * Get aggregated stats counters from for Pod<-->Svc flows
+     * Get aggregated stats counters from for service flows
      */
     void on_timer_base(const boost::system::error_code& ec,
                        flowCounterState_t& counterState,
-                       PodSvcCounterMap_t& newClassCountersMap);
+                       ServiceCounterMap_t& newClassCountersMap);
 
     /**
-     * Generate/update the pod<-->svc stats objects for from the counter maps
+     * Generate/update the service stats objects for from the counter maps
      */
-    void updatePodSvcStatsObjects(PodSvcCounterMap_t *counters);
+    void updateServiceStatsObjects(ServiceCounterMap_t *counters);
 
     /**
      * The integration bridge flow manager
      */
     IntFlowManager& intFlowManager;
 
-    friend class PodSvcStatsManagerFixture;
+    friend class ServiceStatsManagerFixture;
 };
 
 } /* namespace opflexagent */
 
-#endif /* OPFLEXAGENT_PodSvcStatsManager_H */
+#endif /* OPFLEXAGENT_ServiceStatsManager_H */

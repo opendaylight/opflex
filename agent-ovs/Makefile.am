@@ -144,7 +144,7 @@ noinst_HEADERS = \
 	ovs/include/InterfaceStatsManager.h \
 	ovs/include/PolicyStatsManager.h \
 	ovs/include/ContractStatsManager.h \
-	ovs/include/PodSvcStatsManager.h \
+	ovs/include/ServiceStatsManager.h \
 	ovs/include/SecGrpStatsManager.h \
 	ovs/include/TableDropStatsManager.h \
 	ovs/include/CtZoneManager.h \
@@ -246,7 +246,7 @@ if RENDERER_OVS
 	ovs/PolicyStatsManager.cpp \
 	ovs/InterfaceStatsManager.cpp \
 	ovs/ContractStatsManager.cpp \
-	ovs/PodSvcStatsManager.cpp \
+	ovs/ServiceStatsManager.cpp \
 	ovs/SecGrpStatsManager.cpp \
 	ovs/TableDropStatsManager.cpp \
 	ovs/RangeMask.cpp \
@@ -452,7 +452,7 @@ if RENDERER_OVS
 	ovs/test/Packets_test.cpp \
 	ovs/test/InterfaceStatsManager_test.cpp \
 	ovs/test/ContractStatsManager_test.cpp \
-	ovs/test/PodSvcStatsManager_test.cpp \
+	ovs/test/ServiceStatsManager_test.cpp \
 	ovs/test/SecGrpStatsManager_test.cpp \
 	ovs/test/TableState_test.cpp \
 	ovs/test/SpanRenderer_test.cpp \

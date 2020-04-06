@@ -1,6 +1,6 @@
 /* -*- C++ -*-; c-basic-offset: 4; indent-tabs-mode: nil */
 /*
- * Implementation for PodSvcStatsManager class.
+ * Implementation for ServiceStatsManager class.
  *
  * Copyright (c) 2020 Cisco Systems, Inc. and others.  All rights reserved.
  *
@@ -14,7 +14,7 @@
 #include <opflexagent/IdGenerator.h>
 #include <opflexagent/Agent.h>
 #include "TableState.h"
-#include "PodSvcStatsManager.h"
+#include "ServiceStatsManager.h"
 
 #include "ovs-ofputil.h"
 
@@ -31,7 +31,7 @@ using std::bind;
 using boost::system::error_code;
 
 
-PodSvcStatsManager::PodSvcStatsManager(Agent* agent_, IdGenerator& idGen_,
+ServiceStatsManager::ServiceStatsManager(Agent* agent_, IdGenerator& idGen_,
                                            SwitchManager& switchManager_,
                                            IntFlowManager& intFlowManager_,
                                            long timer_interval_)
@@ -40,26 +40,26 @@ PodSvcStatsManager::PodSvcStatsManager(Agent* agent_, IdGenerator& idGen_,
       intFlowManager(intFlowManager_) {
 }
 
-PodSvcStatsManager::~PodSvcStatsManager() {
+ServiceStatsManager::~ServiceStatsManager() {
 }
 
-void PodSvcStatsManager::start() {
-    LOG(DEBUG) << "Starting podsvc stats manager ("
+void ServiceStatsManager::start() {
+    LOG(DEBUG) << "Starting service stats manager ("
                << timer_interval << " ms)";
     PolicyStatsManager::start();
     {
         std::lock_guard<std::mutex> lock(timer_mutex);
-        timer->async_wait(bind(&PodSvcStatsManager::on_timer, this, error));
+        timer->async_wait(bind(&ServiceStatsManager::on_timer, this, error));
     }
 }
 
-void PodSvcStatsManager::stop() {
-    LOG(DEBUG) << "Stopping podsvc stats manager";
+void ServiceStatsManager::stop() {
+    LOG(DEBUG) << "Stopping service stats manager";
     stopping = true;
     PolicyStatsManager::stop();
 }
 
-void PodSvcStatsManager::on_timer(const error_code& ec) {
+void ServiceStatsManager::on_timer(const error_code& ec) {
     if (ec) {
         std::lock_guard<std::mutex> lock(timer_mutex);
         // shut down the timer when we get a cancellation
@@ -84,13 +84,13 @@ void PodSvcStatsManager::on_timer(const error_code& ec) {
                                          cb_func);
     
         // aggregate statsCounterMap based on FlowCounterState
-        PodSvcCounterMap_t statsCountersMap;
+        ServiceCounterMap_t statsCountersMap;
         on_timer_base(ec, statsState, statsCountersMap);
 
-        // Update podsvc stats objects. IntFlowManager would
+        // Update service stats objects. IntFlowManager would
         // have already created the objects. If its not resolved,
         // then new objects will get created 
-        updatePodSvcStatsObjects(&statsCountersMap);
+        updateServiceStatsObjects(&statsCountersMap);
     }
 
     sendRequest(IntFlowManager::STATS_TABLE_ID);
@@ -98,16 +98,16 @@ void PodSvcStatsManager::on_timer(const error_code& ec) {
         std::lock_guard<std::mutex> lock(timer_mutex);
         if (timer) {
             timer->expires_from_now(milliseconds(timer_interval));
-            timer->async_wait(bind(&PodSvcStatsManager::on_timer, this, error));
+            timer->async_wait(bind(&ServiceStatsManager::on_timer, this, error));
         }
     }
 }
 
 // update statsCounterMap based on FlowCounterState
-void PodSvcStatsManager::
+void ServiceStatsManager::
 on_timer_base(const error_code& ec,
               flowCounterState_t& counterState,
-              PodSvcCounterMap_t& statsCountersMap) {
+              ServiceCounterMap_t& statsCountersMap) {
 
     // Walk through all the old map entries that have
     // been visited.
@@ -131,7 +131,7 @@ on_timer_base(const error_code& ec,
         if (newFlowCounters.diff_packet_count &&
             newFlowCounters.diff_packet_count.get() != 0) {
 
-            PodSvcFlowMatchKey_t flowMatchKey(flowEntryKey.cookie);
+            ServiceFlowMatchKey_t flowMatchKey(flowEntryKey.cookie);
 
             FlowStats_t&  newStatsCounters =
                                 statsCountersMap[flowMatchKey];
@@ -186,7 +186,7 @@ on_timer_base(const error_code& ec,
         // Have we collected non-zero diffs for this removed flow entry
         if (remFlowCounters.diff_packet_count) {
 
-            PodSvcFlowMatchKey_t flowMatchKey(remFlowEntryKey.cookie);
+            ServiceFlowMatchKey_t flowMatchKey(remFlowEntryKey.cookie);
 
             FlowStats_t& newStatsCounters =
                 statsCountersMap[flowMatchKey];
@@ -247,15 +247,15 @@ on_timer_base(const error_code& ec,
 }
 
 // Generate/update Pod <--> Svc stats objects
-void PodSvcStatsManager::
-updatePodSvcStatsObjects(PodSvcCounterMap_t *newCountersMap) {
+void ServiceStatsManager::
+updateServiceStatsObjects(ServiceCounterMap_t *newCountersMap) {
     
     // walk through newCountersMap to update new set of MOs
-    for (PodSvcCounterMap_t:: iterator itr = newCountersMap->begin();
+    for (ServiceCounterMap_t:: iterator itr = newCountersMap->begin();
          itr != newCountersMap->end();
          itr++) {
         
-        const PodSvcFlowMatchKey_t& flowKey = itr->first;
+        const ServiceFlowMatchKey_t& flowKey = itr->first;
         FlowStats_t&  newCounters = itr->second;
         if (newCounters.packet_count.get() != 0) {
             intFlowManager.updateSvcStatsCounters(
@@ -266,13 +266,13 @@ updatePodSvcStatsObjects(PodSvcCounterMap_t *newCountersMap) {
     }
 }
 
-bool PodSvcStatsManager::PodSvcFlowMatchKey_t::
-operator==(const PodSvcFlowMatchKey_t &other) const {
+bool ServiceStatsManager::ServiceFlowMatchKey_t::
+operator==(const ServiceFlowMatchKey_t &other) const {
     return (cookie == other.cookie);
 }
 
-size_t PodSvcStatsManager::PodSvcKeyHasher::
-operator()(const PodSvcStatsManager::PodSvcFlowMatchKey_t& k) const noexcept {
+size_t ServiceStatsManager::ServiceKeyHasher::
+operator()(const ServiceStatsManager::ServiceFlowMatchKey_t& k) const noexcept {
     using boost::hash_value;
     using boost::hash_combine;
 
@@ -281,7 +281,7 @@ operator()(const PodSvcStatsManager::PodSvcFlowMatchKey_t& k) const noexcept {
     return (seed);
 }
 
-void PodSvcStatsManager::Handle(SwitchConnection* connection,
+void ServiceStatsManager::Handle(SwitchConnection* connection,
                                 int msgType, ofpbuf *msg,
                                 struct ofputil_flow_removed *fentry)
 {

@@ -62,7 +62,7 @@ OVSRenderer::OVSRenderer(Agent& agent_)
       interfaceStatsManager(&agent_, intSwitchManager.getPortMapper(),
                             accessSwitchManager.getPortMapper()),
       contractStatsManager(&agent_, idGen, intSwitchManager),
-      podsvcStatsManager(&agent_, idGen, intSwitchManager,
+      serviceStatsManager(&agent_, idGen, intSwitchManager,
                            intFlowManager),
       secGrpStatsManager(&agent_, idGen, accessSwitchManager),
       tableDropStatsManager(&agent_, idGen, intSwitchManager,
@@ -76,7 +76,7 @@ OVSRenderer::OVSRenderer(Agent& agent_)
       virtualDHCP(true), connTrack(true), ctZoneRangeStart(0),
       ctZoneRangeEnd(0), ifaceStatsEnabled(true), ifaceStatsInterval(0),
       contractStatsEnabled(true), contractStatsInterval(0),
-      podsvcStatsEnabled(true), podsvcStatsInterval(0),
+      serviceStatsEnabled(true), serviceStatsInterval(0),
       secGroupStatsEnabled(true), secGroupStatsInterval(0),
       tableDropStatsEnabled(true), tableDropStatsInterval(0),
       spanRenderer(agent_), netflowRenderer(agent_), started(false),
@@ -193,12 +193,12 @@ void OVSRenderer::start() {
             registerConnection(intSwitchManager.getConnection());
         contractStatsManager.start();
     }
-    if (podsvcStatsEnabled) {
-        podsvcStatsManager.setTimerInterval(podsvcStatsInterval);
-        podsvcStatsManager.setAgentUUID(getAgent().getUuid());
-        podsvcStatsManager.
+    if (serviceStatsEnabled) {
+        serviceStatsManager.setTimerInterval(serviceStatsInterval);
+        serviceStatsManager.setAgentUUID(getAgent().getUuid());
+        serviceStatsManager.
             registerConnection(intSwitchManager.getConnection());
-        podsvcStatsManager.start();
+        serviceStatsManager.start();
     }
     if (secGroupStatsEnabled && accessBridgeName != "") {
         secGrpStatsManager.setTimerInterval(secGroupStatsInterval);
@@ -351,8 +351,8 @@ void OVSRenderer::stop() {
 
     if (ifaceStatsEnabled)
         interfaceStatsManager.stop();
-    if (podsvcStatsEnabled)
-        podsvcStatsManager.stop();
+    if (serviceStatsEnabled)
+        serviceStatsManager.stop();
     if (contractStatsEnabled)
         contractStatsManager.stop();
     if (secGroupStatsEnabled)
@@ -455,10 +455,10 @@ void OVSRenderer::setProperties(const ptree& properties) {
                                                     ".contract.enabled");
     static const std::string STATS_CONTRACT_INTERVAL("statistics"
                                                     ".contract.interval");
-    static const std::string STATS_PODSVC_ENABLED("statistics"
-                                                  ".podsvc.enabled");
-    static const std::string STATS_PODSVC_INTERVAL("statistics"
-                                                   ".podsvc.interval");
+    static const std::string STATS_SERVICE_ENABLED("statistics"
+                                                  ".service.enabled");
+    static const std::string STATS_SERVICE_INTERVAL("statistics"
+                                                   ".service.interval");
     static const std::string STATS_SECGROUP_ENABLED("statistics"
                                                     ".security-group.enabled");
     static const std::string STATS_SECGROUP_INTERVAL("statistics"
@@ -575,15 +575,15 @@ void OVSRenderer::setProperties(const ptree& properties) {
 
     ifaceStatsEnabled = properties.get<bool>(STATS_INTERFACE_ENABLED, true);
     contractStatsEnabled = properties.get<bool>(STATS_CONTRACT_ENABLED, true);
-    podsvcStatsEnabled = properties.get<bool>(STATS_PODSVC_ENABLED, true);
+    serviceStatsEnabled = properties.get<bool>(STATS_SERVICE_ENABLED, true);
     secGroupStatsEnabled = properties.get<bool>(STATS_SECGROUP_ENABLED, true);
     ifaceStatsInterval = properties.get<long>(STATS_INTERFACE_INTERVAL, 30000);
     tableDropStatsEnabled = properties.get<bool>(TABLE_DROP_STATS_ENABLED, true);
 
     contractStatsInterval =
         properties.get<long>(STATS_CONTRACT_INTERVAL, 10000);
-    podsvcStatsInterval =
-        properties.get<long>(STATS_PODSVC_INTERVAL, 10000);
+    serviceStatsInterval =
+        properties.get<long>(STATS_SERVICE_INTERVAL, 10000);
     secGroupStatsInterval =
         properties.get<long>(STATS_SECGROUP_INTERVAL, 10000);
     tableDropStatsInterval =

@@ -17,7 +17,7 @@
 #include "PortMapper.h"
 #include "InterfaceStatsManager.h"
 #include "ContractStatsManager.h"
-#include "PodSvcStatsManager.h"
+#include "ServiceStatsManager.h"
 #include "SecGrpStatsManager.h"
 #include "TableDropStatsManager.h"
 #include <opflexagent/TunnelEpManager.h>
@@ -86,7 +86,7 @@ private:
 
     InterfaceStatsManager interfaceStatsManager;
     ContractStatsManager contractStatsManager;
-    PodSvcStatsManager podsvcStatsManager;
+    ServiceStatsManager serviceStatsManager;
     SecGrpStatsManager secGrpStatsManager;
     TableDropStatsManager tableDropStatsManager;
 
@@ -117,8 +117,8 @@ private:
     long ifaceStatsInterval;
     bool contractStatsEnabled;
     long contractStatsInterval;
-    bool podsvcStatsEnabled;
-    long podsvcStatsInterval;
+    bool serviceStatsEnabled;
+    long serviceStatsInterval;
     bool secGroupStatsEnabled;
     long secGroupStatsInterval;
     bool tableDropStatsEnabled;

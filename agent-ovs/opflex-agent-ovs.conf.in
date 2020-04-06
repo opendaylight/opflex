@@ -120,6 +120,10 @@
        //      "enabled": true,
        //      "interval": 10
        //   },
+       //   "service": {
+       //      "enabled": true,
+       //      "interval": 10
+       //   },
        //   "table-drop": {
        //      "enabled": true,
        //      "interval": 10
