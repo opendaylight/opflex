@@ -144,17 +144,23 @@ if HAVE_DOXYGEN
 endif
 
 doc/html: $(modb_include_HEADERS) $(modb_mo_include_HEADERS) $(core_include_HEADERS)  $(logging_include_HEADERS) $(c_include_HEADERS) $(rpc_include_HEADERS) $(gbp_include_HEADERS) $(util_include_HEADERS) $(yajr_include_HEADERS) $(yajr_internal_include_HEADERS) $(yajr_rpc_include_HEADERS) $(yajr_transport_include_HEADERS) doc/Doxyfile
+if HAVE_DOXYGEN
 	cd doc && ${DOXYGEN} Doxyfile
+endif
 doc: doc/html
 doc/html-internal: clean-doc-internal $(modb_include_HEADERS) $(modb_mo_include_HEADERS) $(core_include_HEADERS)  $(logging_include_HEADERS) $(c_include_HEADERS) $(rpc_include_HEADERS) $(gbp_include_HEADERS) $(util_include_HEADERS) $(yajr_include_HEADERS) $(yajr_internal_include_HEADERS) $(yajr_rpc_include_HEADERS) $(yajr_transport_include_HEADERS) doc/Doxyfile-internal
+if HAVE_DOXYGEN
 	cd doc && ${DOXYGEN} Doxyfile-internal
+endif
 doc-internal: doc/html-internal
 install-data-local: doc
 	@$(NORMAL_INSTALL)
+if HAVE_DOXYGEN
 	test -z "${DESTDIR}/${docdir}/html" || $(mkdir_p) "${DESTDIR}/${docdir}/html"
 	for i in `ls $(top_builddir)/doc/html`; do \
 	  $(INSTALL) -m 0644 $(top_builddir)/doc/html/$$i "${DESTDIR}/${docdir}/html"; \
 	done
+endif
 uninstall-local: 
 	@$(NORMAL_UNINSTALL)
 	rm -rf "${DESTDIR}/${docdir}/html"

@@ -127,14 +127,18 @@ public class FAutomakeDef
         out.println();
         out.println(ainIndent,"doc/html: $(metadata_include_HEADERS) " + 
                     moddirs.toString() + "doc/Doxyfile");
+        out.println(ainIndent,"if HAVE_DOXYGEN");
             out.println(ainIndent + 1,"cd doc && ${DOXYGEN} Doxyfile");
+        out.println(ainIndent,"endif");
         out.println(ainIndent,"doc: doc/html");
         out.println(ainIndent,"install-data-local: doc");
             out.println(ainIndent + 1,"@$(NORMAL_INSTALL)");
+        out.println(ainIndent,"if HAVE_DOXYGEN");
             out.println(ainIndent + 1, "test -z \"${DESTDIR}/${docdir}/html\" || $(mkdir_p) \"${DESTDIR}/${docdir}/html\"");
             out.println(ainIndent + 1, "for i in `ls $(srcdir)/doc/html`; do \\");
                 out.println(ainIndent + 2, "$(INSTALL) -m 0644 $(srcdir)/doc/html/$$i \"${DESTDIR}/${docdir}/html\"; \\");
             out.println(ainIndent + 1, "done");
+        out.println(ainIndent,"endif");
         out.println(ainIndent,"uninstall-local:");
             out.println(ainIndent + 1,"@$(NORMAL_UNINSTALL)");
             out.println(ainIndent + 1,"rm -rf \"${DESTDIR}/${docdir}/html\"");

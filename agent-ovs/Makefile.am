@@ -632,7 +632,9 @@ endif
 check-integration: integration_test
 	$(top_builddir)/integration_test
 doc/html: $(model_include_HEADERS) $(noinst_HEADERS) $(libopflex_agent_la_include_HEADERS) $(agent_test_include_HEADERS) doc/Doxyfile
+if HAVE_DOXYGEN
 	cd doc && ${DOXYGEN} Doxyfile
+endif
 doc: doc/html
 
 clean-doc:
