@@ -15,6 +15,7 @@ addons:
       - maven
       - texlive-font-utils
       - python-six
+      - lcov
 
 before_install:
   - pip install --user cpp-coveralls
@@ -23,5 +24,7 @@ before_script: sudo sh -c 'echo 0 > /proc/sys/net/ipv6/conf/all/disable_ipv6';
 script: bash ./.travis/travis-build.sh
 
 after_success:
-  - coveralls --exclude "/usr/include*" --exclude "/usr/local/include/*" --exclude "*/test/*"
+  - lcov --capture --directory . --output-file coverage-all.info
+  - lcov --remove coverage-all.info -o coverage-all.info '/usr/include/*' '/usr/local/include/*' '*/test/*'
+  - coveralls --lcov-file coverage-all.info --exclude '/usr/include' --exclude '/usr/local/include' --exclude-pattern '.*/test/.*' --gcov-options '\-lp' > /dev/null
 
