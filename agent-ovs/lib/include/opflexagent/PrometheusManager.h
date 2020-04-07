@@ -105,6 +105,52 @@ public:
     void removeEpCounter(const string& uuid,
                          const string& ep_name);
 
+    /* SvcTargetCounter related APIs */
+    /**
+     * Create SvcTargetCounter metric family if its not present.
+     * Update SvcTargetCounter metric family if its already present
+     *
+     * @param uuid            uuid of SVC
+     * @param nhip            IP addr of svc-target
+     * @param svc_attr_map    map of all ep attributes
+     */
+    void addNUpdateSvcTargetCounter(const string& uuid,
+                                    const string& nhip,
+                                    uint64_t rx_bytes,
+                                    uint64_t rx_pkts,
+                                    uint64_t tx_bytes,
+                                    uint64_t tx_pkts,
+        const unordered_map<string, string>& ep_attr_map);
+    /**
+     * Remove SvcTargetCounter metrics given it's uuid
+     *
+     * @param uuid          uuid of SVC
+     * @param nhip          IP addr of svc-target
+     */
+    void removeSvcTargetCounter(const string& uuid,
+                                const string& nhip);
+
+    /* SvcCounter related APIs */
+    /**
+     * Create SvcCounter metric family if its not present.
+     * Update SvcCounter metric family if its already present
+     *
+     * @param uuid            uuid of SVC
+     * @param svc_attr_map    map of all svc attributes
+     */
+    void addNUpdateSvcCounter(const string& uuid,
+                              uint64_t rx_bytes,
+                              uint64_t rx_pkts,
+                              uint64_t tx_bytes,
+                              uint64_t tx_pkts,
+        const unordered_map<string, string>& svc_attr_map);
+    /**
+     * Remove SvcCounter metrics given it's uuid
+     *
+     * @param uuid          uuid of SVC
+     */
+    void removeSvcCounter(const string& uuid);
+
     /* PodSvcCounter related APIs */
     /**
      * Create PodSvcCounter metric family if its not present.
@@ -415,6 +461,63 @@ private:
     /* End of EpCounter related apis and state */
 
 
+    /* Start of SvcTargetCounter related apis and state */
+    // Lock to safe guard SvcTargetCounter related state
+    mutex svc_target_counter_mutex;
+
+    // create any svc target gauge metric families during start
+    void createStaticGaugeFamiliesSvcTarget(void);
+    // remove any svc target gauge metric families during stop
+    void removeStaticGaugeFamiliesSvcTarget(void);
+    // create any svc target gauge metric during start
+    void createStaticGaugesSvcTarget(void);
+    // remove any svc target gauge metric during stop
+    void removeStaticGaugesSvcTarget(void);
+
+    enum SVC_TARGET_METRICS {
+        SVC_TARGET_METRICS_MIN,
+        SVC_TARGET_RX_BYTES = SVC_TARGET_METRICS_MIN,
+        SVC_TARGET_RX_PKTS,
+        SVC_TARGET_TX_BYTES,
+        SVC_TARGET_TX_PKTS,
+        SVC_TARGET_METRICS_MAX = SVC_TARGET_TX_PKTS
+    };
+
+    // metric families to track all SvcTargetCounter metrics
+    Family<Gauge>      *gauge_svc_target_family_ptr[SVC_TARGET_METRICS_MAX+1];
+
+    // Dynamic Metric families and metrics
+    // CRUD for every SvcTarget counter metric
+    // func to create gauge for SvcTargetCounter given metric type,
+    // uuid of svc-target & attr map of ep
+    void createDynamicGaugeSvcTarget(SVC_TARGET_METRICS metric,
+                                     const string& uuid,
+                                     const string& nhip,
+        const unordered_map<string, string>& ep_attr_map);
+
+    // func to get label map and Gauge for SvcTargetCounter given metric type, uuid
+    mgauge_pair_t getDynamicGaugeSvcTarget(SVC_TARGET_METRICS metric, const string& uuid);
+
+    // func to remove gauge for SvcTargetCounter given metric type, uuid
+    bool removeDynamicGaugeSvcTarget(SVC_TARGET_METRICS metric, const string& uuid);
+    // func to remove all gauge of every SvcTargetCounter for a metric type
+    void removeDynamicGaugeSvcTarget(SVC_TARGET_METRICS metric);
+    // func to remove all gauges of every SvcTargetCounter
+    void removeDynamicGaugeSvcTarget(void);
+
+    /**
+     * cache the label map and Gauge ptr for every service target uuid
+     */
+    unordered_map<string, mgauge_pair_t> svc_target_gauge_map[SVC_TARGET_METRICS_MAX+1];
+
+    //Utility apis
+    // Create a label map that can be used for annotation, given the ep attr map
+    static const map<string,string> createLabelMapFromSvcTargetAttr(
+                                                          const string& nhip,
+                           const unordered_map<string, string>&  ep_attr_map);
+    /* End of SvcTargetCounter related apis and state */
+
+
     /* Start of SvcCounter related apis and state */
     // Lock to safe guard SvcCounter related state
     mutex svc_counter_mutex;
@@ -456,6 +559,46 @@ private:
     void createStaticCountersSvc(void);
     // remove any svc counter metric during stop
     void removeStaticCountersSvc(void);
+
+    enum SVC_METRICS {
+        SVC_METRICS_MIN,
+        SVC_RX_BYTES = SVC_METRICS_MIN,
+        SVC_RX_PKTS,
+        SVC_TX_BYTES,
+        SVC_TX_PKTS,
+        SVC_METRICS_MAX = SVC_TX_PKTS
+    };
+
+    // metric families to track all SvcCounter metrics
+    Family<Gauge>      *gauge_svc_family_ptr[SVC_METRICS_MAX+1];
+
+    // Dynamic Metric families and metrics
+    // CRUD for every Svc counter metric
+    // func to create gauge for SvcCounter given metric type,
+    // uuid of svc & attr map of svc
+    void createDynamicGaugeSvc(SVC_METRICS metric,
+                               const string& uuid,
+        const unordered_map<string, string>& svc_attr_map);
+
+    // func to get label map and Gauge for SvcCounter given metric type, uuid
+    mgauge_pair_t getDynamicGaugeSvc(SVC_METRICS metric, const string& uuid);
+
+    // func to remove gauge for SvcCounter given metric type, uuid
+    bool removeDynamicGaugeSvc(SVC_METRICS metric, const string& uuid);
+    // func to remove all gauge of every SvcCounter for a metric type
+    void removeDynamicGaugeSvc(SVC_METRICS metric);
+    // func to remove all gauges of every SvcCounter
+    void removeDynamicGaugeSvc(void);
+
+    /**
+     * cache the label map and Gauge ptr for every service uuid
+     */
+    unordered_map<string, mgauge_pair_t> svc_gauge_map[SVC_METRICS_MAX+1];
+
+    //Utility apis
+    // Create a label map that can be used for annotation, given the svc attr map
+    static const map<string,string> createLabelMapFromSvcAttr(
+                           const unordered_map<string, string>&  svc_attr_map);
     /* End of SvcCounter related apis and state */
 
 
