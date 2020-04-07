@@ -97,8 +97,8 @@ void ServiceManager::removeDomains(const Service& service) {
     }
 }
 
-static void clearSvcCounterStats (shared_ptr<SvcCounter> pSvc,
-                                  shared_ptr<SvcTargetCounter> pSvcTgt)
+void ServiceManager::clearSvcCounterStats (shared_ptr<SvcCounter> pSvc,
+                                           shared_ptr<SvcTargetCounter> pSvcTgt)
 {
     auto stRxPktCount = pSvcTgt->getRxpackets(0);
     auto stRxByteCount = pSvcTgt->getRxbytes(0);
@@ -112,6 +112,18 @@ static void clearSvcCounterStats (shared_ptr<SvcCounter> pSvc,
          .setRxbytes(sRxByteCount - stRxByteCount)
          .setTxpackets(sTxPktCount - stTxPktCount)
          .setTxbytes(sTxByteCount - stTxByteCount);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    typedef std::unordered_map<std::string, std::string> attr_map_t;
+    auto svcUuid = pSvc->getUuid();
+    if (svcUuid) {
+        prometheusManager.addNUpdateSvcCounter(svcUuid.get(),
+                                       pSvc->getRxbytes(0),
+                                       pSvc->getRxpackets(0),
+                                       pSvc->getTxbytes(0),
+                                       pSvc->getTxpackets(0),
+                                       attr_map_t());
+    }
+#endif
 }
 
 /* Populate MODB with service target observer */
@@ -146,9 +158,22 @@ ServiceManager::updateSvcTargetObserverMoDB (const opflexagent::Service& service
                     if (out[idx]->getIp("") == ip)
                         out.erase(out.begin()+idx);
                 }
+#ifdef HAVE_PROMETHEUS_SUPPORT
+                typedef std::unordered_map<std::string, std::string> attr_map_t;
+                prometheusManager.addNUpdateSvcTargetCounter(service.getUUID(),
+                                                             ip,
+                                                             pSvcTarget->getRxbytes(0),
+                                                             pSvcTarget->getRxpackets(0),
+                                                             pSvcTarget->getTxbytes(0),
+                                                             pSvcTarget->getTxpackets(0),
+                                                             attr_map_t());
+#endif
             } else {
                 if (opSvcTarget) {
                     clearSvcCounterStats(pSvcCounter, opSvcTarget.get());
+#ifdef HAVE_PROMETHEUS_SUPPORT
+                    prometheusManager.removeSvcTargetCounter(service.getUUID(), ip);
+#endif
                     opSvcTarget.get()->remove();
                 }
             }
@@ -158,6 +183,11 @@ ServiceManager::updateSvcTargetObserverMoDB (const opflexagent::Service& service
     // Remove deleted service targets
     for (auto& pSvcTarget : out) {
         clearSvcCounterStats(pSvcCounter, pSvcTarget);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+        auto nhip = pSvcTarget->getIp();
+        if (nhip)
+            prometheusManager.removeSvcTargetCounter(service.getUUID(), nhip.get());
+#endif
         pSvcTarget->remove();
     }
 }
@@ -224,6 +254,14 @@ ServiceManager::updateSvcObserverMoDB (const opflexagent::Service& service, bool
         } else
             pService->unsetScope();
 
+#ifdef HAVE_PROMETHEUS_SUPPORT
+            prometheusManager.addNUpdateSvcCounter(service.getUUID(),
+                                                   pService->getRxbytes(0),
+                                                   pService->getRxpackets(0),
+                                                   pService->getTxbytes(0),
+                                                   pService->getTxpackets(0),
+                                                   svcAttr);
+#endif
     } else {
         if (opService) {
             // For external services, svc target removal will be noop
@@ -231,6 +269,7 @@ ServiceManager::updateSvcObserverMoDB (const opflexagent::Service& service, bool
             opService.get()->remove();
 #ifdef HAVE_PROMETHEUS_SUPPORT
             prometheusManager.decSvcCounter();
+            prometheusManager.removeSvcCounter(service.getUUID());
 #endif
         }
     }
