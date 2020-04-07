@@ -131,8 +131,8 @@ private:
     bool started;
     std::string dropLogIntIface, dropLogAccessIface, dropLogRemoteIp, dropLogNs;
     uint16_t dropLogRemotePort;
-    boost::asio::io_service pktLoggerIO;
-    boost::asio::io_service exporterIO;
+    boost::asio::io_context pktLoggerIO;
+    boost::asio::io_context exporterIO;
     PacketLogHandler pktLogger;
 
     /**

@@ -16,6 +16,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/asio/socket_base.hpp>
 #include <boost/asio/ip/v6_only.hpp>
+#include <boost/asio/post.hpp>
 #include <atomic>
 #include <thread>
 #include <chrono>
@@ -139,9 +140,9 @@ void UdpServer::handleReceive(const boost::system::error_code& error,
     if (!error || error == boost::asio::error::message_size)
     {
         uint32_t length = (bytes_transferred > 4096) ? 4096: bytes_transferred;
-        boost::asio::io_service &server_io(serverSocket.get_io_service());
-        server_io.post([=](){this->pktLogger.parseLog(recv_buffer.data(),
-                length);});
+        boost::asio::post(serverSocket.get_executor(),
+                          [=](){this->pktLogger.parseLog(recv_buffer.data(),
+                                length);});
     }
     if(!stopped) {
         startReceive();
