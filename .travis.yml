@@ -13,7 +13,6 @@ addons:
       - autoconf
       - openjdk-8-jdk-headless
       - maven
-      - doxygen
       - texlive-font-utils
       - python-six
 
