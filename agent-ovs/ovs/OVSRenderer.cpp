@@ -239,10 +239,10 @@ void OVSRenderer::start() {
         // Inform the io_service that we are about to become a daemon. The
         // io_service cleans up any internal resources, such as threads, that may
         // interfere with forking.
-        pktLoggerIO.notify_fork(boost::asio::io_service::fork_prepare);
+        pktLoggerIO.notify_fork(boost::asio::execution_context::fork_prepare);
         if(pid_t pid = fork()) {
             if (pid > 0) {
-                pktLoggerIO.notify_fork(boost::asio::io_service::fork_parent);
+                pktLoggerIO.notify_fork(boost::asio::execution_context::fork_parent);
             } else {
                 LOG(ERROR) << "PacketLogger: Failed to fork:" << errno;
             }
@@ -255,7 +255,7 @@ void OVSRenderer::start() {
         // Inform the io_service that we have finished becoming a daemon. The
         // io_service uses this opportunity to create any internal file descriptors
         // that need to be private to the new process.
-        pktLoggerIO.notify_fork(boost::asio::io_service::fork_child);
+        pktLoggerIO.notify_fork(boost::asio::execution_context::fork_child);
         // Close the standard streams. This decouples the daemon from the terminal
         // that started it.
         int fd;

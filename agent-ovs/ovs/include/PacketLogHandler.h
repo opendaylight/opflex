@@ -38,14 +38,14 @@ public:
     /**
      * Constructor for UDP listener
      * @param logHandler reference to the parent LogHandler
-     * @param io_service reference to IO service to handle UDP
+     * @param io_context reference to IO service to handle UDP
      * @param addr IP address to listen on
      * @param port listener UDP port
      */
     UdpServer(PacketLogHandler &logHandler,
-            boost::asio::io_service& io_service,
+            boost::asio::io_context& io_context,
                boost::asio::ip::address &addr, uint16_t port)
-    : pktLogger(logHandler), serverSocket(io_service,
+    : pktLogger(logHandler), serverSocket(io_context,
             boost::asio::ip::udp::endpoint(addr, port)),
             stopped(false) {
         serverSocket.set_option(boost::asio::socket_base::reuse_address(true));
@@ -91,11 +91,11 @@ public:
     /**
      * Constructor for Local client
      * @param logHandler reference to the parent LogHandler
-     * @param client_io io_service instance for client socket
+     * @param client_io io_context instance for client socket
      * @param socketFileName Path of the local socket-file
      */
     LocalClient(PacketLogHandler &logHandler,
-            boost::asio::io_service &client_io,
+            boost::asio::io_context &client_io,
             const std::string &socketFileName)
         : pktLogger(logHandler), clientSocket(client_io),
           remoteEndpoint(socketFileName), stopped(false),
@@ -134,8 +134,8 @@ public:
      * @param _io reference to IO service to handle server
      * @param _clientio reference to IO service to handle client
      */
-    PacketLogHandler(boost::asio::io_service &_io,
-            boost::asio::io_service &_clientio):server_io(_io),
+    PacketLogHandler(boost::asio::io_context &_io,
+            boost::asio::io_context &_clientio):server_io(_io),
             client_io(_clientio), port(0), stopped(false), throttleActive(false){}
     /**
      * set IPv4 listening address for the socket
@@ -202,8 +202,8 @@ public:
 protected:
     ///@{
     /** Member names are self-explanatory */
-    boost::asio::io_service &server_io;
-    boost::asio::io_service &client_io;
+    boost::asio::io_context &server_io;
+    boost::asio::io_context &client_io;
     std::unique_ptr<UdpServer> socketListener;
     std::unique_ptr<LocalClient> exporter;
     PacketDecoder pktDecoder;
