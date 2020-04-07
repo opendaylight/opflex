@@ -88,6 +88,38 @@ static string podsvc_family_help[] =
   "service to endpoint packets"
 };
 
+static string svc_family_names[] =
+{
+  "opflex_svc_rx_bytes",
+  "opflex_svc_rx_packets",
+  "opflex_svc_tx_bytes",
+  "opflex_svc_tx_packets"
+};
+
+static string svc_family_help[] =
+{
+  "service ingress/rx bytes",
+  "service ingress/rx packets",
+  "service egress/tx bytes",
+  "service egress/tx packets"
+};
+
+static string svc_target_family_names[] =
+{
+  "opflex_svc_target_rx_bytes",
+  "opflex_svc_target_rx_packets",
+  "opflex_svc_target_tx_bytes",
+  "opflex_svc_target_tx_packets"
+};
+
+static string svc_target_family_help[] =
+{
+  "cluster service target ingress/rx bytes",
+  "cluster service target ingress/rx packets",
+  "cluster service target egress/tx bytes",
+  "cluster service target egress/tx packets"
+};
+
 static string ofpeer_family_names[] =
 {
   "opflex_peer_identity_req_count",
@@ -136,7 +168,7 @@ static string ofpeer_family_help[] =
 
 static string remote_ep_family_names[] =
 {
-  "opflex_remote_ep_count"
+  "opflex_remote_endpoint_count"
 };
 
 static string remote_ep_family_help[] =
@@ -329,6 +361,18 @@ void PrometheusManager::removeDynamicGauges ()
     {
         const lock_guard<mutex> lock(ep_counter_mutex);
         removeDynamicGaugeEp();
+    }
+
+    // Remove SvcTargetCounter related gauges
+    {
+        const lock_guard<mutex> lock(svc_target_counter_mutex);
+        removeDynamicGaugeSvcTarget();
+    }
+
+    // Remove SvcCounter related gauges
+    {
+        const lock_guard<mutex> lock(svc_counter_mutex);
+        removeDynamicGaugeSvc();
     }
 
     // Remove PodSvcCounter related gauges
@@ -535,6 +579,26 @@ void PrometheusManager::createStaticGaugeFamiliesEp (void)
     }
 }
 
+// create all SvcTarget specific gauge families during start
+void PrometheusManager::createStaticGaugeFamiliesSvcTarget (void)
+{
+    // add a new gauge family to the registry (families combine values with the
+    // same name, but distinct label dimensions)
+    // Note: There is a unique ptr allocated and referencing the below reference
+    // during Register().
+
+    for (SVC_TARGET_METRICS metric=SVC_TARGET_METRICS_MIN;
+            metric <= SVC_TARGET_METRICS_MAX;
+                metric = SVC_TARGET_METRICS(metric+1)) {
+        auto& gauge_svc_target_family = BuildGauge()
+                             .Name(svc_target_family_names[metric])
+                             .Help(svc_target_family_help[metric])
+                             .Labels({})
+                             .Register(*registry_ptr);
+        gauge_svc_target_family_ptr[metric] = &gauge_svc_target_family;
+    }
+}
+
 // create all SVC specific gauge families during start
 void PrometheusManager::createStaticGaugeFamiliesSvc (void)
 {
@@ -549,6 +613,17 @@ void PrometheusManager::createStaticGaugeFamiliesSvc (void)
                          .Labels({})
                          .Register(*registry_ptr);
     gauge_svc_total_family_ptr = &gauge_svc_total_family;
+
+    for (SVC_METRICS metric=SVC_METRICS_MIN;
+            metric <= SVC_METRICS_MAX;
+                metric = SVC_METRICS(metric+1)) {
+        auto& gauge_svc_family = BuildGauge()
+                             .Name(svc_family_names[metric])
+                             .Help(svc_family_help[metric])
+                             .Labels({})
+                             .Register(*registry_ptr);
+        gauge_svc_family_ptr[metric] = &gauge_svc_family;
+    }
 }
 
 // create all PODSVC specific gauge families during start
@@ -621,6 +696,11 @@ void PrometheusManager::createStaticGaugeFamilies (void)
     {
         const lock_guard<mutex> lock(svc_counter_mutex);
         createStaticGaugeFamiliesSvc();
+    }
+
+    {
+        const lock_guard<mutex> lock(svc_target_counter_mutex);
+        createStaticGaugeFamiliesSvcTarget();
     }
 
     {
@@ -810,6 +890,15 @@ void PrometheusManager::init ()
     }
 
     {
+        const lock_guard<mutex> lock(svc_target_counter_mutex);
+        for (SVC_TARGET_METRICS metric=SVC_TARGET_METRICS_MIN;
+                metric <= SVC_TARGET_METRICS_MAX;
+                    metric = SVC_TARGET_METRICS(metric+1)) {
+            gauge_svc_target_family_ptr[metric] = nullptr;
+        }
+    }
+
+    {
         const lock_guard<mutex> lock(svc_counter_mutex);
         counter_svc_create_ptr = nullptr;
         counter_svc_remove_ptr = nullptr;
@@ -817,6 +906,11 @@ void PrometheusManager::init ()
         counter_svc_create_family_ptr = nullptr;
         counter_svc_remove_family_ptr = nullptr;
         gauge_svc_total_family_ptr = nullptr;
+        for (SVC_METRICS metric=SVC_METRICS_MIN;
+                metric <= SVC_METRICS_MAX;
+                    metric = SVC_METRICS(metric+1)) {
+            gauge_svc_family_ptr[metric] = nullptr;
+        }
     }
 
     {
@@ -1264,6 +1358,116 @@ void PrometheusManager::createDynamicGaugeRDDrop (RDDROP_METRICS metric,
     rddrop_gauge_map[metric][rdURI] = &gauge;
 }
 
+// Create SvcTargetCounter gauge given metric type, svc-tgt uuid & ep attr_map
+void PrometheusManager::createDynamicGaugeSvcTarget (SVC_TARGET_METRICS metric,
+                                                     const string& uuid,
+                                                     const string& nhip,
+                    const unordered_map<string, string>&    ep_attr_map)
+{
+    // During counter update from stats manager, dont create new gauge metric
+    if (ep_attr_map.size() == 0)
+        return;
+
+    auto const &label_map = createLabelMapFromSvcTargetAttr(nhip, ep_attr_map);
+    auto hash_new = hash_labels(label_map);
+
+    // Retrieve the Gauge if its already created
+    auto const &mgauge = getDynamicGaugeSvcTarget(metric, uuid);
+    if (mgauge) {
+        /**
+         * Detect attribute change by comparing hashes of cached label map
+         * with new label map
+         */
+        if (hash_new == hash_labels(mgauge.get().first))
+            return;
+        else {
+            LOG(DEBUG) << "addNupdate svctargetcounter uuid " << uuid
+                       << "existing svc target metric, but deleting: hash modified;"
+                       << " metric: " << svc_target_family_names[metric]
+                       << " gaugeptr: " << mgauge.get().second;
+            removeDynamicGaugeSvcTarget(metric, uuid);
+        }
+    }
+
+    // We shouldnt add a gauge for SvcTarget which doesnt have svc-target name.
+    // i.e. no vm-name for EPs
+    if (!hash_new) {
+        LOG(ERROR) << "label map is empty for svc-target dyn gauge family"
+               << " metric: " << metric
+               << " uuid: " << uuid;
+        return;
+    }
+
+    auto& gauge = gauge_svc_target_family_ptr[metric]->Add(label_map);
+    if (gauge_check.is_dup(&gauge)) {
+        LOG(ERROR) << "duplicate svc-target dyn gauge family"
+                   << " metric: " << metric
+                   << " uuid: " << uuid
+                   << " label hash: " << hash_new;
+        return;
+    }
+    LOG(DEBUG) << "created svc-target dyn gauge family"
+               << " metric: " << metric
+               << " uuid: " << uuid
+               << " label hash: " << hash_new;
+    gauge_check.add(&gauge);
+    svc_target_gauge_map[metric][uuid] = make_pair(std::move(label_map), &gauge);
+}
+
+// Create SvcCounter gauge given metric type, svc uuid & attr_map
+void PrometheusManager::createDynamicGaugeSvc (SVC_METRICS metric,
+                                               const string& uuid,
+                    const unordered_map<string, string>&    svc_attr_map)
+{
+    // During counter update from stats manager, dont create new gauge metric
+    if (svc_attr_map.size() == 0)
+        return;
+
+    auto const &label_map = createLabelMapFromSvcAttr(svc_attr_map);
+    auto hash_new = hash_labels(label_map);
+
+    // Retrieve the Gauge if its already created
+    auto const &mgauge = getDynamicGaugeSvc(metric, uuid);
+    if (mgauge) {
+        /**
+         * Detect attribute change by comparing hashes of cached label map
+         * with new label map
+         */
+        if (hash_new == hash_labels(mgauge.get().first))
+            return;
+        else {
+            LOG(DEBUG) << "addNupdate svccounter uuid " << uuid
+                       << "existing svc metric, but deleting: hash modified;"
+                       << " metric: " << svc_family_names[metric]
+                       << " gaugeptr: " << mgauge.get().second;
+            removeDynamicGaugeSvc(metric, uuid);
+        }
+    }
+
+    // We shouldnt add a gauge for Svc which doesnt have svc name.
+    if (!hash_new) {
+        LOG(ERROR) << "label map is empty for svc dyn gauge family"
+               << " metric: " << metric
+               << " uuid: " << uuid;
+        return;
+    }
+
+    auto& gauge = gauge_svc_family_ptr[metric]->Add(label_map);
+    if (gauge_check.is_dup(&gauge)) {
+        LOG(ERROR) << "duplicate svc dyn gauge family"
+                   << " metric: " << metric
+                   << " uuid: " << uuid
+                   << " label hash: " << hash_new;
+        return;
+    }
+    LOG(DEBUG) << "created svc dyn gauge family"
+               << " metric: " << metric
+               << " uuid: " << uuid
+               << " label hash: " << hash_new;
+    gauge_check.add(&gauge);
+    svc_gauge_map[metric][uuid] = make_pair(std::move(label_map), &gauge);
+}
+
 // Create PodSvcCounter gauge given metric type, ep+svc uuid & attr_maps
 void PrometheusManager::createDynamicGaugePodSvc (PODSVC_METRICS metric,
                                                   const string& uuid,
@@ -1386,6 +1590,60 @@ bool PrometheusManager::createDynamicGaugeEp (EP_METRICS metric,
     ep_gauge_map[metric][uuid] = make_pair(hash, &gauge);
 
     return true;
+}
+
+// Create a label map that can be used for annotation, given the ep attr map
+const map<string,string> PrometheusManager::createLabelMapFromSvcTargetAttr (
+                                                           const string& nhip,
+                            const unordered_map<string, string>&  ep_attr_map)
+{
+    map<string,string>   label_map;
+
+    // If there are multiple IPs per EP and if these 2 IPs are nexthops of service,
+    // then gauge dup checker will crib for updates from these 2 IP flows.
+    // Since this is the unique key for SvcTargetCounter, keeping it as part of
+    // annotation. In grafana, we can filter out if the IP is not needed.
+    label_map["ip"] = nhip;
+
+    auto ep_name_itr = ep_attr_map.find("vm-name");
+    if (ep_name_itr != ep_attr_map.end()) {
+        label_map["name"] = ep_name_itr->second;
+    }
+
+    auto ep_ns_itr = ep_attr_map.find("namespace");
+    if (ep_ns_itr != ep_attr_map.end()) {
+        label_map["namespace"] = ep_ns_itr->second;
+    }
+
+    return label_map;
+}
+
+// Create a label map that can be used for annotation, given the svc attr_map
+const map<string,string> PrometheusManager::createLabelMapFromSvcAttr (
+                          const unordered_map<string, string>&  svc_attr_map)
+{
+    map<string,string>   label_map;
+
+    auto svc_name_itr = svc_attr_map.find("name");
+    // Ensuring svc's name is present in attributes
+    // If not, there is no point in creating this metric
+    if (svc_name_itr != svc_attr_map.end()) {
+        label_map["name"] = svc_name_itr->second;
+    } else {
+        return label_map;
+    }
+
+    auto svc_ns_itr = svc_attr_map.find("namespace");
+    if (svc_ns_itr != svc_attr_map.end()) {
+        label_map["namespace"] = svc_ns_itr->second;
+    }
+
+    auto svc_scope_itr = svc_attr_map.find("scope");
+    if (svc_scope_itr != svc_attr_map.end()) {
+        label_map["scope"] = svc_scope_itr->second;
+    }
+
+    return label_map;
 }
 
 // Create a label map that can be used for annotation, given the ep attr map
@@ -1556,6 +1814,40 @@ Gauge * PrometheusManager::getDynamicGaugeRDDrop (RDDROP_METRICS metric,
     }
 
     return pgauge;
+}
+
+// Get SvcTargetCounter gauge given the metric, uuid of SvcTarget
+mgauge_pair_t PrometheusManager::getDynamicGaugeSvcTarget (SVC_TARGET_METRICS metric,
+                                                           const string& uuid)
+{
+    mgauge_pair_t mgauge = boost::none;
+    auto itr = svc_target_gauge_map[metric].find(uuid);
+    if (itr == svc_target_gauge_map[metric].end()) {
+        LOG(DEBUG) << "Dyn Gauge SvcTargetCounter not found"
+                   << " metric: " << metric
+                   << " uuid: " << uuid;
+    } else {
+        mgauge = itr->second;
+    }
+
+    return mgauge;
+}
+
+// Get SvcCounter gauge given the metric, uuid of Svc
+mgauge_pair_t PrometheusManager::getDynamicGaugeSvc (SVC_METRICS metric,
+                                                     const string& uuid)
+{
+    mgauge_pair_t mgauge = boost::none;
+    auto itr = svc_gauge_map[metric].find(uuid);
+    if (itr == svc_gauge_map[metric].end()) {
+        LOG(DEBUG) << "Dyn Gauge SvcCounter not found"
+                   << " metric: " << metric
+                   << " uuid: " << uuid;
+    } else {
+        mgauge = itr->second;
+    }
+
+    return mgauge;
 }
 
 // Get PodSvcCounter gauge given the metric, uuid of Pod+Svc
@@ -1799,6 +2091,94 @@ void PrometheusManager::removeDynamicGaugeOFPeer ()
     }
 }
 
+// Remove dynamic SvcTargetCounter gauge given a metic type and svc-target uuid
+bool PrometheusManager::removeDynamicGaugeSvcTarget (SVC_TARGET_METRICS metric,
+                                                     const string& uuid)
+{
+    auto mgauge = getDynamicGaugeSvcTarget(metric, uuid);
+    if (mgauge) {
+        auto &mpair = svc_target_gauge_map[metric][uuid];
+        mpair.get().first.clear(); // free the label map
+        svc_target_gauge_map[metric].erase(uuid);
+        gauge_check.remove(mgauge.get().second);
+        gauge_svc_target_family_ptr[metric]->Remove(mgauge.get().second);
+    } else {
+        LOG(DEBUG) << "remove dynamic gauge svc-target not found uuid:" << uuid;
+        return false;
+    }
+    return true;
+}
+
+// Remove dynamic SvcTargetCounter gauge given a metric type
+void PrometheusManager::removeDynamicGaugeSvcTarget (SVC_TARGET_METRICS metric)
+{
+    auto itr = svc_target_gauge_map[metric].begin();
+    while (itr != svc_target_gauge_map[metric].end()) {
+        LOG(DEBUG) << "Delete SvcTarget uuid: " << itr->first
+                   << " Gauge: " << itr->second.get().second;
+        gauge_check.remove(itr->second.get().second);
+        gauge_svc_target_family_ptr[metric]->Remove(itr->second.get().second);
+        itr->second.get().first.clear(); // free the label map
+        itr++;
+    }
+
+    svc_target_gauge_map[metric].clear();
+}
+
+// Remove dynamic SvcTargetCounter gauges for all metrics
+void PrometheusManager::removeDynamicGaugeSvcTarget ()
+{
+    for (SVC_TARGET_METRICS metric=SVC_TARGET_METRICS_MIN;
+            metric <= SVC_TARGET_METRICS_MAX;
+                metric = SVC_TARGET_METRICS(metric+1)) {
+        removeDynamicGaugeSvcTarget(metric);
+    }
+}
+
+// Remove dynamic SvcCounter gauge given a metic type and svc uuid
+bool PrometheusManager::removeDynamicGaugeSvc (SVC_METRICS metric,
+                                               const string& uuid)
+{
+    auto mgauge = getDynamicGaugeSvc(metric, uuid);
+    if (mgauge) {
+        auto &mpair = svc_gauge_map[metric][uuid];
+        mpair.get().first.clear(); // free the label map
+        svc_gauge_map[metric].erase(uuid);
+        gauge_check.remove(mgauge.get().second);
+        gauge_svc_family_ptr[metric]->Remove(mgauge.get().second);
+    } else {
+        LOG(DEBUG) << "remove dynamic gauge svc not found uuid:" << uuid;
+        return false;
+    }
+    return true;
+}
+
+// Remove dynamic SvcCounter gauge given a metric type
+void PrometheusManager::removeDynamicGaugeSvc (SVC_METRICS metric)
+{
+    auto itr = svc_gauge_map[metric].begin();
+    while (itr != svc_gauge_map[metric].end()) {
+        LOG(DEBUG) << "Delete Svc uuid: " << itr->first
+                   << " Gauge: " << itr->second.get().second;
+        gauge_check.remove(itr->second.get().second);
+        gauge_svc_family_ptr[metric]->Remove(itr->second.get().second);
+        itr->second.get().first.clear(); // free the label map
+        itr++;
+    }
+
+    svc_gauge_map[metric].clear();
+}
+
+// Remove dynamic SvcCounter gauges for all metrics
+void PrometheusManager::removeDynamicGaugeSvc ()
+{
+    for (SVC_METRICS metric=SVC_METRICS_MIN;
+            metric <= SVC_METRICS_MAX;
+                metric = SVC_METRICS(metric+1)) {
+        removeDynamicGaugeSvc(metric);
+    }
+}
+
 // Remove dynamic PodSvcCounter gauge given a metic type and podsvc uuid
 bool PrometheusManager::removeDynamicGaugePodSvc (PODSVC_METRICS metric,
                                                   const string& uuid)
@@ -2005,10 +2385,25 @@ void PrometheusManager::removeStaticGaugeFamiliesEp()
     }
 }
 
+// Remove all statically allocated svc target gauge families
+void PrometheusManager::removeStaticGaugeFamiliesSvcTarget()
+{
+    for (SVC_TARGET_METRICS metric=SVC_TARGET_METRICS_MIN;
+            metric <= SVC_TARGET_METRICS_MAX;
+                metric = SVC_TARGET_METRICS(metric+1)) {
+        gauge_svc_target_family_ptr[metric] = nullptr;
+    }
+}
+
 // Remove all statically allocated svc gauge families
 void PrometheusManager::removeStaticGaugeFamiliesSvc()
 {
     gauge_svc_total_family_ptr = nullptr;
+    for (SVC_METRICS metric=SVC_METRICS_MIN;
+            metric <= SVC_METRICS_MAX;
+                metric = SVC_METRICS(metric+1)) {
+        gauge_svc_family_ptr[metric] = nullptr;
+    }
 }
 
 void PrometheusManager::removeStaticGaugeFamiliesTableDrop()
@@ -2028,6 +2423,12 @@ void PrometheusManager::removeStaticGaugeFamilies()
     {
         const lock_guard<mutex> lock(ep_counter_mutex);
         removeStaticGaugeFamiliesEp();
+    }
+
+    // SvcTargetCounter specific
+    {
+        const lock_guard<mutex> lock(svc_target_counter_mutex);
+        removeStaticGaugeFamiliesSvcTarget();
     }
 
     // SvcCounter specific
@@ -2188,6 +2589,120 @@ void PrometheusManager::addNUpdatePodSvcCounter (bool isEpToSvc,
             }
         } else {
             LOG(DEBUG) << "SvcToEpCounter yet to be created for uuid: " << uuid;
+        }
+    }
+}
+
+/* Function called from IntFlowManager and ServiceManager to update SvcTargetCounter
+ * Note: SvcTargetCounter's key is the next-hop-IP. There could be a chance
+ * that multiple next-hop IPs of a service are part of same EP/Pod.
+ * In that case, the label annotion for both the svc-targets will be same
+ * if we dont annotate the IP address to prometheus. Metric duplication
+ * checker will detect this and will neither create nor update gauge metric
+ * for the conflicting IP.
+ * To avoid confusion and keep things simple, we will annocate with the nhip
+ * as well to avoid duplicate metrics. We can avoid showing the IP in grafana
+ * if its not of much value. */
+void PrometheusManager::addNUpdateSvcTargetCounter (const string& uuid,
+                                                    const string& nhip,
+                                                    uint64_t rx_bytes,
+                                                    uint64_t rx_pkts,
+                                                    uint64_t tx_bytes,
+                                                    uint64_t tx_pkts,
+                         const unordered_map<string, string>& ep_attr_map)
+{
+    RETURN_IF_DISABLED
+    const lock_guard<mutex> lock(svc_target_counter_mutex);
+
+    const string& key = uuid+nhip;
+    // Create the gauge counters if they arent present already
+    for (SVC_TARGET_METRICS metric=SVC_TARGET_METRICS_MIN;
+            metric <= SVC_TARGET_METRICS_MAX;
+                metric = SVC_TARGET_METRICS(metric+1)) {
+        createDynamicGaugeSvcTarget(metric,
+                                    key,
+                                    nhip,
+                                    ep_attr_map);
+    }
+
+    // Update the metrics
+    for (SVC_TARGET_METRICS metric=SVC_TARGET_METRICS_MIN;
+            metric <= SVC_TARGET_METRICS_MAX;
+                metric = SVC_TARGET_METRICS(metric+1)) {
+        const mgauge_pair_t &mgauge = getDynamicGaugeSvcTarget(metric, key);
+        uint64_t   metric_val = 0;
+        switch (metric) {
+        case SVC_TARGET_RX_BYTES:
+            metric_val = rx_bytes;
+            break;
+        case SVC_TARGET_RX_PKTS:
+            metric_val = rx_pkts;
+            break;
+        case SVC_TARGET_TX_BYTES:
+            metric_val = tx_bytes;
+            break;
+        case SVC_TARGET_TX_PKTS:
+            metric_val = tx_pkts;
+            break;
+        default:
+            LOG(ERROR) << "Unhandled svc-target metric: " << metric;
+        }
+        if (mgauge)
+            mgauge.get().second->Set(static_cast<double>(metric_val));
+        if (!mgauge) {
+            LOG(ERROR) << "svc-target stats invalid update for uuid: " << key;
+            break;
+        }
+    }
+}
+
+/* Function called from IntFlowManager and ServiceManager to update SvcCounter */
+void PrometheusManager::addNUpdateSvcCounter (const string& uuid,
+                                              uint64_t rx_bytes,
+                                              uint64_t rx_pkts,
+                                              uint64_t tx_bytes,
+                                              uint64_t tx_pkts,
+                  const unordered_map<string, string>& svc_attr_map)
+{
+    RETURN_IF_DISABLED
+    const lock_guard<mutex> lock(svc_counter_mutex);
+
+    // Create the gauge counters if they arent present already
+    for (SVC_METRICS metric=SVC_METRICS_MIN;
+            metric <= SVC_METRICS_MAX;
+                metric = SVC_METRICS(metric+1)) {
+        createDynamicGaugeSvc(metric,
+                              uuid,
+                              svc_attr_map);
+    }
+
+    // Update the metrics
+    for (SVC_METRICS metric=SVC_METRICS_MIN;
+            metric <= SVC_METRICS_MAX;
+                metric = SVC_METRICS(metric+1)) {
+        const mgauge_pair_t &mgauge = getDynamicGaugeSvc(metric, uuid);
+        uint64_t   metric_val = 0;
+        switch (metric) {
+        case SVC_RX_BYTES:
+            metric_val = rx_bytes;
+            break;
+        case SVC_RX_PKTS:
+            metric_val = rx_pkts;
+            break;
+        case SVC_TX_BYTES:
+            metric_val = tx_bytes;
+            break;
+        case SVC_TX_PKTS:
+            metric_val = tx_pkts;
+            break;
+        default:
+            LOG(ERROR) << "Unhandled svc metric: " << metric;
+        }
+        if (mgauge)
+            mgauge.get().second->Set(static_cast<double>(metric_val));
+        if (!mgauge) {
+            LOG(ERROR) << "svc stats invalid update for uuid: " << uuid;
+            break;
         }
     }
 }
@@ -2640,6 +3155,40 @@ void PrometheusManager::dumpPodSvcState ()
                        << "   uuid: " << p.first
                        << "   gauge_ptr: " << p.second.get().second;
         }
+    }
+}
+
+// Function called from ServiceManager to remove SvcTargetCounter
+void PrometheusManager::removeSvcTargetCounter (const string& uuid,
+                                                const string& nhip)
+{
+    RETURN_IF_DISABLED
+    const lock_guard<mutex> lock(svc_target_counter_mutex);
+
+    const string& key = uuid+nhip;
+    LOG(DEBUG) << "remove svc-target counter uuid: " << key;
+
+    for (SVC_TARGET_METRICS metric=SVC_TARGET_METRICS_MIN;
+            metric <= SVC_TARGET_METRICS_MAX;
+                metric = SVC_TARGET_METRICS(metric+1)) {
+        if (!removeDynamicGaugeSvcTarget(metric, key))
+            break;
+    }
+}
+
+// Function called from ServiceManager to remove SvcCounter
+void PrometheusManager::removeSvcCounter (const string& uuid)
+{
+    RETURN_IF_DISABLED
+    const lock_guard<mutex> lock(svc_counter_mutex);
+
+    LOG(DEBUG) << "remove svc counter uuid: " << uuid;
+
+    for (SVC_METRICS metric=SVC_METRICS_MIN;
+            metric <= SVC_METRICS_MAX;
+                metric = SVC_METRICS(metric+1)) {
+        if (!removeDynamicGaugeSvc(metric, uuid))
+            break;
     }
 }
 

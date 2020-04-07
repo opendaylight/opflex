@@ -152,6 +152,10 @@ private:
     void updateSvcTargetObserverMoDB(const Service& service, bool add,
                  std::shared_ptr<modelgbp::gbpe::SvcCounter> pService);
 
+    // Remove the stats of SvcTarget from SvcCounter
+    void clearSvcCounterStats(std::shared_ptr<SvcCounter> pSvc,
+                              std::shared_ptr<SvcTargetCounter> pSvcTgt);
+
     // reference to opflex agent
     Agent& agent;
 
