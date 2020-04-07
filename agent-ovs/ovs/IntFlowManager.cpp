@@ -2213,30 +2213,56 @@ updateSvcStatsCounters (const bool &isIngress,
     if (su) {
         auto opSvc = SvcCounter::resolve(agent.getFramework(), uuid);
         if (opSvc) {
+            uint64_t updPktCount = 0, updByteCount = 0;
             if (isIngress) {
                 auto oldPktCount = opSvc.get()->getRxpackets(0);
                 auto oldByteCount = opSvc.get()->getRxbytes(0);
                 if (add) {
-                    opSvc.get()->setRxpackets(oldPktCount + newPktCount)
-                                .setRxbytes(oldByteCount + newByteCount);
+                    updPktCount = oldPktCount + newPktCount;
+                    updByteCount = oldByteCount + newByteCount;
                 } else {
-                    opSvc.get()->setRxpackets(oldPktCount - newPktCount)
-                                .setRxbytes(oldByteCount - newByteCount);
+                    updPktCount = oldPktCount - newPktCount;
+                    updByteCount = oldByteCount - newByteCount;
                 }
+                opSvc.get()->setRxpackets(updPktCount)
+                            .setRxbytes(updByteCount);
             } else {
                 auto oldPktCount = opSvc.get()->getTxpackets(0);
                 auto oldByteCount = opSvc.get()->getTxbytes(0);
                 if (add) {
-                    opSvc.get()->setTxpackets(oldPktCount + newPktCount)
-                                .setTxbytes(oldByteCount + newByteCount);
+                    updPktCount = oldPktCount + newPktCount;
+                    updByteCount = oldByteCount + newByteCount;
                 } else {
-                    opSvc.get()->setTxpackets(oldPktCount - newPktCount)
-                                .setTxbytes(oldByteCount - newByteCount);
+                    updPktCount = oldPktCount - newPktCount;
+                    updByteCount = oldByteCount - newByteCount;
                 }
+                opSvc.get()->setTxpackets(updPktCount)
+                            .setTxbytes(updByteCount);
             }
+            mutator.commit();
+#ifdef HAVE_PROMETHEUS_SUPPORT
+            // MoDB takes some time to get updated. Updating prom metrics
+            // with actual value if possible that getting the values from modb.
+            // This is to keep prom and modb in sync. Not doing this will update
+            // prom to prior modb value during next stats update.
+            if (isIngress) {
+                prometheusManager.addNUpdateSvcCounter(uuid,
+                                                   updByteCount,
+                                                   updPktCount,
+                                                   opSvc.get()->getTxbytes(0),
+                                                   opSvc.get()->getTxpackets(0),
+                                                   attr_map());
+            } else {
+                prometheusManager.addNUpdateSvcCounter(uuid,
+                                                   opSvc.get()->getRxbytes(0),
+                                                   opSvc.get()->getRxpackets(0),
+                                                   updByteCount,
+                                                   updPktCount,
+                                                   attr_map());
+            }
+#endif
         }
     }
-    mutator.commit();
 }
 
 void IntFlowManager::
@@ -2257,17 +2283,24 @@ updateSvcTgtStatsCounters (const uint64_t &cookie,
     auto opSvcTgt = SvcTargetCounter::resolve(agent.getFramework(),
                                               svcUuid, nhipStr);
     if (opSvcTgt) {
+        uint64_t updPktCount = 0, updByteCount = 0;
         if (isAnyToSvc) {
             auto oldPktCount = opSvcTgt.get()->getRxpackets(0);
             auto oldByteCount = opSvcTgt.get()->getRxbytes(0);
-            opSvcTgt.get()->setRxpackets(oldPktCount + newPktCount)
-                           .setRxbytes(oldByteCount + newByteCount);
+            updPktCount = oldPktCount + newPktCount;
+            updByteCount = oldByteCount + newByteCount;
+            opSvcTgt.get()->setRxpackets(updPktCount)
+                           .setRxbytes(updByteCount);
         } else {
             auto oldPktCount = opSvcTgt.get()->getTxpackets(0);
             auto oldByteCount = opSvcTgt.get()->getTxbytes(0);
-            opSvcTgt.get()->setTxpackets(oldPktCount + newPktCount)
-                           .setTxbytes(oldByteCount + newByteCount);
+            updPktCount = oldPktCount + newPktCount;
+            updByteCount = oldByteCount + newByteCount;
+            opSvcTgt.get()->setTxpackets(updPktCount)
+                           .setTxbytes(updByteCount);
         }
+
+        // following will take care of updates to these attributes
         if (!newPktCount) {
             auto podItr = epAttr.find("vm-name");
             if (podItr != epAttr.end())
@@ -2282,9 +2315,32 @@ updateSvcTgtStatsCounters (const uint64_t &cookie,
                 opSvcTgt.get()->unsetNamespace();
 
         }
+        mutator.commit();
+#ifdef HAVE_PROMETHEUS_SUPPORT
+        // MoDB takes some time to get updated. Updating prom metrics
+        // with actual value if possible that getting the values from modb.
+        // This is to keep prom and modb in sync. Not doing this will update
+        // prom to prior modb value during next stats update.
+        if (isAnyToSvc) {
+            prometheusManager.addNUpdateSvcTargetCounter(svcUuid,
+                                                     nhipStr,
+                                                     updByteCount,
+                                                     updPktCount,
+                                                     opSvcTgt.get()->getTxbytes(0),
+                                                     opSvcTgt.get()->getTxpackets(0),
+                                                     epAttr);
+        } else {
+            prometheusManager.addNUpdateSvcTargetCounter(svcUuid,
+                                                     nhipStr,
+                                                     opSvcTgt.get()->getRxbytes(0),
+                                                     opSvcTgt.get()->getRxpackets(0),
+                                                     updByteCount,
+                                                     updPktCount,
+                                                     epAttr);
+        }
+#endif
     }
     updateSvcStatsCounters(isAnyToSvc, svcUuid, newPktCount, newByteCount, true);
-    mutator.commit();
 }
 
 // Private function to update stats and attributes
@@ -2388,6 +2444,13 @@ void IntFlowManager::clearSvcTgtStatsCounters (const std::string& svcUuid,
         opSvcTgt.get()->unsetTxpackets();
         updateSvcStatsCounters(true, svcUuid, oldRxPktCount, oldRxByteCount, false);
         updateSvcStatsCounters(false, svcUuid, oldTxPktCount, oldTxByteCount, false);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+        // If the flows dont exist, dont keep the metric for this
+        prometheusManager.addNUpdateSvcTargetCounter(svcUuid,
+                                                     nhipStr,
+                                                     0, 0, 0, 0,
+                                                     attr_map());
+#endif
     }
     mutator.commit();
 }
@@ -2414,11 +2477,27 @@ void IntFlowManager::clearSvcStatsCounters (const std::string& uuid)
             pSvcTarget->unsetRxpackets();
             pSvcTarget->unsetTxbytes();
             pSvcTarget->unsetTxpackets();
+#ifdef HAVE_PROMETHEUS_SUPPORT
+            // If the flows dont exist, reset the counts back to 0
+            auto nhip = pSvcTarget->getIp();
+            if (nhip)
+                prometheusManager.addNUpdateSvcTargetCounter(uuid,
+                                                             nhip.get(),
+                                                             0, 0, 0, 0,
+                                                             attr_map());
+#endif
         }
         opSvc.get()->unsetRxbytes();
         opSvc.get()->unsetRxpackets();
         opSvc.get()->unsetTxbytes();
         opSvc.get()->unsetTxpackets();
+#ifdef HAVE_PROMETHEUS_SUPPORT
+        // If svc becomes external or anycast or if all the NH's dont
+        // exist or create flows, then reset the counters back to 0
+        prometheusManager.addNUpdateSvcCounter(uuid,
+                                               0, 0, 0, 0,
+                                               attr_map());
+#endif
     }
     mutator.commit();
 }
@@ -2534,7 +2613,7 @@ void IntFlowManager::updateSvcTgtStatsFlows (const string &uuid,
                    << " cookieIg: " << cookieIdIg
                    << " cookieEg: " << cookieIdEg;
 
-        // updates to take care of pod name change
+        // updates to take care of pod name and namespace change
         updateSvcTgtStatsCounters(cookieIdIg, true, ingStr, 0, 0, epAttr);
         updateSvcTgtStatsCounters(cookieIdEg, false, egrStr, 0, 0, epAttr);
 
