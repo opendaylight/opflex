@@ -175,6 +175,17 @@ void PacketLogHandler::parseLog(unsigned char *buf , std::size_t length) {
         }
         LOG(ERROR) << str.str();
     } else {
+        /* *
+         * TBD: Need to have a filter to prune with
+         * a generic criterion
+         * */
+        /* Skip logging/events for LLDP packets*/
+        #define LLDP_MAC "01:80:c2:00:00:0e"
+        std::string dstMac;
+        p.packetTuple.getField(2, dstMac);
+        if(dstMac == LLDP_MAC) {
+            return;
+        }
         std::string dropReason;
         getDropReason(p, dropReason);
         p.packetTuple.setField(0, dropReason);

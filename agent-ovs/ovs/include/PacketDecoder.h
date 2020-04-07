@@ -74,6 +74,17 @@ public:
         fields[index].second = value;
     }
     /**
+     * get a member in the tuple by the index of the member
+     * @param index index of the member
+     * @param value returned value of the member
+     * */
+    void getField(unsigned index, std::string &value) {
+        if(index > fields.size()) {
+            return;
+        }
+        value = fields[index].second;
+    }
+    /**
      * serialize this packet tuple into a json stream
      * @param writer JSON encoder
      * @return whether serialization was successful
