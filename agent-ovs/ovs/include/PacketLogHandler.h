@@ -38,14 +38,14 @@ public:
     /**
      * Constructor for UDP listener
      * @param logHandler reference to the parent LogHandler
-     * @param io_service reference to IO service to handle UDP
+     * @param io_service_ reference to IO service to handle UDP
      * @param addr IP address to listen on
      * @param port listener UDP port
      */
     UdpServer(PacketLogHandler &logHandler,
-            boost::asio::io_service& io_service,
+            boost::asio::io_service& io_service_,
                boost::asio::ip::address &addr, uint16_t port)
-    : pktLogger(logHandler), serverSocket(io_service,
+    : pktLogger(logHandler), server_io(io_service_), serverSocket(io_service_,
             boost::asio::ip::udp::endpoint(addr, port)),
             stopped(false) {
         serverSocket.set_option(boost::asio::socket_base::reuse_address(true));
@@ -76,6 +76,7 @@ private:
     void handleReceive(const boost::system::error_code& error,
       std::size_t bytes_transferred);
     PacketLogHandler &pktLogger;
+    boost::asio::io_service &server_io;
     boost::asio::ip::udp::socket serverSocket;
     boost::asio::ip::udp::endpoint remoteEndpoint;
     boost::array<unsigned char, 4096> recv_buffer;
