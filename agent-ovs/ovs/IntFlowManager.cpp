@@ -2902,6 +2902,10 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
         LOG(DEBUG) << "####### pod<-->svc Service ########";
         LOG(DEBUG) << *asWrapper;
 
+        // build this set to detect if a pod<-->svc flow got created or not.
+        // For e.g. if a svc-next hop becomes same as an IP in EP, then flow wont be created.
+        // pre-existing flows should be deleted though and the mos should be removed.
+        unordered_set<string> epsvc_uuids;
         for (auto const& sm : as.getServiceMappings()) {
 
             for (const string& epUuid : epUuids) {
@@ -2927,14 +2931,30 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
                     LOG(DEBUG) << "pod<-->svc flows not handled for external endpoints";
                     continue;
                 }
+
                 for (const string& epipStr : endPoint.getIPs()) {
-                    podSvcFlowAddExpr(epUuid+":"+uuid,
-                                      epipStr, sm,
-                                      endPoint.getAttributes(),
-                                      as.getAttributes());
+                    // Dont create EPIP <--> SVCIP flows if EPIP is one of the
+                    // next hops of this service.
+                    const auto& nhips = sm.getNextHopIPs();
+                    if (nhips.find(epipStr) == nhips.end()) {
+                        podSvcFlowAddExpr(epUuid+":"+uuid,
+                                          epipStr, sm,
+                                          endPoint.getAttributes(),
+                                          as.getAttributes());
+                    } else {
+                        epsvc_uuids.insert(epUuid+":"+uuid);
+                    }
                 }
             }
         }
+
+        for (const auto& epsvc_uuid: epsvc_uuids) {
+            if (uuid_felist_map.find(epsvc_uuid) == uuid_felist_map.end()) {
+                LOG(DEBUG) << "podsvc: no flows created for epsvc_uuid: " << epsvc_uuid;
+                podSvcFlowRemExpr(epsvc_uuid);
+            }
+        }
+        epsvc_uuids.clear();
     } else {
         unordered_set<string> svcUuids;
         ServiceManager& svcMgr = agent.getServiceManager();
@@ -2964,6 +2984,13 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
             return;
         }
 
+        // build this set to detect if a pod<-->svc flow got created or not.
+        // For e.g. if an EP becomes next hop of a service, then flow wont be created.
+        // pre-existing flows should be deleted though and the mos should be removed.
+        // If there are more IPs of this EP which aren't next-hops of the service, then
+        // flows will get created between this EP and Svc, and unwanted flows will get
+        // cleaned up.
+        unordered_set<string> epsvc_uuids;
         for (const string& epipStr : endPoint.getIPs()) {
 
             for (const string& svcUuid : svcUuids) {
@@ -2986,13 +3013,28 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
                 }
 
                 for (auto const& sm : as.getServiceMappings()) {
-                    podSvcFlowAddExpr(uuid+":"+svcUuid,
-                                      epipStr, sm,
-                                      endPoint.getAttributes(),
-                                      as.getAttributes());
+                    // Dont create EPIP <--> SVCIP flows if EPIP is one of the
+                    // next hops of this service.
+                    const auto& nhips = sm.getNextHopIPs();
+                    if (nhips.find(epipStr) == nhips.end()) {
+                        podSvcFlowAddExpr(uuid+":"+svcUuid,
+                                          epipStr, sm,
+                                          endPoint.getAttributes(),
+                                          as.getAttributes());
+                    } else {
+                        epsvc_uuids.insert(uuid+":"+svcUuid);
+                    }
                 }
             }
         }
+
+        for (const auto& epsvc_uuid: epsvc_uuids) {
+            if (uuid_felist_map.find(epsvc_uuid) == uuid_felist_map.end()) {
+                LOG(DEBUG) << "podsvc: no flows created for epsvc_uuid: " << epsvc_uuid;
+                podSvcFlowRemExpr(epsvc_uuid);
+            }
+        }
+        epsvc_uuids.clear();
     }
 
     for (auto &p : uuid_felist_map)
