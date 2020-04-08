@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "f0c3f09a_5ea27de1",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 2117,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-04-08T00:47:00Z",
+      "side": 1,
+      "message": "I think it will be useful to check if a prom metric was freed or not. These get logged only during config events or during shutdown. We seem to log these for other metrics as well. Pls let me know what u think.",
+      "parentUuid": "f76a349a_ac7b139b",
+      "revId": "3d513d35c46a24ae663003f7cf9a77d072882b72",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "e711dbda_eba2d860",
         "filename": "agent-ovs/lib/PrometheusManager.cpp",
         "patchSetId": 3
@@ -30,6 +48,24 @@
       "writtenOn": "2020-04-08T00:19:20Z",
       "side": 1,
       "message": "This seems like it could be really verbose on shutdown...",
+      "revId": "3d513d35c46a24ae663003f7cf9a77d072882b72",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ffe3f5e3_3513c7b2",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 2161,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-04-08T00:47:00Z",
+      "side": 1,
+      "message": "Same reply as above. Pls let me know if u still want me to remove it.",
+      "parentUuid": "e711dbda_eba2d860",
       "revId": "3d513d35c46a24ae663003f7cf9a77d072882b72",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "58d800f3_52352b54",
+        "filename": "agent-ovs/lib/include/opflexagent/PrometheusManager.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-04-08T00:47:00Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "65fe33e4_9f0107ba",
+      "revId": "3d513d35c46a24ae663003f7cf9a77d072882b72",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a5d3f819_13d98b38",
         "filename": "agent-ovs/lib/include/opflexagent/PrometheusManager.h",
         "patchSetId": 3
@@ -67,6 +121,24 @@
       "revId": "3d513d35c46a24ae663003f7cf9a77d072882b72",
       "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "055dd205_e771502d",
+        "filename": "agent-ovs/lib/include/opflexagent/PrometheusManager.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-04-08T00:47:00Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "a5d3f819_13d98b38",
+      "revId": "3d513d35c46a24ae663003f7cf9a77d072882b72",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": false
     }
   ]
 }
