@@ -262,8 +262,8 @@ ServiceStatsManagerFixture::testFlowAge (PolicyStatsManager *statsManager,
     if (isOld && isFlowStateReAdd) {
         guard.lock();
         BOOST_CHECK_EQUAL(serviceStatsManager.statsState.oldFlowCounterMap.size(), 0);
-        // 19 flows based on config, -2 aged flows
-        BOOST_CHECK_EQUAL(serviceStatsManager.statsState.newFlowCounterMap.size(), 17);
+        // 15 flows based on config, -2 aged flows
+        BOOST_CHECK_EQUAL(serviceStatsManager.statsState.newFlowCounterMap.size(), 13);
         guard.unlock();
 
         boost::system::error_code ec;
@@ -273,13 +273,13 @@ ServiceStatsManagerFixture::testFlowAge (PolicyStatsManager *statsManager,
         // 2 flows get readded to new map
         guard.lock();
         BOOST_CHECK_EQUAL(serviceStatsManager.statsState.oldFlowCounterMap.size(), 0);
-        BOOST_CHECK_EQUAL(serviceStatsManager.statsState.newFlowCounterMap.size(), 19);
+        BOOST_CHECK_EQUAL(serviceStatsManager.statsState.newFlowCounterMap.size(), 15);
         guard.unlock();
     }
 
     if (!isOld && !isFlowStateReAdd) {
         guard.lock();
-        BOOST_CHECK_EQUAL(serviceStatsManager.statsState.newFlowCounterMap.size(), 19);
+        BOOST_CHECK_EQUAL(serviceStatsManager.statsState.newFlowCounterMap.size(), 15);
         guard.unlock();
 
         for (auto age = 0; age < PolicyStatsManager::MAX_AGE; age++) {
@@ -303,7 +303,7 @@ ServiceStatsManagerFixture::testFlowAge (PolicyStatsManager *statsManager,
         statsManager->on_timer(ec);
 
         guard.lock();
-        BOOST_CHECK_EQUAL(serviceStatsManager.statsState.newFlowCounterMap.size(), 19);
+        BOOST_CHECK_EQUAL(serviceStatsManager.statsState.newFlowCounterMap.size(), 15);
         guard.unlock();
     }
 
@@ -457,10 +457,11 @@ ServiceStatsManagerFixture::testFlowStatsPodSvc (MockConnection& portConn,
     FlowEntryList entryList;
     int table_id = IntFlowManager::STATS_TABLE_ID;
 
+    // Using EP IPs that arent the next-hops of the created services
     address svc1Addr = address::from_string("169.254.169.254");
-    address ep1Addr = address::from_string("10.20.44.2");
+    address ep1Addr = address::from_string("10.20.44.3");
     address svc2Addr = address::from_string("fe80::a9:fe:a9:fe");
-    address ep2Addr = address::from_string("2001:db8::2");
+    address ep2Addr = address::from_string("2001:db8::3");
 
     auto createFlowExpr =
         [&] (address epAddr, address svcAddr, bool isV4) -> void {
@@ -692,7 +693,8 @@ ServiceStatsManagerFixture::testFlowRemovedPodSvc (MockConnection& portConn,
     FlowEntryList entryList1, entryList2;
     int table_id = IntFlowManager::STATS_TABLE_ID;
     address svc1Addr = address::from_string("169.254.169.254");
-    address ep1Addr = address::from_string("10.20.44.2");
+    // Using an EP IP that isnt the next-hop
+    address ep1Addr = address::from_string("10.20.44.3");
 
     auto createFlowExpr =
         [&] (bool isEpToSvc) -> void {
@@ -1004,14 +1006,15 @@ bool ServiceStatsManagerFixture::checkNewFlowMapSize (void)
     std::lock_guard<std::mutex> lock(serviceStatsManager.pstatMtx);
     // We have 4 eps with "5 ipv4" + "2 ipv6"...
     // and 2 svc mappings with "1 ipv6" and "1 ipv4"
-    // => 5*1*2 + 2*1*2 = 14 flows
+    // The service's next hops are part of ep0. Flows arent needed for these.
+    // => 4*1*2 + 2*1*1 = 10 flows
 
     // We have 2 NHs which are local EP IPs. So 4 flows get
     // created for any <--> svc-tgt
 
     // Also there are 2 default entries but only 1 has send_flow_rem
     // So totally we have 15 flows in STATS table for which we collect stats
-    if (serviceStatsManager.statsState.newFlowCounterMap.size() == 19)
+    if (serviceStatsManager.statsState.newFlowCounterMap.size() == 15)
         return true;
     return false;
 }

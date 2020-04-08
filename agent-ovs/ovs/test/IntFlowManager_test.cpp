@@ -2793,6 +2793,20 @@ void BaseIntFlowManagerFixture::initExpPodServiceStats (const string& svc_ip,
     };
 
     for (const string& ep_ip : ep->getIPs()) {
+        bool skip_flow = false;
+        for (auto const& sm : as.getServiceMappings()) {
+            // Dont create EPIP <--> SVCIP flows if EPIP is one of the
+            // next hops of this service.
+            const auto& nhips = sm.getNextHopIPs();
+            if (nhips.find(ep_ip) != nhips.end()) {
+                skip_flow = true;
+                break;
+            }
+        }
+
+        if (skip_flow)
+            continue;
+
         address ep_ipa = address::from_string(ep_ip);
         uint64_t ep_to_svc_cookie=0, svc_to_ep_cookie=0;
         intFlowManager.getPodSvcUuidCookie(epSvcUuid,true,ep_to_svc_cookie);
