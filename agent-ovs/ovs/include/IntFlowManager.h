@@ -364,12 +364,6 @@ public:
     in6AddrToLong(boost::asio::ip::address sAddr, uint32_t *pAddr);
 
     /**
-     * Get the promiscuous-mode ID equivalent for a flood domain ID
-     * @param fgrpId the flood domain Id
-     */
-    static uint32_t getPromId(uint32_t fgrpId);
-
-    /**
      * Get the tunnel destination to use for the given endpoint group.
      * @param epgURI the group URI
      * @return the tunnel destination IP

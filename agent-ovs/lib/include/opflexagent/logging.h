@@ -69,14 +69,6 @@ void initLogging(const std::string& level, bool toSyslog,
 void setLoggingLevel(const std::string& level);
 
 /**
- * Change the logging level of the agent.
- *
- * @param level the log level to log at. If this is not a valid string,
- * logging level is set to the default level.
- */
-void setLoggingLevel(const std::string& level);
-
-/**
  * Get the log level string of the agent.
  *
  * @return Get the current log level as a string
