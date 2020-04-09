@@ -25,8 +25,8 @@ namespace opflexagent {
  * class to render netflow export config on a virtual switch
  */
 class NetFlowRenderer : public NetFlowListener,
-                     private JsonRpcRenderer,
-                     private boost::noncopyable {
+                        public JsonRpcRenderer,
+                        private boost::noncopyable {
 
 public:
     /**

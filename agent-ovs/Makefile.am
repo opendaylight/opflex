@@ -456,6 +456,7 @@ if RENDERER_OVS
 	ovs/test/SecGrpStatsManager_test.cpp \
 	ovs/test/TableState_test.cpp \
 	ovs/test/SpanRenderer_test.cpp \
+	ovs/test/NetFlowRenderer_test.cpp \
 	ovs/test/PacketDecoder_test.cpp
 endif
 

@@ -72,7 +72,9 @@ void OvsdbConnection::connect_cb(uv_async_t* handle) {
 void OvsdbConnection::stop() {
     uv_close((uv_handle_t*)&connect_async, nullptr);
     uv_close((uv_handle_t*)&send_req_async, nullptr);
-    peer->destroy();
+    if (peer) {
+        peer->destroy();
+    }
     yajr::finiLoop(client_loop);
     threadManager.stopTask("OvsdbConnection");
 }

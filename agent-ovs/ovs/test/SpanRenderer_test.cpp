@@ -22,45 +22,24 @@ using namespace rapidjson;
 
 BOOST_AUTO_TEST_SUITE(SpanRenderer_test)
 
-class MockSpanRenderer : public SpanRenderer {
-public:
-    MockSpanRenderer(Agent& agent) : SpanRenderer(agent), conn(nullptr) {
-    }
-    virtual ~MockSpanRenderer() {};
-
-    bool connect() {
-        // connect to OVSDB
-        // If connection fails, a timer is started to retry and
-        // back off at periodic intervals.
-        if (timerStarted) {
-            LOG(DEBUG) << "Canceling timer";
-            connection_timer->cancel();
-            timerStarted = false;
-        }
-        conn.reset(new MockRpcConnection());
-        jRpc.reset(new MockJsonRpc(conn.get()));
-        jRpc->connect();
-        return true;
-    }
-
-    unique_ptr<OvsdbConnection> conn;
-};
-
 class SpanRendererFixture : public BaseFixture {
 public:
     SpanRendererFixture() : BaseFixture() {
-        spr = make_shared<MockSpanRenderer>(agent);
+        spr = make_shared<SpanRenderer>(agent);
         initLogging("debug", false, "");
+        conn.reset(new MockRpcConnection());
+        spr->start("br-int", conn.get());
         spr->connect();
     }
 
     virtual ~SpanRendererFixture() {};
 
-    shared_ptr<MockSpanRenderer> spr;
+    shared_ptr<SpanRenderer> spr;
+    unique_ptr<OvsdbConnection> conn;
 };
 
-static bool verifyCreateDestroy(const shared_ptr<MockSpanRenderer>& spr) {
-    spr->jRpc->setNextId(999);
+static bool verifyCreateDestroy(const shared_ptr<SpanRenderer>& spr) {
+    spr->jRpc->setNextId(1000);
     JsonRpc::mirror mir;
     if (!spr->jRpc->getOvsdbMirrorConfig(mir)) {
         return false;

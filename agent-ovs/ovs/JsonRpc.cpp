@@ -48,8 +48,6 @@ bool JsonRpc::createNetFlow(const string& brUuid, const string& target, const in
     JsonRpcTransactMessage msg1(OvsdbOperation::INSERT, OvsdbTable::NETFLOW);
     msg1.rows["targets"] = tdSet;
 
-    TupleData iTimeout("", timeout);
-
     tuples.clear();
     tuples.emplace_back("", timeout);
     tdSet = TupleDataSet(tuples);

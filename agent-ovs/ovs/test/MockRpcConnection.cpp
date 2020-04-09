@@ -12,8 +12,14 @@
 namespace opflexagent {
 
 void ResponseDict::init() {
-    uint64_t j=1000;
-    for (unsigned int i=0 ; i < no_of_msgs; i++, j++) {
+    uint64_t j = 1001;
+    for (unsigned int i = 0 ; i < no_of_span_msgs; i++, j++) {
+        d[i].GetAllocator().Clear();
+        d[i].Parse(response[i].c_str());
+        dict.emplace(j, i);
+    }
+    j = 2001;
+    for (unsigned int i = no_of_span_msgs ; i < (no_of_span_msgs + no_of_netflow_msgs); i++, j++) {
         d[i].GetAllocator().Clear();
         d[i].Parse(response[i].c_str());
         dict.emplace(j, i);
@@ -33,7 +39,7 @@ void MockRpcConnection::sendTransaction(const uint64_t& reqId, const list<JsonRp
     ResponseDict& rDict = ResponseDict::Instance();
     auto itr = rDict.dict.find(reqId);
     if (itr != rDict.dict.end()) {
-        trans->handleTransaction(1, rDict.d[itr->second]);
+        trans->handleTransaction(reqId, rDict.d[itr->second]);
     } else {
         LOG(DEBUG) << "No response found for req " << reqId;
     }

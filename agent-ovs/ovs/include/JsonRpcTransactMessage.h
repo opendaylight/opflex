@@ -56,13 +56,13 @@ public:
      * @param key_ the key string
      * @param val value
      */
-    TupleData(const string& key_, bool val) : key(key_), type(Dtype::STRING), iVal(-1), bVal(val) {}
+    TupleData(const string& key_, bool val) : key(key_), type(Dtype::BOOL), iVal(-1), bVal(val) {}
     /**
      * constructor
      * @param key_ the key string
      * @param val value
      */
-    TupleData(const string& key_, int val) : key(key_), type(Dtype::STRING), iVal(val), bVal(false) {}
+    TupleData(const string& key_, int val) : key(key_), type(Dtype::INTEGER), iVal(val), bVal(false) {}
 
     /**
      * Copy constructor

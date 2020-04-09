@@ -88,15 +88,24 @@ public:
      * map of request response pairs
      */
     map<uint64_t, int> dict;
+
     /**
-     * number of responses to send
+     * number of span responses to send
      */
-    static const unsigned int no_of_msgs = 13;
+    static const unsigned int no_of_span_msgs = 13;
+
+    /**
+     * number of netflow responses to send
+     */
+    static const unsigned int no_of_netflow_msgs = 3;
+
     /**
      * rapidjson Document object array
      */
-    Document d[no_of_msgs];
+    Document d[no_of_span_msgs + no_of_netflow_msgs];
 private:
+
+    /* SPAN request/responses start */
 
     //string request1 {"[\"Open_vSwitch\",{\"where\":[],\"table\":\"Mirror\",\"op\":\"select\"}]"};
     string response1 {"[{\"rows\":[{\"statistics\":[\"map\",[[\"tx_bytes\",0],[\"tx_packets\",0]]],\
@@ -231,9 +240,37 @@ private:
             */
     string response13 {"[{\"uuid\":[\"uuid\",\"ad0810fb-fa38-4dd0-b0b3-6a98985dd2bc\"]},{\"count\":1}]"};
 
-    string response[no_of_msgs] = {response1, response2, response3, response4, response5,
+    /* SPAN request/responses end */
+
+    /* NetFlow request/responses start */
+
+    /*
+    string netflowRequest1 {"[\"Open_vSwitch\",{\"where\":[[\"name\",\"==\",\"br-int\"]],\"table\":\
+            \"Bridge\",\"op\":\"select\",\"columns\":[\"_uuid\"]}]"};
+            */
+    string netflowResponse1 {"[{\"rows\":[{\"_uuid\":[\"uuid\",\"7cb323d7-0215-406d-ae1d-679b72e1f6aa\"]}]}]"};
+
+    /*
+     string netflowRequest2 {"Open_vSwitch",{"uuid-name":"row5ceec9e1-c8a4-496a-a265-1e98ec2986d1","table":"NetFlow",
+                             "op":"insert","row":{"active_timeout":180,"add_id_to_interface":false,"targets":"172.28.184.20:2055"}},
+                             {"where":[["_uuid","==",["uuid","18368680-b320-458f-927c-3e8e87a75a7a"]]],"table":"Bridge",
+                             "op":"update","row":{"netflow":["named-uuid","row5ceec9e1-c8a4-496a-a265-1e98ec2986d1"]}}]}
+    */
+    string netflowResponse2{"[{\"uuid\":[\"uuid\",\"8efc3cdd-5504-4943-90a7-06aa15fac286\"]},{\"count\":1}]"};
+
+    /*
+     string netflowRequest3 {"id":["transact",1],"method":"transact","params":["Open_vSwitch",
+                             {"where":[["name","==","br-int"]],"table":"Bridge","op":"update",
+                             "row":{"netflow":["set",[]]}}]}
+    */
+    string netflowResponse3{"[{\"count\":1}]"};
+
+
+    /* NetFlow request/responses end */
+
+    string response[no_of_span_msgs + no_of_netflow_msgs] = {response1, response2, response3, response4, response5,
             response6, response7, response8, response9, response10, response11, response12,
-            response13 };
+            response13, netflowResponse1, netflowResponse2, netflowResponse3 };
 
 };
 
