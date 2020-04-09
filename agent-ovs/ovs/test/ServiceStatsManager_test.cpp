@@ -12,6 +12,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include <opflexagent/Agent.h>
 #include <modelgbp/gbpe/SvcToEpCounter.hpp>
 #include <modelgbp/gbpe/EpToSvcCounter.hpp>
 #include <opflexagent/logging.h>
@@ -99,6 +100,10 @@ public:
     void testFlowAge(PolicyStatsManager *statsManager,
                      bool isOld, bool isFlowStateReAdd);
 
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    const string cmd = "curl --proxy \"\" --compressed --silent http://127.0.0.1:9612/metrics 2>&1;";
+    void checkSvcTgtPromMetrics(uint64_t pkts, uint64_t bytes, const string& ip);
+#endif
 private:
     Service as;
     Service::ServiceMapping sm1;
@@ -773,6 +778,54 @@ ServiceStatsManagerFixture::testFlowRemovedPodSvc (MockConnection& portConn,
     checkPodSvcObjectStats(epToSvcUuid, svcToEpUuid, expPkts, expBytes);
 }
 
+#ifdef HAVE_PROMETHEUS_SUPPORT
+// Check prom dyn gauge service metrics along with stats
+void ServiceStatsManagerFixture::checkSvcTgtPromMetrics (uint64_t pkts,
+                                                         uint64_t bytes,
+                                                         const string& ip)
+{
+    const string& output = BaseFixture::getOutputFromCommand(cmd);
+    size_t pos = std::string::npos;
+    const string& s_rx_bytes = "opflex_svc_rx_bytes{name=\"coredns\"" \
+                               ",namespace=\"kube-system\",scope=\"cluster\"} "
+                            + boost::lexical_cast<std::string>(bytes) + ".000000";
+    const string& s_rx_pkts = "opflex_svc_rx_packets{name=\"coredns\"" \
+                              ",namespace=\"kube-system\",scope=\"cluster\"} "
+                            + boost::lexical_cast<std::string>(pkts) + ".000000";
+    const string& s_tx_bytes = "opflex_svc_tx_bytes{name=\"coredns\"" \
+                               ",namespace=\"kube-system\",scope=\"cluster\"} "
+                            + boost::lexical_cast<std::string>(bytes) + ".000000";
+    const string& s_tx_pkts = "opflex_svc_tx_packets{name=\"coredns\"" \
+                              ",namespace=\"kube-system\",scope=\"cluster\"} "
+                            + boost::lexical_cast<std::string>(pkts) + ".000000";
+    pos = output.find(s_rx_bytes);
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output.find(s_rx_pkts);
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output.find(s_tx_bytes);
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output.find(s_tx_pkts);
+    BOOST_CHECK_NE(pos, std::string::npos);
+
+    const string& st_rx_bytes = "opflex_svc_target_rx_bytes{ip=\"" + ip + "\"} "
+                            + boost::lexical_cast<std::string>(bytes) + ".000000";
+    const string& st_rx_pkts = "opflex_svc_target_rx_packets{ip=\"" + ip + "\"} "
+                            + boost::lexical_cast<std::string>(pkts) + ".000000";
+    const string& st_tx_bytes = "opflex_svc_target_tx_bytes{ip=\"" + ip + "\"} "
+                            + boost::lexical_cast<std::string>(bytes) + ".000000";
+    const string& st_tx_pkts = "opflex_svc_target_tx_packets{ip=\"" + ip + "\"} "
+                            + boost::lexical_cast<std::string>(pkts) + ".000000";
+    pos = output.find(st_rx_bytes);
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output.find(st_rx_pkts);
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output.find(st_tx_bytes);
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output.find(st_tx_pkts);
+    BOOST_CHECK_NE(pos, std::string::npos);
+}
+#endif
+
 void
 ServiceStatsManagerFixture::checkSvcTgtObjectStats (const std::string& svcUuid,
                                                    const std::string& nhip,
@@ -860,11 +913,10 @@ ServiceStatsManagerFixture::checkSvcTgtObjectStats (const std::string& svcUuid,
                if (opSvcTgtCntr) {
                    BOOST_CHECK_EQUAL(opSvcTgtCntr.get()->getTxbytes().get(), byte_count);
                });
-        } else {
-            LOG(ERROR) << "SvcTargetCounter obj not present nhip: " << nhip;
         }
-    } else {
-        LOG(ERROR) << "SvcCounter obj not present uuid: " << svcUuid;
+#ifdef HAVE_PROMETHEUS_SUPPORT
+        checkSvcTgtPromMetrics(packet_count, byte_count, nhip);
+#endif
     }
 }
 

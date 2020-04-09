@@ -1362,10 +1362,11 @@ void PrometheusManager::createDynamicGaugeRDDrop (RDDROP_METRICS metric,
 void PrometheusManager::createDynamicGaugeSvcTarget (SVC_TARGET_METRICS metric,
                                                      const string& uuid,
                                                      const string& nhip,
-                    const unordered_map<string, string>&    ep_attr_map)
+                    const unordered_map<string, string>&    ep_attr_map,
+                                                     bool updateLabels)
 {
     // During counter update from stats manager, dont create new gauge metric
-    if (ep_attr_map.size() == 0)
+    if (!updateLabels)
         return;
 
     auto const &label_map = createLabelMapFromSvcTargetAttr(nhip, ep_attr_map);
@@ -2609,7 +2610,8 @@ void PrometheusManager::addNUpdateSvcTargetCounter (const string& uuid,
                                                     uint64_t rx_pkts,
                                                     uint64_t tx_bytes,
                                                     uint64_t tx_pkts,
-                         const unordered_map<string, string>& ep_attr_map)
+                         const unordered_map<string, string>& ep_attr_map,
+                                                    bool updateLabels)
 {
     RETURN_IF_DISABLED
     const lock_guard<mutex> lock(svc_target_counter_mutex);
@@ -2622,7 +2624,8 @@ void PrometheusManager::addNUpdateSvcTargetCounter (const string& uuid,
         createDynamicGaugeSvcTarget(metric,
                                     key,
                                     nhip,
-                                    ep_attr_map);
+                                    ep_attr_map,
+                                    updateLabels);
     }
 
     // Update the metrics

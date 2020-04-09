@@ -10,6 +10,8 @@
  */
 
 #include <opflexagent/ServiceManager.h>
+#include <opflexagent/Agent.h>
+#include <opflexagent/EndpointManager.h>
 #include <opflexagent/logging.h>
 #include <opflex/modb/Mutator.h>
 #include <modelgbp/svc/ServiceUniverse.hpp>
@@ -151,6 +153,19 @@ ServiceManager::updateSvcTargetObserverMoDB (const opflexagent::Service& service
                 shared_ptr<SvcTargetCounter> pSvcTarget = nullptr;
                 if (!opSvcTarget) {
                     pSvcTarget = pSvcCounter->addGbpeSvcTargetCounter(ip);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+                    typedef std::unordered_map<std::string, std::string> attr_map_t;
+                    // Keeping prom and modb in sync. Create the metric with IP annotation.
+                    // depending on EP being local, intflowmanager will update the
+                    // metric with more annotations. If EP IP is deleted or becomes external,
+                    // then the annotations other than IP will be removed and counters
+                    // reset back to 0
+                    prometheusManager.addNUpdateSvcTargetCounter(service.getUUID(),
+                                                                 ip,
+                                                                 0, 0, 0, 0,
+                                                                 attr_map_t(),
+                                                                 true);
+#endif
                 } else {
                     pSvcTarget = opSvcTarget.get();
                 }
@@ -158,16 +173,6 @@ ServiceManager::updateSvcTargetObserverMoDB (const opflexagent::Service& service
                     if (out[idx]->getIp("") == ip)
                         out.erase(out.begin()+idx);
                 }
-#ifdef HAVE_PROMETHEUS_SUPPORT
-                typedef std::unordered_map<std::string, std::string> attr_map_t;
-                prometheusManager.addNUpdateSvcTargetCounter(service.getUUID(),
-                                                             ip,
-                                                             pSvcTarget->getRxbytes(0),
-                                                             pSvcTarget->getRxpackets(0),
-                                                             pSvcTarget->getTxbytes(0),
-                                                             pSvcTarget->getTxpackets(0),
-                                                             attr_map_t());
-#endif
             } else {
                 if (opSvcTarget) {
                     clearSvcCounterStats(pSvcCounter, opSvcTarget.get());

@@ -117,6 +117,7 @@ public:
      * @param tx_bytes        egress bytes
      * @param tx_pkts         egress packets
      * @param ep_attr_map     map of all ep/pod attributes
+     * @param updateLabels    update label annotations during cfg updates
      */
     void addNUpdateSvcTargetCounter(const string& uuid,
                                     const string& nhip,
@@ -124,7 +125,8 @@ public:
                                     uint64_t rx_pkts,
                                     uint64_t tx_bytes,
                                     uint64_t tx_pkts,
-        const unordered_map<string, string>& ep_attr_map);
+        const unordered_map<string, string>& ep_attr_map,
+                                    bool updateLabels);
     /**
      * Remove SvcTargetCounter metrics given it's uuid
      *
@@ -477,10 +479,6 @@ private:
     void createStaticGaugeFamiliesSvcTarget(void);
     // remove any svc target gauge metric families during stop
     void removeStaticGaugeFamiliesSvcTarget(void);
-    // create any svc target gauge metric during start
-    void createStaticGaugesSvcTarget(void);
-    // remove any svc target gauge metric during stop
-    void removeStaticGaugesSvcTarget(void);
 
     enum SVC_TARGET_METRICS {
         SVC_TARGET_METRICS_MIN,
@@ -501,7 +499,8 @@ private:
     void createDynamicGaugeSvcTarget(SVC_TARGET_METRICS metric,
                                      const string& uuid,
                                      const string& nhip,
-        const unordered_map<string, string>& ep_attr_map);
+        const unordered_map<string, string>& ep_attr_map,
+                                     bool updateLabels);
 
     // func to get label map and Gauge for SvcTargetCounter given metric type, uuid
     mgauge_pair_t getDynamicGaugeSvcTarget(SVC_TARGET_METRICS metric, const string& uuid);

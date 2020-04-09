@@ -49,10 +49,13 @@ public:
 
     void removeServiceObjects(void);
     void updateServices(bool isLB);
-    void checkServiceState(bool isCreate);
-    void checkServiceExists(bool isCreate);
+    void checkServiceState(bool isAdd);
     void createServices(bool isLB);
     Service as;
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    void checkServicePromMetrics(bool isAdd, bool isUpdate);
+    void checkServiceTargetPromMetrics(bool isAdd, const string& ip);
+    void checkServiceExists(bool isAdd, bool isUpdate=false);
     /**
      * Following commented commands didnt work in test environment, but will work from a regular terminal:
      * const string cmd = "curl --no-proxy \"*\" --compressed --silent http://127.0.0.1:9612/metrics 2>&1";
@@ -61,6 +64,9 @@ public:
      * fails to port 1080 :(
      */
     const string cmd = "curl --proxy \"\" --compressed --silent http://127.0.0.1:9612/metrics 2>&1;";
+#else
+    void checkServiceExists(bool isAdd);
+#endif
 private:
     Service::ServiceMapping sm1;
     Service::ServiceMapping sm2;
@@ -88,7 +94,7 @@ void ServiceManagerFixture::createServices (bool isLB)
     sm1.setServiceIP("169.254.169.254");
     sm1.setServiceProto("udp");
     sm1.setServicePort(53);
-    sm1.addNextHopIP("169.254.169.1");
+    sm1.addNextHopIP("10.20.44.2");
     sm1.addNextHopIP("169.254.169.2");
     sm1.setNextHopPort(5353);
     as.addServiceMapping(sm1);
@@ -96,7 +102,7 @@ void ServiceManagerFixture::createServices (bool isLB)
     sm2.setServiceIP("fe80::a9:fe:a9:fe");
     sm2.setServiceProto("tcp");
     sm2.setServicePort(80);
-    sm2.addNextHopIP("fe80::a9:fe:a9:1");
+    sm2.addNextHopIP("2001:db8::2");
     sm2.addNextHopIP("fe80::a9:fe:a9:2");
     as.addServiceMapping(sm2);
 
@@ -121,7 +127,7 @@ void ServiceManagerFixture::updateServices (bool isLB)
     sm1.setServiceIP("169.254.169.254");
     sm1.setServiceProto("udp");
     sm1.setServicePort(54);
-    sm1.addNextHopIP("169.254.169.3");
+    sm1.addNextHopIP("10.20.44.2");
     sm1.addNextHopIP("169.254.169.4");
     sm1.setNextHopPort(5354);
     as.addServiceMapping(sm1);
@@ -129,12 +135,12 @@ void ServiceManagerFixture::updateServices (bool isLB)
     sm2.setServiceIP("fe80::a9:fe:a9:fe");
     sm2.setServiceProto("tcp");
     sm2.setServicePort(81);
-    sm2.addNextHopIP("fe80::a9:fe:a9:3");
+    sm2.addNextHopIP("2001:db8::2");
     sm2.addNextHopIP("fe80::a9:fe:a9:4");
     as.addServiceMapping(sm2);
 
     as.clearAttributes();
-    as.addAttribute("name", "core-dns");
+    as.addAttribute("name", "nginx");
     as.addAttribute("scope", "cluster");
 
     servSrc.updateService(as);
@@ -253,8 +259,56 @@ void ServiceManagerFixture::checkServiceState (bool isCreate)
     }
 }
 
+#ifdef HAVE_PROMETHEUS_SUPPORT
+static inline void expPosition (bool isAdd, const size_t& pos)
+{
+    if (isAdd)
+        BOOST_CHECK_NE(pos, std::string::npos);
+    else
+        BOOST_CHECK_EQUAL(pos, std::string::npos);
+}
+
+// Check prom dyn gauge service metrics
+void ServiceManagerFixture::checkServicePromMetrics (bool isAdd, bool isUpdate)
+{
+    const string& output = BaseFixture::getOutputFromCommand(cmd);
+    size_t pos = std::string::npos;
+    string str;
+    if (isUpdate)
+        str = "name=\"nginx\",scope=\"cluster\"";
+    else
+        str = "name=\"coredns\",namespace=\"kube-system\",scope=\"cluster\"";
+    pos = output.find("opflex_svc_rx_bytes{" + str + "} 0.000000");
+    expPosition(isAdd, pos);
+    pos = output.find("opflex_svc_rx_packets{" + str + "} 0.000000");
+    expPosition(isAdd, pos);
+    pos = output.find("opflex_svc_tx_bytes{" + str + "} 0.000000");
+    expPosition(isAdd, pos);
+    pos = output.find("opflex_svc_tx_packets{" + str + "} 0.000000");
+    expPosition(isAdd, pos);
+}
+// Check prom dyn gauge service target metrics
+void ServiceManagerFixture::checkServiceTargetPromMetrics (bool isAdd, const string& ip)
+{
+    const string& output = BaseFixture::getOutputFromCommand(cmd);
+    size_t pos = std::string::npos;
+    pos = output.find("opflex_svc_target_rx_bytes{ip=\""+ip+"\"} 0.000000");
+    expPosition(isAdd, pos);
+    pos = output.find("opflex_svc_target_rx_packets{ip=\""+ip+"\"} 0.000000");
+    expPosition(isAdd, pos);
+    pos = output.find("opflex_svc_target_tx_bytes{ip=\""+ip+"\"} 0.000000");
+    expPosition(isAdd, pos);
+    pos = output.find("opflex_svc_target_tx_packets{ip=\""+ip+"\"} 0.000000");
+    expPosition(isAdd, pos);
+}
+#endif
+
 // Check service presence during create vs delete
-void ServiceManagerFixture::checkServiceExists (bool isCreate)
+#ifdef HAVE_PROMETHEUS_SUPPORT
+void ServiceManagerFixture::checkServiceExists (bool isAdd, bool isUpdate)
+#else
+void ServiceManagerFixture::checkServiceExists (bool isAdd)
+#endif
 {
     optional<shared_ptr<ServiceUniverse> > su =
         ServiceUniverse::resolve(agent.getFramework());
@@ -262,7 +316,7 @@ void ServiceManagerFixture::checkServiceExists (bool isCreate)
 
     optional<shared_ptr<SvcStatUniverse> > ssu =
                           SvcStatUniverse::resolve(framework);
-    if (isCreate) {
+    if (isAdd) {
         WAIT_FOR_DO_ONFAIL(su.get()->resolveSvcService(as.getUUID()),
                            500,,
                            LOG(ERROR) << "Service cfg Obj not resolved";);
@@ -273,15 +327,28 @@ void ServiceManagerFixture::checkServiceExists (bool isCreate)
             optional<shared_ptr<SvcCounter> > opSvcCounter =
                                 ssu.get()->resolveGbpeSvcCounter(as.getUUID());
             BOOST_CHECK(opSvcCounter);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+            checkServicePromMetrics(isAdd, isUpdate);
+#endif
             for (const auto& sm : as.getServiceMappings()) {
                 for (const auto& ip : sm.getNextHopIPs()) {
                     WAIT_FOR_DO_ONFAIL(opSvcCounter.get()->resolveGbpeSvcTargetCounter(ip),
                                        500,,
                                        LOG(ERROR) << "SvcTargetCounter obs Obj not resolved";);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+                    checkServiceTargetPromMetrics(isAdd, ip);
+#endif
                 }
             }
         } else {
             BOOST_CHECK(!ssu.get()->resolveGbpeSvcCounter(as.getUUID()));
+#ifdef HAVE_PROMETHEUS_SUPPORT
+            checkServicePromMetrics(false, isUpdate);
+            checkServiceTargetPromMetrics(false, "10.20.44.2");
+            checkServiceTargetPromMetrics(false, "169.254.169.2");
+            checkServiceTargetPromMetrics(false, "2001:db8::2");
+            checkServiceTargetPromMetrics(false, "fe80::a9:fe:a9:2");
+#endif
         }
     } else {
         WAIT_FOR_DO_ONFAIL(!su.get()->resolveSvcService(as.getUUID()),
@@ -290,6 +357,13 @@ void ServiceManagerFixture::checkServiceExists (bool isCreate)
         WAIT_FOR_DO_ONFAIL(!ssu.get()->resolveGbpeSvcCounter(as.getUUID()),
                            500,,
                            LOG(ERROR) << "Service obs Obj still present";);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+        checkServicePromMetrics(isAdd, isUpdate);
+        checkServiceTargetPromMetrics(isAdd, "10.20.44.2");
+        checkServiceTargetPromMetrics(isAdd, "169.254.169.2");
+        checkServiceTargetPromMetrics(isAdd, "2001:db8::2");
+        checkServiceTargetPromMetrics(isAdd, "fe80::a9:fe:a9:2");
+#endif
     }
 }
 
@@ -359,7 +433,10 @@ BOOST_FIXTURE_TEST_CASE(testUpdate, ServiceManagerFixture) {
     // update to lb
     updateServices(true);
     checkServiceState(false);
-#ifdef HAVE_PROMETHEUS_SUPPORT
+#ifndef HAVE_PROMETHEUS_SUPPORT
+    checkServiceExists(true);
+#else
+    checkServiceExists(true, true);
     const string& output2 = BaseFixture::getOutputFromCommand(cmd);
     pos = std::string::npos;
     pos = output2.find("opflex_svc_active_total 1.000000");

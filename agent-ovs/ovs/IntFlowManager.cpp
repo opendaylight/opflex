@@ -2328,7 +2328,8 @@ updateSvcTgtStatsCounters (const uint64_t &cookie,
                                                      updPktCount,
                                                      opSvcTgt.get()->getTxbytes(0),
                                                      opSvcTgt.get()->getTxpackets(0),
-                                                     epAttr);
+                                                     epAttr,
+                                                     epAttr.size()!=0?true:false);
         } else {
             prometheusManager.addNUpdateSvcTargetCounter(svcUuid,
                                                      nhipStr,
@@ -2336,7 +2337,8 @@ updateSvcTgtStatsCounters (const uint64_t &cookie,
                                                      opSvcTgt.get()->getRxpackets(0),
                                                      updByteCount,
                                                      updPktCount,
-                                                     epAttr);
+                                                     epAttr,
+                                                     epAttr.size()!=0?true:false);
         }
 #endif
     }
@@ -2445,11 +2447,13 @@ void IntFlowManager::clearSvcTgtStatsCounters (const std::string& svcUuid,
         updateSvcStatsCounters(true, svcUuid, oldRxPktCount, oldRxByteCount, false);
         updateSvcStatsCounters(false, svcUuid, oldTxPktCount, oldTxByteCount, false);
 #ifdef HAVE_PROMETHEUS_SUPPORT
-        // If the flows dont exist, dont keep the metric for this
+        // If the flows dont exist, reset the counts back to 0
+        // also remove the extra pod specific label annotations
         prometheusManager.addNUpdateSvcTargetCounter(svcUuid,
                                                      nhipStr,
                                                      0, 0, 0, 0,
-                                                     attr_map());
+                                                     attr_map(),
+                                                     true);
 #endif
     }
     mutator.commit();
@@ -2479,12 +2483,14 @@ void IntFlowManager::clearSvcStatsCounters (const std::string& uuid)
             pSvcTarget->unsetTxpackets();
 #ifdef HAVE_PROMETHEUS_SUPPORT
             // If the flows dont exist, reset the counts back to 0
+            // also remove the extra pod specific label annotations
             auto nhip = pSvcTarget->getIp();
             if (nhip)
                 prometheusManager.addNUpdateSvcTargetCounter(uuid,
                                                              nhip.get(),
                                                              0, 0, 0, 0,
-                                                             attr_map());
+                                                             attr_map(),
+                                                             true);
 #endif
         }
         opSvc.get()->unsetRxbytes();
