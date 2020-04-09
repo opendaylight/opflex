@@ -15,7 +15,6 @@
 
 #include <opflex/ofcore/OFFramework.h>
 #include <opflex/modb/ObjectListener.h>
-#include <opflexagent/PolicyListener.h>
 #include <opflexagent/NetFlowListener.h>
 
 #include <modelgbp/platform/Config.hpp>
@@ -38,8 +37,8 @@ using namespace opflex::modb;
 
 namespace opflexagent {
 
-    namespace netflow = modelgbp::netflow;
-    using namespace netflow;
+namespace netflow = modelgbp::netflow;
+using namespace netflow;
 
 /**
  * class to represent information on net flow
@@ -70,13 +69,19 @@ public:
      */
     void stop();
 
-     /**
-      * retrieve the session state pointer using Session URI as key.
-      * @param[in] uri URI pointing to the Session object.
-      * @return shared pointer to ExporterConfigState or none.
-      */
-      boost::optional<shared_ptr<ExporterConfigState>>
-          getExporterConfigState(const URI& uri) const;
+    /**
+     * retrieve the session state pointer using Session URI as key.
+     * @param[in] uri URI pointing to the Session object.
+     * @return shared pointer to ExporterConfigState or none.
+     */
+    boost::optional<shared_ptr<ExporterConfigState>> getExporterConfigState(const URI& uri) const;
+
+    /**
+     * Are there any exporters
+     *
+     */
+    bool anyExporters() const;
+
     /**
      * Register a listener for NetFlow change events
      *
@@ -157,8 +162,7 @@ private:
     mutex listener_mutex;
     TaskQueue taskQueue;
     static recursive_mutex exporter_mutex;
-    unordered_map<opflex::modb::URI, shared_ptr<ExporterConfigState>>
-           exporter_map;
+    unordered_map<opflex::modb::URI, shared_ptr<ExporterConfigState>> exporter_map;
    // list of URIs to send to listeners
     unordered_set<URI> notifyUpdate;
     unordered_set<shared_ptr<ExporterConfigState>> notifyDelete;

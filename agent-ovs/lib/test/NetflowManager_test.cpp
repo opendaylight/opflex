@@ -10,7 +10,6 @@
  */
 
 #include <boost/test/unit_test.hpp>
-#include <boost/assign/list_of.hpp>
 #include <modelgbp/dmtree/Root.hpp>
 #include <opflex/modb/Mutator.h>
 
@@ -21,6 +20,7 @@
 #include <modelgbp/netflow/ExporterConfig.hpp>
 #include <opflexagent/ExporterConfigState.h>
 #include <modelgbp/netflow/CollectorVersionEnumT.hpp>
+
 namespace opflexagent {
 
 using std::shared_ptr;
@@ -41,69 +41,52 @@ public:
         exportCfg->setActiveFlowTimeOut(60);
         exportCfg->setSamplingRate(20);
         exportCfg->setVersion(CollectorVersionEnumT::CONST_V5);
+        exportCfg->setDscp(2);
         mutator.commit();
     }
 
     virtual ~NetflowFixture() {}
 
-    shared_ptr<policy::Space> space;
     shared_ptr<platform::Config> config;
     shared_ptr<netflow::ExporterConfig> exportCfg;
-
-    boost::optional<shared_ptr<ExporterConfigState>> pExpst;
 };
 BOOST_AUTO_TEST_SUITE(NetflowManager_test)
 
 static bool checkNetFlow(boost::optional<shared_ptr<ExporterConfigState>> pExpst,
-                      const URI& netflowUri) {
+                         const URI& netflowUri) {
     if (!pExpst)
         return false;
     LOG(DEBUG) << "checkNetFlow" << pExpst.get()->getUri();
-    if (netflowUri == pExpst.get()->getUri())
-        return true;
-    else
-        return false;
+    return netflowUri == pExpst.get()->getUri();
 }
 
 static bool checkNetFlowTimeout(boost::optional<shared_ptr<ExporterConfigState>> pExpst,
-                             shared_ptr<netflow::ExporterConfig> pExportCfg) {
+                                shared_ptr<netflow::ExporterConfig>& pExportCfg) {
     if (!pExpst)
         return false;
-     LOG(DEBUG) << "checkNetFlowTimeout" << pExpst.get()->getActiveFlowTimeOut();
-    if (pExpst.get()->getActiveFlowTimeOut() == pExportCfg.get()->getActiveFlowTimeOut())
-        return true;
-    else
-        return false;
+    LOG(DEBUG) << "checkNetFlowTimeout" << pExpst.get()->getActiveFlowTimeOut();
+    return pExpst.get()->getActiveFlowTimeOut() == pExportCfg->getActiveFlowTimeOut();
 }
 static bool checkNetFlowDstAddress(boost::optional<shared_ptr<ExporterConfigState>> pExpst,
-                                shared_ptr<netflow::ExporterConfig> pExportCfg) {
+                                   shared_ptr<netflow::ExporterConfig>& pExportCfg) {
     if (!pExpst)
         return false;
-    const string addr = pExportCfg.get()->getDstAddr("");
+    const string addr = pExportCfg->getDstAddr("");
     LOG(DEBUG) << "checkNetFlowDstAddress" << addr;
-    if (pExpst.get()->getDstAddress() == addr)
-        return true;
-    else
-        return false;
+    return pExpst.get()->getDstAddress() == addr;
 }
 static bool checkNetFlowDstPort(boost::optional<shared_ptr<ExporterConfigState>> pExpst,
-                           shared_ptr<netflow::ExporterConfig> pExportCfg) {
+                                shared_ptr<netflow::ExporterConfig>& pExportCfg) {
     if (!pExpst)
         return false;
-    LOG(DEBUG) << "checkNetFlowDstPort" << pExpst.get()->getDestinationPort();   
-    if (pExpst.get()->getDestinationPort() == pExportCfg.get()->getDstPort())
-        return true;
-    else
-        return false;
+    LOG(DEBUG) << "checkNetFlowDstPort" << pExpst.get()->getDestinationPort();
+    return pExpst.get()->getDestinationPort() == pExportCfg->getDstPort();
 }
 static bool checkNetFlowVers(boost::optional<shared_ptr<ExporterConfigState>> pExpst,
-                           shared_ptr<netflow::ExporterConfig> pExportCfg) {
+                             shared_ptr<netflow::ExporterConfig>& pExportCfg) {
     if (!pExpst) return false;
     LOG(DEBUG) << "checkNetFlowVers" << pExpst.get()->getVersion();
-    if (pExpst.get()->getVersion() == pExportCfg.get()->getVersion().get())
-        return true;
-    else
-        return false;
+    return pExpst.get()->getVersion() == pExportCfg->getVersion().get();
 }
 BOOST_FIXTURE_TEST_CASE( verify_artifacts, NetflowFixture ) {
     WAIT_FOR(checkNetFlow(agent.getNetFlowManager().getExporterConfigState(exportCfg->getURI()),
@@ -111,7 +94,21 @@ BOOST_FIXTURE_TEST_CASE( verify_artifacts, NetflowFixture ) {
     WAIT_FOR(checkNetFlowTimeout(agent.getNetFlowManager().getExporterConfigState(exportCfg->getURI()), exportCfg), 500);
     WAIT_FOR(checkNetFlowDstAddress(agent.getNetFlowManager().getExporterConfigState(exportCfg->getURI()), exportCfg), 500);
     WAIT_FOR(checkNetFlowDstPort(agent.getNetFlowManager().getExporterConfigState(exportCfg->getURI()), exportCfg), 500);
-     WAIT_FOR(checkNetFlowVers(agent.getNetFlowManager().getExporterConfigState(exportCfg->getURI()), exportCfg), 500);
+    WAIT_FOR(checkNetFlowVers(agent.getNetFlowManager().getExporterConfigState(exportCfg->getURI()), exportCfg), 500);
+
+    {
+        // remove exporter
+        Mutator mutator(framework, "policyreg");
+        exportCfg->remove();
+        mutator.commit();
+    }
+    {
+        // remove PlatformConfig
+        Mutator mutator(framework, "policyreg");
+        exportCfg->remove();
+        mutator.commit();
+    }
+    WAIT_FOR(!agent.getNetFlowManager().anyExporters(), 500)
 }
 
 BOOST_AUTO_TEST_SUITE_END()

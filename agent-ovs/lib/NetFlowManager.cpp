@@ -52,8 +52,7 @@ namespace opflexagent {
 
     NetFlowManager::NetFlowUniverseListener::~NetFlowUniverseListener() {}
 
-    void NetFlowManager::NetFlowUniverseListener::objectUpdated(class_id_t classId,
-                                                          const URI &uri) {
+    void NetFlowManager::NetFlowUniverseListener::objectUpdated(class_id_t classId, const URI &uri) {
         LOG(DEBUG) << "update on NetFlowUniverseListener URI " << uri;
         lock_guard<recursive_mutex> guard(opflexagent::NetFlowManager::exporter_mutex);
         // updates on parent container for exporterconfig are received for
@@ -155,6 +154,11 @@ namespace opflexagent {
         } else {
             return itr->second;
         }
+    }
+
+    bool NetFlowManager::anyExporters() const {
+        lock_guard<recursive_mutex> guard(exporter_mutex);
+        return !exporter_map.empty();
     }
 
     void NetFlowManager::NetFlowUniverseListener::processExporterConfig(const shared_ptr<modelgbp::netflow::ExporterConfig>& exporterconfig) {
