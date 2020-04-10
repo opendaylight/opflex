@@ -101,6 +101,14 @@ public:
                                   uint32_t portNo, bool fromDesc);
 
     /**
+     * Populate TableDescriptionMap for this FlowManager
+     * for use by drop counters.
+     * @param fwdTblDescr returned TableDescriptionMap
+     */
+    static void populateTableDescriptionMap(
+            SwitchManager::TableDescriptionMap &fwdTblDescr);
+
+    /**
      * Run periodic cleanup tasks
      */
     void cleanup();
@@ -150,10 +158,6 @@ private:
     void handlePortStatusUpdate(const std::string& portName, uint32_t portNo);
     void handleSecGrpSetUpdate(const EndpointListener::uri_set_t& secGrps,
                                const std::string& secGrpsId);
-    /**
-     * Populate table description for drop counters
-     */
-    void populateTableDescriptionMap();
 
     Agent& agent;
     SwitchManager& switchManager;

@@ -508,6 +508,13 @@ public:
         }
         return true;
     }
+    /**
+     * Populate TableDescriptionMap for this FlowManager
+     * for use by drop counters.
+     * @param fwdTblDescr returned TableDescriptionMap
+     */
+    static void populateTableDescriptionMap(
+            SwitchManager::TableDescriptionMap &fwdTblDescr);
 private:
     /**
      * Write flows that are fixed and not related to any policy or
@@ -910,10 +917,6 @@ private:
      * Handle if the droplog port name is read later
      */
     void handleDropLogPortUpdate();
-    /**
-     * Populate table description map for use by drop counters
-     */
-    void populateTableDescriptionMap();
 
 };
 

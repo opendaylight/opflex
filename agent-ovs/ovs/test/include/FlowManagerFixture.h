@@ -18,6 +18,8 @@
 #include "PacketInHandler.h"
 #include <opflexagent/logging.h>
 
+#include "IntFlowManager.h"
+#include "AccessFlowManager.h"
 #include <vector>
 #include <thread>
 #include <list>
@@ -26,11 +28,18 @@
 namespace opflexagent {
 
 class FlowManagerFixture : public ModbFixture {
-    typedef opflex::ofcore::OFConstants::OpflexElementMode opflex_elem_t;
 public:
-    FlowManagerFixture(opflex_elem_t mode = opflex_elem_t::INVALID_MODE)
+    FlowManagerFixture(opflex_elem_t mode = opflex_elem_t::INVALID_MODE,
+            bool intBridgeTableDesc = true)
         : ModbFixture(mode), ctZoneManager(idGen),
         switchManager(agent, exec, reader, portmapper) {
+        SwitchManager::TableDescriptionMap fwdTblDescr;
+        if(intBridgeTableDesc) {
+            IntFlowManager::populateTableDescriptionMap(fwdTblDescr);
+        } else {
+            AccessFlowManager::populateTableDescriptionMap(fwdTblDescr);
+        }
+        switchManager.setForwardingTableList(fwdTblDescr);
         switchManager.setSyncDelayOnConnect(0);
         ctZoneManager.setCtZoneRange(1, 65534);
         ctZoneManager.init("conntrack");
