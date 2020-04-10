@@ -2935,7 +2935,15 @@ void BaseIntFlowManagerFixture::initExpLBService(Service &as1,
                    flow::meta::POLICY_APPLIED |
                    flow::meta::FROM_SERVICE_INTERFACE)
              .go(BR).done());
-
+        ADDF(Bldr().table(SEC).priority(90).arp().in(17).isVlan(4003)
+             .isEthDst(bmac).isArpOp(1)
+             .actions()
+             .popVlan().load(SEPG, 4003).load(RD, 1)
+             .meta(flow::meta::POLICY_APPLIED |
+                   flow::meta::FROM_SERVICE_INTERFACE,
+                   flow::meta::POLICY_APPLIED |
+                   flow::meta::FROM_SERVICE_INTERFACE)
+             .go(BR).done());
         ADDF(Bldr().table(BR).priority(52).arp()
              .reg(RD, 1).in(17)
              .isEthDst(bmac).isTpa("1.1.1.1")

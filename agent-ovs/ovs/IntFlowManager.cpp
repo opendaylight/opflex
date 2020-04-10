@@ -3424,6 +3424,26 @@ void IntFlowManager::handleServiceUpdate(const string& uuid) {
                 .go(BRIDGE_TABLE_ID);
             svcIface.build(secFlows);
 
+            FlowBuilder svcArp;
+            svcArp.priority(90)
+                .inPort(ofPort)
+                .ethType(eth::type::ARP)
+                .proto(arp::op::REQUEST)
+                .ethDst(packets::MAC_ADDR_BROADCAST);
+            if (as.getIfaceVlan()) {
+                svcArp.vlan(as.getIfaceVlan().get());
+                svcArp.action().popVlan();
+            }
+            svcArp.action()
+                .reg(MFF_REG0, proxyVnid)
+                .reg(MFF_REG6, rdId)
+                .metadata(flow::meta::POLICY_APPLIED |
+                          flow::meta::FROM_SERVICE_INTERFACE,
+                          flow::meta::POLICY_APPLIED|
+                          flow::meta::FROM_SERVICE_INTERFACE)
+                .go(BRIDGE_TABLE_ID);
+            svcArp.build(secFlows);
+
             if (as.getIfaceIP()) {
                 // Reply to ARP/ND requests for the iface address
                 address ifaceAddr =
