@@ -104,9 +104,11 @@ static const char* ID_NMSPC_L24CLASS_RULE = ID_NAMESPACES[4];
 static const char* ID_NMSPC_SVCSTATS      = ID_NAMESPACES[5];
 static const char* ID_NMSPC_SERVICE       = ID_NAMESPACES[6];
 
-void IntFlowManager::populateTableDescriptionMap() {
+
+
+void IntFlowManager::populateTableDescriptionMap(
+        SwitchManager::TableDescriptionMap &fwdTblDescr) {
     // Populate descriptions of flow tables
-    SwitchManager::TableDescriptionMap fwdTblDescr;
 #define TABLE_DESC(table_id, table_name, drop_reason) \
         fwdTblDescr.insert( \
                     std::make_pair(table_id, \
@@ -134,7 +136,6 @@ void IntFlowManager::populateTableDescriptionMap() {
     TABLE_DESC(OUT_TABLE_ID, "OUT_TABLE",
             "Derived output port missing/incorrect")
 #undef TABLE_DESC
-    switchManager.setForwardingTableList(fwdTblDescr);
 }
 
 IntFlowManager::IntFlowManager(Agent& agent_,
@@ -156,7 +157,9 @@ IntFlowManager::IntFlowManager(Agent& agent_,
     advertManager(agent, *this), isSyncing(false), stopping(false) {
     // set up flow tables
     switchManager.setMaxFlowTables(NUM_FLOW_TABLES);
-    populateTableDescriptionMap();
+    SwitchManager::TableDescriptionMap fwdTblDescr;
+    populateTableDescriptionMap(fwdTblDescr);
+    switchManager.setForwardingTableList(fwdTblDescr);
 
     memset(routerMac, 0, sizeof(routerMac));
     memset(dhcpMac, 0, sizeof(dhcpMac));
