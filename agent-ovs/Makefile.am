@@ -457,7 +457,8 @@ if RENDERER_OVS
 	ovs/test/TableState_test.cpp \
 	ovs/test/SpanRenderer_test.cpp \
 	ovs/test/NetFlowRenderer_test.cpp \
-	ovs/test/PacketDecoder_test.cpp
+	ovs/test/PacketDecoder_test.cpp \
+	ovs/test/TableDropStatsManager_test.cpp
 endif
 
 opflex_server_CXXFLAGS = \
