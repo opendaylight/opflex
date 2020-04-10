@@ -29,8 +29,11 @@ namespace opflexagent {
  * A fixture that adds an object store
  */
 class BaseFixture {
-typedef opflex::ofcore::OFConstants::OpflexElementMode opflex_elem_t;
 public:
+/**
+ * Mode for opflex peer
+ */
+typedef opflex::ofcore::OFConstants::OpflexElementMode opflex_elem_t;
     BaseFixture(opflex_elem_t mode = opflex_elem_t::INVALID_MODE) :
     agent(framework, std::make_tuple("debug",false,"")), tunnelEpManager(&agent) {
         agent.setRendererForwardingMode(mode);

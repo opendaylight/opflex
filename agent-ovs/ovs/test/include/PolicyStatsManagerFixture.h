@@ -70,6 +70,12 @@ public:
 
 class PolicyStatsManagerFixture : public FlowManagerFixture {
 public:
+    PolicyStatsManagerFixture (
+            opflex_elem_t mode = opflex_elem_t::INVALID_MODE,
+            bool intBridgeTableDesc = true ): FlowManagerFixture (
+                    mode, intBridgeTableDesc) {
+    };
+
     void verifyFlowStats(shared_ptr<L24Classifier> classifier,
                          uint32_t packet_count,
                          uint32_t byte_count,uint32_t table_id,
