@@ -40,15 +40,12 @@ public:
 
 static bool verifyCreateDestroy(const shared_ptr<NetFlowRenderer>& nfr) {
     nfr->jRpc->setNextId(2000);
-    string bridgeUuid;
-    nfr->jRpc->getBridgeUuid("br-int", bridgeUuid);
 
-    bool result = nfr->jRpc->createNetFlow(bridgeUuid, "5.5.5.6", 10, true);
-    result = result && nfr->jRpc->deleteNetFlow(bridgeUuid);
+    bool result = nfr->createNetFlow("5.5.5.6", 10);
+    result = result && nfr->deleteNetFlow();
 
-    nfr->jRpc->setNextId(2001);
-    result = result && nfr->jRpc->createIpfix(bridgeUuid, "5.5.5.5", 500);
-    result = result && nfr->jRpc->deleteIpfix(bridgeUuid);
+    result = result && nfr->createIpfix("5.5.5.5", 500);
+    result = result && nfr->deleteIpfix();
     return result;
 }
 

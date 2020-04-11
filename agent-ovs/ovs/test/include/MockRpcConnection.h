@@ -97,7 +97,7 @@ public:
     /**
      * number of netflow responses to send
      */
-    static const unsigned int no_of_netflow_msgs = 3;
+    static const unsigned int no_of_netflow_msgs = 10;
 
     /**
      * rapidjson Document object array
@@ -245,32 +245,37 @@ private:
     /* NetFlow request/responses start */
 
     /*
-    string netflowRequest1 {"[\"Open_vSwitch\",{\"where\":[[\"name\",\"==\",\"br-int\"]],\"table\":\
-            \"Bridge\",\"op\":\"select\",\"columns\":[\"_uuid\"]}]"};
-            */
-    string netflowResponse1 {"[{\"rows\":[{\"_uuid\":[\"uuid\",\"7cb323d7-0215-406d-ae1d-679b72e1f6aa\"]}]}]"};
+      get bridge uuid
+    */
+    string getBridgeUuidResp {"[{\"rows\":[{\"_uuid\":[\"uuid\",\"7cb323d7-0215-406d-ae1d-679b72e1f6aa\"]}]}]"};
 
     /*
-     string netflowRequest2 {"Open_vSwitch",{"uuid-name":"row5ceec9e1-c8a4-496a-a265-1e98ec2986d1","table":"NetFlow",
+     delete ipfix/netflow
+    */
+    string deleteResp{"[{\"count\":1}]"};
+
+    /*
+     string createNetflox   {"Open_vSwitch",{"uuid-name":"row5ceec9e1-c8a4-496a-a265-1e98ec2986d1","table":"NetFlow",
                              "op":"insert","row":{"active_timeout":180,"add_id_to_interface":false,"targets":"172.28.184.20:2055"}},
                              {"where":[["_uuid","==",["uuid","18368680-b320-458f-927c-3e8e87a75a7a"]]],"table":"Bridge",
                              "op":"update","row":{"netflow":["named-uuid","row5ceec9e1-c8a4-496a-a265-1e98ec2986d1"]}}]}
     */
-    string netflowResponse2{"[{\"uuid\":[\"uuid\",\"8efc3cdd-5504-4943-90a7-06aa15fac286\"]},{\"count\":1}]"};
+    string createNetflowResp{"[{\"uuid\":[\"uuid\",\"8efc3cdd-5504-4943-90a7-06aa15fac286\"]},{\"count\":1}]"};
 
     /*
-     string netflowRequest3 {"id":["transact",1],"method":"transact","params":["Open_vSwitch",
-                             {"where":[["name","==","br-int"]],"table":"Bridge","op":"update",
-                             "row":{"netflow":["set",[]]}}]}
+     string ipFixReq {"Open_vSwitch",{"uuid-name":"ipfix1","table":"IPFIX","op":"insert","row":{"targets":"172.28.184.9:2055"}},
+                      {"where":[["_uuid","==",["uuid","18368680-b320-458f-927c-3e8e87a75a7a"]]],"table":"Bridge","op":"update",
+                      "row":{"ipfix":["named-uuid","ipfix1"]}}]}
     */
-    string netflowResponse3{"[{\"count\":1}]"};
+    string createIpFixResp{"[{\"uuid\":[\"uuid\",\"8a2f834f-1d4c-4624-9da7-3ac13f73e673\"]},{\"count\":1}]"};
 
 
     /* NetFlow request/responses end */
 
     string response[no_of_span_msgs + no_of_netflow_msgs] = {response1, response2, response3, response4, response5,
-            response6, response7, response8, response9, response10, response11, response12,
-            response13, netflowResponse1, netflowResponse2, netflowResponse3 };
+            response6, response7, response8, response9, response10, response11, response12, response13,
+            deleteResp, deleteResp, getBridgeUuidResp, createNetflowResp, deleteResp,
+            deleteResp, deleteResp, getBridgeUuidResp, createIpFixResp, deleteResp};
 
 };
 

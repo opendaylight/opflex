@@ -116,7 +116,7 @@ namespace opflexagent {
         return true;
     }
 
-      bool NetFlowRenderer::deleteIpfix() {
+    bool NetFlowRenderer::deleteIpfix() {
         LOG(DEBUG) << "deleting IPFIX";
         if (!jRpc->deleteIpfix(switchName))
         {

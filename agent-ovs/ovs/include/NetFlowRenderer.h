@@ -59,17 +59,40 @@ public:
      */
     virtual void exporterDeleted(const shared_ptr<ExporterConfigState>& expSt);
 
-private:
     /**
      * Compare and update netflow exporter config
      *
      * @param netflowURI URI of the changed netflow exporter object
     */
     void handleNetFlowUpdate(const opflex::modb::URI& netflowURI);
+
+    /**
+     * Delete the netflow exporter
+    */
     bool deleteNetFlow();
+
+    /**
+     * Create netflow
+     * @param targets netflow target
+     * @param timeout timeout
+     * @return success/failure
+     */
     bool createNetFlow(const string& targets, int timeout);
+
+    /**
+     * Delete the ipfix exporter
+    */
     bool deleteIpfix();
+
+    /**
+     * Create ipfix
+     * @param targets netflow target
+     * @param sample sample
+     * @return success/failure
+     */
     bool createIpfix(const string& targets, int sample);
+
+private:
     void updateConnectCb(const boost::system::error_code& ec, const opflex::modb::URI& uri);
     void delConnectCb(const boost::system::error_code& ec, shared_ptr<ExporterConfigState> expSt);
 };
