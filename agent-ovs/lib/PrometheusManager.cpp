@@ -1362,6 +1362,7 @@ void PrometheusManager::createDynamicGaugeRDDrop (RDDROP_METRICS metric,
 void PrometheusManager::createDynamicGaugeSvcTarget (SVC_TARGET_METRICS metric,
                                                      const string& uuid,
                                                      const string& nhip,
+                    const unordered_map<string, string>&    svc_attr_map,
                     const unordered_map<string, string>&    ep_attr_map,
                                                      bool updateLabels)
 {
@@ -1369,7 +1370,7 @@ void PrometheusManager::createDynamicGaugeSvcTarget (SVC_TARGET_METRICS metric,
     if (!updateLabels)
         return;
 
-    auto const &label_map = createLabelMapFromSvcTargetAttr(nhip, ep_attr_map);
+    auto const &label_map = createLabelMapFromSvcTargetAttr(nhip, svc_attr_map, ep_attr_map);
     auto hash_new = hash_labels(label_map);
 
     // Retrieve the Gauge if its already created
@@ -1596,6 +1597,7 @@ bool PrometheusManager::createDynamicGaugeEp (EP_METRICS metric,
 // Create a label map that can be used for annotation, given the ep attr map
 const map<string,string> PrometheusManager::createLabelMapFromSvcTargetAttr (
                                                            const string& nhip,
+                            const unordered_map<string, string>&  svc_attr_map,
                             const unordered_map<string, string>&  ep_attr_map)
 {
     map<string,string>   label_map;
@@ -1606,14 +1608,29 @@ const map<string,string> PrometheusManager::createLabelMapFromSvcTargetAttr (
     // annotation. In grafana, we can filter out if the IP is not needed.
     label_map["ip"] = nhip;
 
+    auto svc_name_itr = svc_attr_map.find("name");
+    if (svc_name_itr != svc_attr_map.end()) {
+        label_map["svc_name"] = svc_name_itr->second;
+    }
+
+    auto svc_ns_itr = svc_attr_map.find("namespace");
+    if (svc_ns_itr != svc_attr_map.end()) {
+        label_map["svc_namespace"] = svc_ns_itr->second;
+    }
+
+    auto svc_scope_itr = svc_attr_map.find("scope");
+    if (svc_scope_itr != svc_attr_map.end()) {
+        label_map["svc_scope"] = svc_scope_itr->second;
+    }
+
     auto ep_name_itr = ep_attr_map.find("vm-name");
     if (ep_name_itr != ep_attr_map.end()) {
-        label_map["name"] = ep_name_itr->second;
+        label_map["ep_name"] = ep_name_itr->second;
     }
 
     auto ep_ns_itr = ep_attr_map.find("namespace");
     if (ep_ns_itr != ep_attr_map.end()) {
-        label_map["namespace"] = ep_ns_itr->second;
+        label_map["ep_namespace"] = ep_ns_itr->second;
     }
 
     return label_map;
@@ -2601,7 +2618,7 @@ void PrometheusManager::addNUpdatePodSvcCounter (bool isEpToSvc,
  * if we dont annotate the IP address to prometheus. Metric duplication
  * checker will detect this and will neither create nor update gauge metric
  * for the conflicting IP.
- * To avoid confusion and keep things simple, we will annocate with the nhip
+ * To avoid confusion and keep things simple, we will annotate with the nhip
  * as well to avoid duplicate metrics. We can avoid showing the IP in grafana
  * if its not of much value. */
 void PrometheusManager::addNUpdateSvcTargetCounter (const string& uuid,
@@ -2610,6 +2627,7 @@ void PrometheusManager::addNUpdateSvcTargetCounter (const string& uuid,
                                                     uint64_t rx_pkts,
                                                     uint64_t tx_bytes,
                                                     uint64_t tx_pkts,
+                         const unordered_map<string, string>& svc_attr_map,
                          const unordered_map<string, string>& ep_attr_map,
                                                     bool updateLabels)
 {
@@ -2624,6 +2642,7 @@ void PrometheusManager::addNUpdateSvcTargetCounter (const string& uuid,
         createDynamicGaugeSvcTarget(metric,
                                     key,
                                     nhip,
+                                    svc_attr_map,
                                     ep_attr_map,
                                     updateLabels);
     }

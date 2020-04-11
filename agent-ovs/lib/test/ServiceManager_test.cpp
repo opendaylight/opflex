@@ -54,7 +54,7 @@ public:
     Service as;
 #ifdef HAVE_PROMETHEUS_SUPPORT
     void checkServicePromMetrics(bool isAdd, bool isUpdate);
-    void checkServiceTargetPromMetrics(bool isAdd, const string& ip);
+    void checkServiceTargetPromMetrics(bool isAdd, const string& ip, bool isUpdate);
     void checkServiceExists(bool isAdd, bool isUpdate=false);
     /**
      * Following commented commands didnt work in test environment, but will work from a regular terminal:
@@ -288,17 +288,24 @@ void ServiceManagerFixture::checkServicePromMetrics (bool isAdd, bool isUpdate)
     expPosition(isAdd, pos);
 }
 // Check prom dyn gauge service target metrics
-void ServiceManagerFixture::checkServiceTargetPromMetrics (bool isAdd, const string& ip)
+void ServiceManagerFixture::checkServiceTargetPromMetrics (bool isAdd,
+                                                           const string& ip,
+                                                           bool isUpdate)
 {
     const string& output = BaseFixture::getOutputFromCommand(cmd);
     size_t pos = std::string::npos;
-    pos = output.find("opflex_svc_target_rx_bytes{ip=\""+ip+"\"} 0.000000");
+    string str;
+    if (isUpdate)
+        str = "\",svc_name=\"nginx\",svc_scope=\"cluster\"} 0.000000";
+    else
+        str = "\",svc_name=\"coredns\",svc_namespace=\"kube-system\",svc_scope=\"cluster\"} 0.000000";
+    pos = output.find("opflex_svc_target_rx_bytes{ip=\""+ip+str);
     expPosition(isAdd, pos);
-    pos = output.find("opflex_svc_target_rx_packets{ip=\""+ip+"\"} 0.000000");
+    pos = output.find("opflex_svc_target_rx_packets{ip=\""+ip+str);
     expPosition(isAdd, pos);
-    pos = output.find("opflex_svc_target_tx_bytes{ip=\""+ip+"\"} 0.000000");
+    pos = output.find("opflex_svc_target_tx_bytes{ip=\""+ip+str);
     expPosition(isAdd, pos);
-    pos = output.find("opflex_svc_target_tx_packets{ip=\""+ip+"\"} 0.000000");
+    pos = output.find("opflex_svc_target_tx_packets{ip=\""+ip+str);
     expPosition(isAdd, pos);
 }
 #endif
@@ -336,7 +343,7 @@ void ServiceManagerFixture::checkServiceExists (bool isAdd)
                                        500,,
                                        LOG(ERROR) << "SvcTargetCounter obs Obj not resolved";);
 #ifdef HAVE_PROMETHEUS_SUPPORT
-                    checkServiceTargetPromMetrics(isAdd, ip);
+                    checkServiceTargetPromMetrics(isAdd, ip, isUpdate);
 #endif
                 }
             }
@@ -344,10 +351,10 @@ void ServiceManagerFixture::checkServiceExists (bool isAdd)
             BOOST_CHECK(!ssu.get()->resolveGbpeSvcCounter(as.getUUID()));
 #ifdef HAVE_PROMETHEUS_SUPPORT
             checkServicePromMetrics(false, isUpdate);
-            checkServiceTargetPromMetrics(false, "10.20.44.2");
-            checkServiceTargetPromMetrics(false, "169.254.169.2");
-            checkServiceTargetPromMetrics(false, "2001:db8::2");
-            checkServiceTargetPromMetrics(false, "fe80::a9:fe:a9:2");
+            checkServiceTargetPromMetrics(false, "10.20.44.2", isUpdate);
+            checkServiceTargetPromMetrics(false, "169.254.169.2", isUpdate);
+            checkServiceTargetPromMetrics(false, "2001:db8::2", isUpdate);
+            checkServiceTargetPromMetrics(false, "fe80::a9:fe:a9:2", isUpdate);
 #endif
         }
     } else {
@@ -359,10 +366,10 @@ void ServiceManagerFixture::checkServiceExists (bool isAdd)
                            LOG(ERROR) << "Service obs Obj still present";);
 #ifdef HAVE_PROMETHEUS_SUPPORT
         checkServicePromMetrics(isAdd, isUpdate);
-        checkServiceTargetPromMetrics(isAdd, "10.20.44.2");
-        checkServiceTargetPromMetrics(isAdd, "169.254.169.2");
-        checkServiceTargetPromMetrics(isAdd, "2001:db8::2");
-        checkServiceTargetPromMetrics(isAdd, "fe80::a9:fe:a9:2");
+        checkServiceTargetPromMetrics(isAdd, "10.20.44.2", isUpdate);
+        checkServiceTargetPromMetrics(isAdd, "169.254.169.2", isUpdate);
+        checkServiceTargetPromMetrics(isAdd, "2001:db8::2", isUpdate);
+        checkServiceTargetPromMetrics(isAdd, "fe80::a9:fe:a9:2", isUpdate);
 #endif
     }
 }

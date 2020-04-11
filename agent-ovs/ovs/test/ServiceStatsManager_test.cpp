@@ -807,13 +807,15 @@ void ServiceStatsManagerFixture::checkSvcTgtPromMetrics (uint64_t pkts,
     pos = output.find(s_tx_pkts);
     BOOST_CHECK_NE(pos, std::string::npos);
 
-    const string& st_rx_bytes = "opflex_svc_target_rx_bytes{ip=\"" + ip + "\"} "
+    const string& s_ann = "\",svc_name=\"coredns\",svc_namespace=\"kube-system\"" \
+                          ",svc_scope=\"cluster\"} ";
+    const string& st_rx_bytes = "opflex_svc_target_rx_bytes{ip=\"" + ip + s_ann
                             + boost::lexical_cast<std::string>(bytes) + ".000000";
-    const string& st_rx_pkts = "opflex_svc_target_rx_packets{ip=\"" + ip + "\"} "
+    const string& st_rx_pkts = "opflex_svc_target_rx_packets{ip=\"" + ip + s_ann
                             + boost::lexical_cast<std::string>(pkts) + ".000000";
-    const string& st_tx_bytes = "opflex_svc_target_tx_bytes{ip=\"" + ip + "\"} "
+    const string& st_tx_bytes = "opflex_svc_target_tx_bytes{ip=\"" + ip + s_ann
                             + boost::lexical_cast<std::string>(bytes) + ".000000";
-    const string& st_tx_pkts = "opflex_svc_target_tx_packets{ip=\"" + ip + "\"} "
+    const string& st_tx_pkts = "opflex_svc_target_tx_packets{ip=\"" + ip + s_ann
                             + boost::lexical_cast<std::string>(pkts) + ".000000";
     pos = output.find(st_rx_bytes);
     BOOST_CHECK_NE(pos, std::string::npos);
