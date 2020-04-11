@@ -32,7 +32,9 @@ public:
         spr->connect();
     }
 
-    virtual ~SpanRendererFixture() {};
+    virtual ~SpanRendererFixture() {
+        spr->stop();
+    };
 
     shared_ptr<SpanRenderer> spr;
     unique_ptr<OvsdbConnection> conn;
@@ -74,17 +76,7 @@ static bool verifyCreateDestroy(const shared_ptr<SpanRenderer>& spr) {
     set<string> src_ports = {"p1-tap", "p2-tap"};
     set<string> dst_ports = {"p1-tap", "p2-tap"};
     set<string> out_ports = {"erspan"};
-    mir.src_ports.insert(src_ports.begin(), src_ports.end());
-    mir.dst_ports.insert(dst_ports.begin(), dst_ports.end());
-    mir.out_ports.insert(out_ports.begin(), out_ports.end());
-    spr->jRpc->addMirrorData("sess1", mir);
-
-    string brUuid;
-    spr->jRpc->getBridgeUuid("br-int", brUuid);
-    if (brUuid.empty()) {
-        return false;
-    }
-    return spr->jRpc->createMirror(brUuid, "sess1");
+    return spr->createMirror("sess1", src_ports, dst_ports);
 }
 
 BOOST_FIXTURE_TEST_CASE( verify_getport, SpanRendererFixture ) {

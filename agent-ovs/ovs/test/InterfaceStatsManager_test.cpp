@@ -58,7 +58,7 @@ public:
     virtual ~InterfaceStatsManagerFixture() {
         agent.stop();
     }
-    void verifyCounters(uint64_t *dummy, int port_num);
+    void verifyCounters(uint64_t *dummy, uint32_t port_num);
 
     InterfaceStatsManager statsManager;
     MockPortMapper intPortMapper;
@@ -68,7 +68,7 @@ private:
 };
 
 void InterfaceStatsManagerFixture::verifyCounters(uint64_t *dummy_stats,
-                                                  int port_num) {
+                                                  uint32_t port_num) {
     EndpointManager& epMgr = agent.getEndpointManager();
     std::unordered_set<std::string> endpoints;
     const std::string& intPortName = intPortMapper.FindPort(port_num);

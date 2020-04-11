@@ -58,6 +58,16 @@ public:
      */
     virtual void spanDeleted(shared_ptr<SessionState>& sesSt);
 
+    /**
+     * create mirror
+     * @param[in] session name of mirror
+     * @param[in] srcPorts source ports
+     * @param[in] dstPorts dest ports
+     * @return bool true if created successfully, false otherwise.
+     */
+    bool createMirror(const string& session, const set<string>& srcPorts,
+                      const set<string>& dstPorts);
+
 private:
     /**
      * Compare and update span config
@@ -68,8 +78,6 @@ private:
     virtual void sessionDeleted(shared_ptr<SessionState>& sesSt);
     bool deleteErspanPort(const string& name);
     bool deleteMirror(const string& session);
-    bool createMirror(const string& session, const set<string>& srcPorts,
-            const set<string>& dstPorts);
     bool addErspanPort(const string& brName, const string& ipAddr, const uint8_t version);
     void updateMirrorConfig(shared_ptr<SessionState> seSt);
     void updateConnectCb(const boost::system::error_code& ec, const opflex::modb::URI& uri);

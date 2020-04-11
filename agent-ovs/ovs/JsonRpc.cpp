@@ -25,8 +25,6 @@
 #include <opflexagent/logging.h>
 #include "OvsdbConnection.h"
 
-#include <boost/lexical_cast.hpp>
-
 using namespace std::chrono;
 
 namespace opflexagent {
@@ -178,30 +176,6 @@ bool JsonRpc::handleGetPortUuidResp(uint64_t reqId,
         LOG(WARNING) << "payload is not an array";
     }
     return false;
-}
-
-void JsonRpc::printMirMap(const map<string, mirror>& mirMap) {
-    stringstream ss;
-    ss << endl;
-    for (pair<string, mirror> elem : mirMap) {
-        ss << "mirror name: " << elem.first << endl;
-        ss << "   uuid: " << elem.second.uuid << endl;
-        ss << "   bridge uuid: " << elem.second.brUuid << endl;
-        ss << "   src ports" << endl;
-        for (const string& uuid : elem.second.src_ports) {
-            ss << "      " << uuid << endl;
-        }
-        ss << "...dst ports" << endl;
-        for (const string& uuid : elem.second.dst_ports) {
-            ss << "      " << uuid << endl;
-        }
-        ss << "   output port" << endl;
-        for (const string& uuid : elem.second.dst_ports) {
-            ss << "      " << uuid << endl;
-        }
-
-        LOG(DEBUG) << ss.rdbuf();
-    }
 }
 
 bool JsonRpc::updateBridgePorts(tuple<string,set<string>> ports,
@@ -572,20 +546,13 @@ void JsonRpc::handleGetBridgeUuidResp(uint64_t reqId, const Document& payload, s
     }
 }
 
-bool JsonRpc::createMirror(const string& brUuid, const string& name) {
+bool JsonRpc::createMirror(const string& brUuid, const string& name, const set<string>& srcPorts,
+                           const set<string>& dstPorts) {
     map<string, string> portUuidMap;
 
-    auto itr = mirMap.find(name);
-    if (!(itr != mirMap.end())) {
-        LOG(DEBUG) << "mirror " << name << " not found" <<
-        ", unable to create mirror";
-        return false;
-    }
-    mirror& mir = itr->second;
-
     set<string> ports;
-    ports.insert(mir.src_ports.begin(), mir.src_ports.end());
-    ports.insert(mir.dst_ports.begin(), mir.dst_ports.end());
+    ports.insert(srcPorts.begin(), srcPorts.end());
+    ports.insert(dstPorts.begin(), dstPorts.end());
     ports.insert(ERSPAN_PORT_NAME);
     for (const auto& port : ports) {
         portUuidMap.emplace(port, "");
@@ -597,7 +564,7 @@ bool JsonRpc::createMirror(const string& brUuid, const string& name) {
     vector<TupleData> tuples;
     // src ports
     set<tuple<string,string>> rdata;
-    populatePortUuids(mir.src_ports, portUuidMap, rdata);
+    populatePortUuids(srcPorts, portUuidMap, rdata);
     for (auto pair : rdata) {
         tuples.emplace_back(get<0>(pair).c_str(), get<1>(pair).c_str());
     }
@@ -607,7 +574,7 @@ bool JsonRpc::createMirror(const string& brUuid, const string& name) {
     // dst ports
     rdata.clear();
     tuples.clear();
-    populatePortUuids(mir.dst_ports, portUuidMap, rdata);
+    populatePortUuids(dstPorts, portUuidMap, rdata);
     for (auto pair : rdata) {
         tuples.emplace_back(get<0>(pair).c_str(), get<1>(pair).c_str());
     }
@@ -737,7 +704,7 @@ bool JsonRpc::addErspanPort(const string& bridge, shared_ptr<erspan_ifc> port) {
     return true;
 }
 
-inline void JsonRpc::populatePortUuids(set<string>& ports, map<string, string>& uuidMap, set<tuple<string,string>>& entries) {
+inline void JsonRpc::populatePortUuids(const set<string>& ports, const map<string, string>& uuidMap, set<tuple<string,string>>& entries) {
     for (const auto& port : ports) {
         auto itmap = uuidMap.find(port);
         if (itmap != uuidMap.end()) {
@@ -783,11 +750,7 @@ bool JsonRpc::deleteMirror(const string& brName) {
     return true;
 }
 
-void JsonRpc::addMirrorData(const string& name, const mirror& mir) {
-    mirMap.emplace(make_pair(name, mir));
-}
-
-void JsonRpc::connect() {
+    void JsonRpc::connect() {
     conn->connect();
 }
 

@@ -300,16 +300,10 @@ namespace opflexagent {
     }
     bool SpanRenderer::createMirror(const string& sess, const set<string>& srcPorts,
             const set<string>& dstPorts) {
-
-        JsonRpc::mirror mir{};
-        mir.src_ports.insert(srcPorts.begin(), srcPorts.end());
-        mir.dst_ports.insert(dstPorts.begin(), dstPorts.end());
-        jRpc->addMirrorData(sess, mir);
         string brUuid;
         jRpc->getBridgeUuid(switchName, brUuid);
         LOG(DEBUG) << "bridge uuid " << brUuid;
-
-        jRpc->createMirror(brUuid, sess);
+        jRpc->createMirror(brUuid, sess, srcPorts, dstPorts);
         return true;
     }
 }
