@@ -43,13 +43,17 @@ static bool verifyCreateDestroy(const shared_ptr<NetFlowRenderer>& nfr) {
     string bridgeUuid;
     nfr->jRpc->getBridgeUuid("br-int", bridgeUuid);
 
-    bool result = nfr->jRpc->createIpfix(bridgeUuid, "5.5.5.5", 500);
+    bool result = nfr->jRpc->createNetFlow(bridgeUuid, "5.5.5.6", 10, true);
+    result = result && nfr->jRpc->deleteNetFlow(bridgeUuid);
+
+    nfr->jRpc->setNextId(2001);
+    result = result && nfr->jRpc->createIpfix(bridgeUuid, "5.5.5.5", 500);
     result = result && nfr->jRpc->deleteIpfix(bridgeUuid);
     return result;
 }
 
 BOOST_FIXTURE_TEST_CASE( verify_createdestroy, NetFlowRendererFixture ) {
-    WAIT_FOR(verifyCreateDestroy(nfr), 500);
+    WAIT_FOR(verifyCreateDestroy(nfr), 1);
 }
 BOOST_AUTO_TEST_SUITE_END()
 

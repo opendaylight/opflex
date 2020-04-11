@@ -204,43 +204,6 @@ void JsonRpc::printMirMap(const map<string, mirror>& mirMap) {
     }
 }
 
-void JsonRpc::handleGetBridgeMirrorUuidResp(uint64_t reqId, const Document& payload) {
-    list<string> ids = {"0","rows","0","_uuid","1"};
-    string brUuid;
-    Value val;
-    opflexagent::getValue(payload, ids, val);
-    if (!val.IsNull() && val.IsString()) {
-        LOG(DEBUG) << "bridge uuid " << val.GetString();
-        brUuid = val.GetString();
-    } else {
-        responseReceived = true;
-        return;
-    }
-    // OVS supports only one mirror, expect only one.
-    ids = {"0","rows","0","mirrors","1"};
-    Value val2;
-    opflexagent::getValue(payload, ids, val2);
-    string mirUuid;
-    if (!val2.IsNull() && val2.IsString()) {
-        LOG(DEBUG) << "mirror uuid " << val2.GetString();
-        mirUuid = val2.GetString();
-    } else {
-        LOG(WARNING) << "did not find mirror ID";
-        responseReceived = true;
-        return;
-    }
-    for (auto& elem : mirMap) {
-        if ((elem.second).uuid == mirUuid) {
-            LOG(DEBUG) << "found mirror, adding bridge uuid";
-            (elem.second).brUuid = brUuid;
-            break;
-        }
-    }
-    printMirMap(mirMap);
-    conn->ready.notify_all();
-    responseReceived = true;
-}
-
 bool JsonRpc::updateBridgePorts(tuple<string,set<string>> ports,
         const string& port, bool action) {
     string brPortUuid = get<0>(ports);
@@ -794,13 +757,6 @@ bool JsonRpc::handleCreateMirrorResp(uint64_t reqId, const Document& payload) {
         return false;
     }
     return true;
-}
-
-void JsonRpc::handleAddMirrorToBridgeResp(uint64_t reqId, const Document& payload) {
-}
-
-void JsonRpc::handleAddErspanPortResp(uint64_t reqId, const Document& payload) {
-    responseReceived = true;
 }
 
 bool JsonRpc::deleteMirror(const string& brName) {

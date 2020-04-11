@@ -364,21 +364,6 @@ public:
      */
     bool isConnected();
 
-/*! macro to declare handlers */
-#define DECLARE_HANDLER(F) \
-        /** \
-         * F \
-         * @param[in] reqId request ID \
-         * @param[in] payload body of the response \
-         */ \
-        void F(uint64_t reqId, const rapidjson::Document& payload);
-    /*! declaration for  handleGetBridgeMirrorUuidResp */
-    DECLARE_HANDLER(handleGetBridgeMirrorUuidResp);
-    /*! declaration for handleAddMirrorToBridgeResp */
-    DECLARE_HANDLER(handleAddMirrorToBridgeResp);
-    /*! declaration for handleAddErspanPortResp */
-    DECLARE_HANDLER(handleAddErspanPortResp);
-
     /**
      * get rpc connection pointer
      * @return pointer to OVSDB connection
