@@ -73,7 +73,7 @@ BOOST_FIXTURE_TEST_CASE( mo_serialize , BaseFixture ) {
     writer.EndArray();
 
     writer.String("prr");
-    writer.Uint(5400);
+    writer.Uint(7200);
     writer.EndObject();
 
     writer.String("id");
@@ -88,7 +88,7 @@ BOOST_FIXTURE_TEST_CASE( mo_serialize , BaseFixture ) {
     BOOST_CHECK(result.IsObject());
     const Value& prr = result["prr"];
     BOOST_CHECK(prr.IsUint());
-    BOOST_CHECK_EQUAL(5400, prr.GetInt());
+    BOOST_CHECK_EQUAL(7200, prr.GetInt());
 
     const Value& policy = result["policy"];
     BOOST_CHECK(policy.IsArray());
@@ -227,7 +227,7 @@ BOOST_FIXTURE_TEST_CASE( mo_deserialize , BaseFixture ) {
         "{\"result\":{\"policy\":[{\"subject\":\"class1\",\"uri\""
         ":\"/\",\"properties\":[{\"name\":\"prop2\",\"data\":[\"te"
         "st1\",\"test2\"]},{\"name\":\"prop1\",\"data\":42}],\"chi"
-        "ldren\":[\"/class2/-84\"]}],\"prr\":5400},\"id\":42}";
+        "ldren\":[\"/class2/-84\"]}],\"prr\":7200},\"id\":42}";
     Document d3;
     d3.Parse(buffer3);
     const Value& result3 = d3["result"];

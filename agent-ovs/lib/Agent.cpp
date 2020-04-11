@@ -191,6 +191,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string OPFLEX_STATS_SECGRP_SETTING("opflex.statistics.security-group.enabled");
     static const std::string OPFLEX_STATS_SECGRP_INTERVAL("opflex.statistics.security-group.interval");
     static const std::string OPFLEX_PRR_INTERVAL("opflex.timers.prr");
+    static const std::string OPFLEX_HANDSHAKE("opflex.timers.handshake-timeout");
     static const std::string DISABLED_FEATURES("feature.disabled");
 
     // set feature flags to true
@@ -457,6 +458,13 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         }
     }
     LOG(INFO) << "prr timer set to " << prr_timer << " secs";
+
+    boost::optional<uint32_t> handshakeOpt = properties.get_optional<uint32_t>(OPFLEX_HANDSHAKE);
+    if (handshakeOpt) {
+        peerHandshakeTimeout = handshakeOpt.get();
+        LOG(INFO) << "peer handshake timeout set to " << peerHandshakeTimeout << " ms";
+    }
+
     LOG(INFO) << "Agent mode set to " <<
        ((this->rendererFwdMode == opflex::ofcore::OFConstants::TRANSPORT_MODE)?
         "transport-mode" : "stitched-mode");
@@ -521,6 +529,7 @@ void Agent::applyProperties() {
     }
      
     framework.setPrrTimerDuration(prr_timer);
+    framework.setHandshakeTimeout(peerHandshakeTimeout);
 }
 
 void Agent::start() {

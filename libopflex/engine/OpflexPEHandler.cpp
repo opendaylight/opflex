@@ -123,6 +123,11 @@ private:
     string mac;
 };
 
+OpflexPEHandler::OpflexPEHandler(OpflexConnection* conn, Processor* processor_)
+    : OpflexHandler(conn), processor(processor_) {
+    conn->setHandshakeTimeout(processor_->getHandshakeTimeout());
+}
+
 void OpflexPEHandler::connected() {
     setState(CONNECTED);
 

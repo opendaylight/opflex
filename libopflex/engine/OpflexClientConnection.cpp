@@ -147,11 +147,11 @@ void OpflexClientConnection::on_state_change(Peer * p, void * data,
         conn->ready = false;
         uv_timer_stop(conn->handshake_timer);
         uv_timer_start(conn->handshake_timer,
-                       on_handshake_timer, 30000, 0);
+                       on_handshake_timer, conn->getHandshakeTimeout(), 0);
 
         if (conn->pool->clientCtx.get())
             ZeroCopyOpenSSL::attachTransport(p, conn->pool->clientCtx.get());
-        p->startKeepAlive(5000, 15000, 60000);
+        p->startKeepAlive(10000, 15000, 60000);
 
         conn->pool->updatePeerStatus(conn->hostname, conn->port,
                                      PeerStatusListener::CONNECTED);

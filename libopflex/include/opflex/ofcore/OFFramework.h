@@ -736,6 +736,12 @@ public:
     void setPrrTimerDuration(const uint64_t duration);
 
     /**
+     * Set the peer handshake timeout
+     * @param timeout peer handshake timeout in milliseconds
+     */
+     void setHandshakeTimeout(const uint32_t timeout);
+
+    /**
      * Start the framework.  This will start all the framework threads
      * and attempt to connect to configured OpFlex peers.
      */

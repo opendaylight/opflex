@@ -191,6 +191,20 @@ public:
     void setPrrTimerDuration(const uint64_t duration);
 
     /**
+     * Get the peer handshake timeout
+     */
+    uint32_t getHandshakeTimeout() const {
+        return peerHandshakeTimeout;
+    }
+
+    /**
+     * Set the peer handshake timeout
+     */
+    void setHandshakeTimeout(const uint32_t timeout) {
+        peerHandshakeTimeout = timeout;
+    }
+
+    /**
      * Set the prr timer duration in secs
      */
     uint64_t getPrrTimerDuration() { return prrTimerDuration; }
@@ -491,8 +505,10 @@ private:
     /**
      * prr timer duration in secs
      */
-    static const uint64_t DEFAULT_PRR_TIMER_DURATION = 5400;
+    static const uint64_t DEFAULT_PRR_TIMER_DURATION = 7200;
     uint64_t prrTimerDuration = DEFAULT_PRR_TIMER_DURATION;
+
+    uint32_t peerHandshakeTimeout = 45000;
 
     /**
      *  policy refresh timer duration in msecs

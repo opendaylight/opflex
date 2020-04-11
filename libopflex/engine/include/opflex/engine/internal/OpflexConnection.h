@@ -141,6 +141,22 @@ public:
      */
     void processWriteQueue();
 
+    /**
+     * Get the peer handshake timeout (in ms)
+     * @return timeout
+     */
+    uint32_t getHandshakeTimeout() {
+        return handshakeTimeout;
+    }
+
+    /**
+     * Set the peer handshake timeout (in ms)
+     * @param timeout timeout
+     */
+    void setHandshakeTimeout(uint32_t timeout) {
+        handshakeTimeout = timeout;
+    }
+
 protected:
     /**
      * The handler for the connection
@@ -158,7 +174,6 @@ protected:
      */
     virtual yajr::Peer* getPeer() = 0;
 
-protected:
     /**
      * Clean up write queue
      */
@@ -172,6 +187,7 @@ private:
     typedef std::list<write_queue_item_t> write_queue_t;
     write_queue_t write_queue;
     uv_mutex_t queue_mutex;
+    uint32_t handshakeTimeout;
 
     void doWrite(OpflexMessage* message);
 
