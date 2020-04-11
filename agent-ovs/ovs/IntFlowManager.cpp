@@ -2196,6 +2196,7 @@ updateSvcStatsCounters (const uint64_t &cookie,
                                   str.get(),
                                   newPktCount,
                                   newByteCount,
+                                  attr_map(),
                                   attr_map());
     }
 }
@@ -2271,6 +2272,7 @@ updateSvcTgtStatsCounters (const uint64_t &cookie,
                            const string& idStr,
                            const uint64_t &newPktCount,
                            const uint64_t &newByteCount,
+                           const attr_map &svcAttr,
                            const attr_map &epAttr)
 {
     Mutator mutator(agent.getFramework(), "policyelement");
@@ -2328,6 +2330,7 @@ updateSvcTgtStatsCounters (const uint64_t &cookie,
                                                      updPktCount,
                                                      opSvcTgt.get()->getTxbytes(0),
                                                      opSvcTgt.get()->getTxpackets(0),
+                                                     svcAttr,
                                                      epAttr,
                                                      epAttr.size()!=0?true:false);
         } else {
@@ -2337,6 +2340,7 @@ updateSvcTgtStatsCounters (const uint64_t &cookie,
                                                      opSvcTgt.get()->getRxpackets(0),
                                                      updByteCount,
                                                      updPktCount,
+                                                     svcAttr,
                                                      epAttr,
                                                      epAttr.size()!=0?true:false);
         }
@@ -2426,7 +2430,8 @@ void IntFlowManager::clearPodSvcStatsCounters (const std::string& uuid)
 // Reset svc-tgt counter stats, deletion of the object will be handled in
 // ServiceManager
 void IntFlowManager::clearSvcTgtStatsCounters (const std::string& svcUuid,
-                                               const std::string& nhipStr)
+                                               const std::string& nhipStr,
+                                               const attr_map& svcAttr)
 {
     using modelgbp::observer::SvcStatUniverse;
     Mutator mutator(agent.getFramework(), "policyelement");
@@ -2452,6 +2457,7 @@ void IntFlowManager::clearSvcTgtStatsCounters (const std::string& svcUuid,
         prometheusManager.addNUpdateSvcTargetCounter(svcUuid,
                                                      nhipStr,
                                                      0, 0, 0, 0,
+                                                     svcAttr,
                                                      attr_map(),
                                                      true);
 #endif
@@ -2461,7 +2467,8 @@ void IntFlowManager::clearSvcTgtStatsCounters (const std::string& svcUuid,
 
 // Reset svc counter stats, deletion of the object will be handled in
 // ServiceManager
-void IntFlowManager::clearSvcStatsCounters (const std::string& uuid)
+void IntFlowManager::clearSvcStatsCounters (const std::string& uuid,
+                                            const attr_map& svcAttr)
 {
     using modelgbp::observer::SvcStatUniverse;
     Mutator mutator(agent.getFramework(), "policyelement");
@@ -2489,6 +2496,7 @@ void IntFlowManager::clearSvcStatsCounters (const std::string& uuid)
                 prometheusManager.addNUpdateSvcTargetCounter(uuid,
                                                              nhip.get(),
                                                              0, 0, 0, 0,
+                                                             svcAttr,
                                                              attr_map(),
                                                              true);
 #endif
@@ -2549,7 +2557,6 @@ void IntFlowManager::updateSvcTgtStatsFlows (const string &uuid,
         [this] (const string &flow_uuid,
                 const string &svc_uuid) -> void {
         switchManager.clearFlows(flow_uuid, STATS_TABLE_ID);
-        clearSvcStatsCounters(svc_uuid);
 
         // Idgen would have restored the ids during agent restart. If flows for this
         // service needs to be removed, then free up the restored IDs as well.
@@ -2565,6 +2572,13 @@ void IntFlowManager::updateSvcTgtStatsFlows (const string &uuid,
                         svc_nh_map[svc_uuid].erase(nhip);
                 }
             }
+            clearSvcStatsCounters(svc_uuid, as.getAttributes());
+        } else {
+            // Note: the only time asWrapper will be null is when service is
+            // removed. In such a case, the observer mo and prom metrics
+            // would have been deleted from ServiceManager already. The below
+            // call will be a no-op.
+            clearSvcStatsCounters(svc_uuid, attr_map());
         }
 
         // Above should have freed up all the ids. But during svc delete, asWrapper will be
@@ -2589,6 +2603,7 @@ void IntFlowManager::updateSvcTgtStatsFlows (const string &uuid,
                                          const string &svc_uuid,
                                          const string &nhipStr,
                                          const Service::ServiceMapping &sm,
+                                         const attr_map &svcAttr,
                                          const attr_map &epAttr) -> void {
 
         boost::system::error_code ec;
@@ -2639,8 +2654,8 @@ void IntFlowManager::updateSvcTgtStatsFlows (const string &uuid,
                    << " cookieEg: " << cookieIdEg;
 
         // updates to take care of pod name and namespace change
-        updateSvcTgtStatsCounters(cookieIdIg, true, ingStr, 0, 0, epAttr);
-        updateSvcTgtStatsCounters(cookieIdEg, false, egrStr, 0, 0, epAttr);
+        updateSvcTgtStatsCounters(cookieIdIg, true, ingStr, 0, 0, svcAttr, epAttr);
+        updateSvcTgtStatsCounters(cookieIdEg, false, egrStr, 0, 0, svcAttr, epAttr);
 
         FlowBuilder anyToSvc; // to service stats
         FlowBuilder svcToAny; // from service stats
@@ -2710,6 +2725,7 @@ void IntFlowManager::updateSvcTgtStatsFlows (const string &uuid,
                     svcTgtFlowAddExpr("svc-tgt:"+uuid,
                                       uuid,
                                       nhipstr, sm,
+                                      as.getAttributes(),
                                       itr->second->getAttributes());
                 }
             }
@@ -2731,7 +2747,7 @@ void IntFlowManager::updateSvcTgtStatsFlows (const string &uuid,
                                << " nh_ip: " << *nh_itr;
                     idGen.erase(ID_NMSPC_SVCSTATS, "antosvc:svc-tgt:"+uuid+":"+*nh_itr);
                     idGen.erase(ID_NMSPC_SVCSTATS, "svctoan:svc-tgt:"+uuid+":"+*nh_itr);
-                    clearSvcTgtStatsCounters(uuid, *nh_itr);
+                    clearSvcTgtStatsCounters(uuid, *nh_itr, as.getAttributes());
                     nh_itr = svc_nh_map[uuid].erase(nh_itr);
                 } else {
                     nh_itr++;

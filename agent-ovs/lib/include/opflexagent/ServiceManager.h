@@ -172,6 +172,7 @@ private:
         std::shared_ptr<const Service> service;
     };
 
+    typedef std::unordered_map<std::string, std::string> attr_map_t;
     typedef std::unordered_map<std::string, ServiceState> aserv_map_t;
     typedef std::unordered_map<std::string,
                                std::unordered_set<std::string> > string_serv_map_t;

@@ -115,7 +115,6 @@ void ServiceManager::clearSvcCounterStats (shared_ptr<SvcCounter> pSvc,
          .setTxpackets(sTxPktCount - stTxPktCount)
          .setTxbytes(sTxByteCount - stTxByteCount);
 #ifdef HAVE_PROMETHEUS_SUPPORT
-    typedef std::unordered_map<std::string, std::string> attr_map_t;
     auto svcUuid = pSvc->getUuid();
     if (svcUuid) {
         prometheusManager.addNUpdateSvcCounter(svcUuid.get(),
@@ -154,7 +153,6 @@ ServiceManager::updateSvcTargetObserverMoDB (const opflexagent::Service& service
                 if (!opSvcTarget) {
                     pSvcTarget = pSvcCounter->addGbpeSvcTargetCounter(ip);
 #ifdef HAVE_PROMETHEUS_SUPPORT
-                    typedef std::unordered_map<std::string, std::string> attr_map_t;
                     // Keeping prom and modb in sync. Create the metric with IP annotation.
                     // depending on EP being local, intflowmanager will update the
                     // metric with more annotations. If EP IP is deleted or becomes external,
@@ -163,11 +161,28 @@ ServiceManager::updateSvcTargetObserverMoDB (const opflexagent::Service& service
                     prometheusManager.addNUpdateSvcTargetCounter(service.getUUID(),
                                                                  ip,
                                                                  0, 0, 0, 0,
+                                                                 service.getAttributes(),
                                                                  attr_map_t(),
                                                                  true);
 #endif
                 } else {
                     pSvcTarget = opSvcTarget.get();
+#ifdef HAVE_PROMETHEUS_SUPPORT
+                    // If service attributes are changing, and if flows are created for this
+                    // svc-tgt, then IntFlowManager will take care of annotation updates. But
+                    // if flows dont get created, following will update the right annotations.
+                    // the pod specific metrics will get updated if the flow gets created for
+                    // this next-hop (depending on the state of EP).
+                    prometheusManager.addNUpdateSvcTargetCounter(service.getUUID(),
+                                                                 ip,
+                                                                 pSvcTarget->getRxbytes(0),
+                                                                 pSvcTarget->getRxpackets(0),
+                                                                 pSvcTarget->getTxbytes(0),
+                                                                 pSvcTarget->getTxpackets(0),
+                                                                 service.getAttributes(),
+                                                                 attr_map_t(),
+                                                                 true);
+#endif
                 }
                 for (size_t idx=0; idx < out.size(); idx++) {
                     if (out[idx]->getIp("") == ip)

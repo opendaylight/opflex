@@ -116,7 +116,8 @@ public:
      * @param rx_pkts         ingress packets
      * @param tx_bytes        egress bytes
      * @param tx_pkts         egress packets
-     * @param ep_attr_map     map of all ep/pod attributes
+     * @param svc_attr_map    map of svc attributes
+     * @param ep_attr_map     map of ep/pod attributes
      * @param updateLabels    update label annotations during cfg updates
      */
     void addNUpdateSvcTargetCounter(const string& uuid,
@@ -125,6 +126,7 @@ public:
                                     uint64_t rx_pkts,
                                     uint64_t tx_bytes,
                                     uint64_t tx_pkts,
+        const unordered_map<string, string>& svc_attr_map,
         const unordered_map<string, string>& ep_attr_map,
                                     bool updateLabels);
     /**
@@ -499,6 +501,7 @@ private:
     void createDynamicGaugeSvcTarget(SVC_TARGET_METRICS metric,
                                      const string& uuid,
                                      const string& nhip,
+        const unordered_map<string, string>& svc_attr_map,
         const unordered_map<string, string>& ep_attr_map,
                                      bool updateLabels);
 
@@ -521,6 +524,7 @@ private:
     // Create a label map that can be used for annotation, given the ep attr map
     static const map<string,string> createLabelMapFromSvcTargetAttr(
                                                           const string& nhip,
+                           const unordered_map<string, string>&  svc_attr_map,
                            const unordered_map<string, string>&  ep_attr_map);
     /* End of SvcTargetCounter related apis and state */
 
