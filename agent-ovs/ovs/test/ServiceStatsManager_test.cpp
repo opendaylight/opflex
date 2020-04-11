@@ -343,7 +343,7 @@ ServiceStatsManagerFixture::testFlowStatsSvcTgt (MockConnection& portConn,
         [&] (address nhAddr) -> void {
         if (nhAddr.is_v4()) {
             FlowBuilder().proto(17).tpDst(5353)
-                     .priority(98).ethType(eth::type::IP)
+                     .priority(97).ethType(eth::type::IP)
                      .ipDst(nhAddr)
                      .flags(OFPUTIL_FF_SEND_FLOW_REM)
                      .cookie(ovs_htonll(uint64_t(anytosvcCk)))
@@ -351,7 +351,7 @@ ServiceStatsManagerFixture::testFlowStatsSvcTgt (MockConnection& portConn,
                      .parent().build(entryList);
 
             FlowBuilder().proto(17).tpSrc(5353)
-                     .priority(98).ethType(eth::type::IP)
+                     .priority(97).ethType(eth::type::IP)
                      .ipSrc(nhAddr)
                      .flags(OFPUTIL_FF_SEND_FLOW_REM)
                      .cookie(ovs_htonll(uint64_t(svctoanyCk)))
@@ -359,7 +359,7 @@ ServiceStatsManagerFixture::testFlowStatsSvcTgt (MockConnection& portConn,
                      .parent().build(entryList);
         } else {
             FlowBuilder().proto(6).tpDst(80)
-                     .priority(98).ethType(eth::type::IPV6)
+                     .priority(97).ethType(eth::type::IPV6)
                      .ipDst(nhAddr)
                      .flags(OFPUTIL_FF_SEND_FLOW_REM)
                      .cookie(ovs_htonll(uint64_t(anytosvcCk)))
@@ -367,7 +367,7 @@ ServiceStatsManagerFixture::testFlowStatsSvcTgt (MockConnection& portConn,
                      .parent().build(entryList);
 
             FlowBuilder().proto(6).tpSrc(80)
-                     .priority(98).ethType(eth::type::IPV6)
+                     .priority(97).ethType(eth::type::IPV6)
                      .ipSrc(nhAddr)
                      .flags(OFPUTIL_FF_SEND_FLOW_REM)
                      .cookie(ovs_htonll(uint64_t(svctoanyCk)))
@@ -605,7 +605,7 @@ ServiceStatsManagerFixture::testFlowRemovedSvcTgt (MockConnection& portConn,
         [&] (bool isAnyToSvc) -> void {
         if (isAnyToSvc) {
             FlowBuilder().proto(17).tpDst(5353)
-                     .priority(98).ethType(eth::type::IP)
+                     .priority(97).ethType(eth::type::IP)
                      .ipDst(nhAddr)
                      .flags(OFPUTIL_FF_SEND_FLOW_REM)
                      .cookie(ovs_htonll(uint64_t(anytosvcCk)))
@@ -613,7 +613,7 @@ ServiceStatsManagerFixture::testFlowRemovedSvcTgt (MockConnection& portConn,
                      .parent().build(entryList1);
         } else {
             FlowBuilder().proto(17).tpSrc(5353)
-                     .priority(98).ethType(eth::type::IP)
+                     .priority(97).ethType(eth::type::IP)
                      .ipSrc(nhAddr)
                      .flags(OFPUTIL_FF_SEND_FLOW_REM)
                      .cookie(ovs_htonll(uint64_t(svctoanyCk)))

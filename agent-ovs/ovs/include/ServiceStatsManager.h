@@ -118,6 +118,12 @@ private:
     // Flow state of all service flows in stats table
     flowCounterState_t statsState;
 
+    // Flow state of all service flows in svh table
+    flowCounterState_t svhState;
+
+    // Flow state of all service flows in svr table
+    flowCounterState_t svrState;
+
     /**
      * Get aggregated stats counters from for service flows
      */
