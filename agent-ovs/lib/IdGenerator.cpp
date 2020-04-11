@@ -50,7 +50,14 @@ uint32_t IdGenerator::getIdNoAlloc (const string& nmspc, const string& str) {
         return -1;
     }
 
+    // If its already in erasedIds, then the id got deleted
+    // either the id will get deleted from "ids" during garbage collection
+    // or if new alloc happens, then the id will get freed from erasedIds
     IdMap& idmap = nitr->second;
+    IdMap::Str2EIdMap::iterator eit = idmap.erasedIds.find(str);
+    if (eit != idmap.erasedIds.end())
+        return -1;
+
     IdMap::Str2IdMap::const_iterator it = idmap.ids.find(str);
     if (it == idmap.ids.end()) {
         return -1;

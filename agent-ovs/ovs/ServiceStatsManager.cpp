@@ -68,32 +68,81 @@ void ServiceStatsManager::on_timer(const error_code& ec) {
         return;
     }
 
-    TableState::cookie_callback_t cb_func;
-    cb_func = [this](uint64_t cookie, uint16_t priority,
-                     const struct match& match) {
-        updateFlowEntryMap(statsState, cookie, priority, match);
-    };
-
     // Request Switch Manager to provide flow entries
     {
-        // Pod <--> Svc stats handling based on flows in STATS table
+        TableState::cookie_callback_t cb_func;
+        cb_func = [this](uint64_t cookie, uint16_t priority,
+                         const struct match& match) {
+            updateFlowEntryMap(statsState, cookie, priority, match);
+        };
+
+        // Pod <--> Svc and * <--> svc-tgt stats handling based
+        // on flows in STATS table
         std::lock_guard<std::mutex> lock(pstatMtx);
 
         // create flowcountermap entries for new flows
         switchManager.forEachCookieMatch(IntFlowManager::STATS_TABLE_ID,
                                          cb_func);
-    
+
         // aggregate statsCounterMap based on FlowCounterState
         ServiceCounterMap_t statsCountersMap;
         on_timer_base(ec, statsState, statsCountersMap);
 
-        // Update service stats objects. IntFlowManager would
+        // Update service stats objects. IntFlowManager/ServiceManager would
         // have already created the objects. If its not resolved,
         // then new objects will get created 
         updateServiceStatsObjects(&statsCountersMap);
     }
 
+    {
+        TableState::cookie_callback_t cb_func;
+        cb_func = [this](uint64_t cookie, uint16_t priority,
+                         const struct match& match) {
+            updateFlowEntryMap(svhState, cookie, priority, match);
+        };
+
+        // svc-tgt rx stats handling based on flows in SERVICE_NEXTHOP table
+        std::lock_guard<std::mutex> lock(pstatMtx);
+
+        // create flowcountermap entries for new flows
+        switchManager.forEachCookieMatch(IntFlowManager::SERVICE_NEXTHOP_TABLE_ID,
+                                         cb_func);
+
+        // aggregate statsCounterMap based on FlowCounterState
+        ServiceCounterMap_t svhCountersMap;
+        on_timer_base(ec, svhState, svhCountersMap);
+
+        // Update service stats objects. ServiceManager would
+        // have already created the objects.
+        updateServiceStatsObjects(&svhCountersMap);
+    }
+
+    {
+        TableState::cookie_callback_t cb_func;
+        cb_func = [this](uint64_t cookie, uint16_t priority,
+                         const struct match& match) {
+            updateFlowEntryMap(svrState, cookie, priority, match);
+        };
+
+        // svc-tgt tx stats handling based on flows in SERVICE_REV table
+        std::lock_guard<std::mutex> lock(pstatMtx);
+
+        // create flowcountermap entries for new flows
+        switchManager.forEachCookieMatch(IntFlowManager::SERVICE_REV_TABLE_ID,
+                                         cb_func);
+
+        // aggregate svrCounterMap based on FlowCounterState
+        ServiceCounterMap_t svrCountersMap;
+        on_timer_base(ec, svrState, svrCountersMap);
+
+        // Update service stats objects. ServiceManager would
+        // have already created the objects.
+        updateServiceStatsObjects(&svrCountersMap);
+    }
+
     sendRequest(IntFlowManager::STATS_TABLE_ID);
+    sendRequest(IntFlowManager::SERVICE_NEXTHOP_TABLE_ID);
+    sendRequest(IntFlowManager::SERVICE_REV_TABLE_ID);
     if (!stopping) {
         std::lock_guard<std::mutex> lock(timer_mutex);
         if (timer) {
@@ -289,6 +338,10 @@ void ServiceStatsManager::Handle(SwitchConnection* connection,
                   [this](uint32_t table_id) -> flowCounterState_t* {
                       if (table_id == IntFlowManager::STATS_TABLE_ID)
                           return &statsState;
+                      else if (table_id == IntFlowManager::SERVICE_NEXTHOP_TABLE_ID)
+                          return &svhState;
+                      else if (table_id == IntFlowManager::SERVICE_REV_TABLE_ID)
+                          return &svrState;
                       else
                           return NULL;
                   }, fentry);

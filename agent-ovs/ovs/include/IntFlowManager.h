@@ -539,6 +539,14 @@ private:
     void handleServiceUpdate(const std::string& uuid);
 
     /**
+     * Compare and update snat & dnat flow tables due to changes in a
+     * service.
+     *
+     * @param uuid UUID of the changed service
+     */
+    void programServiceSnatDnatFlows(const std::string& uuid);
+
+    /**
      * Update service stats flows for metric collection
      *
      * @param uuid UUID of the changed service/ep
