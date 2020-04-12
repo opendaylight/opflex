@@ -358,7 +358,6 @@ bool JsonRpc::getErspanIfcParams(shared_ptr<erspan_ifc>& pIfc) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
-    unordered_map<string, string> optMap;
     if (!getErspanOptions(pResp->reqId, pResp->payload, pIfc)) {
         LOG(DEBUG) << "failed to get ERSPAN options";
         return false;

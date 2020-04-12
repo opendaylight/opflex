@@ -32,7 +32,9 @@ public:
         nfr->connect();
     }
 
-    virtual ~NetFlowRendererFixture() {};
+    virtual ~NetFlowRendererFixture() {
+        nfr->stop();
+    };
 
     shared_ptr<NetFlowRenderer> nfr;
     unique_ptr<OvsdbConnection> conn;

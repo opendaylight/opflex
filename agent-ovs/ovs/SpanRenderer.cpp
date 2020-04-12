@@ -7,20 +7,14 @@
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
 
-#include <vector>
-
 #include "SpanRenderer.h"
 #include <opflexagent/logging.h>
 #include <opflexagent/SpanManager.h>
 #include <boost/optional.hpp>
 
-#include <boost/range/adaptors.hpp>
-#include <boost/format.hpp>
-
 
 namespace opflexagent {
     using boost::optional;
-    using namespace boost::adaptors;
     using namespace std;
     using modelgbp::gbp::DirectionEnumT;
 
@@ -53,7 +47,7 @@ namespace opflexagent {
             timerStarted = true;
             return;
         }
-        sessionDeleted(seSt);
+        sessionDeleted(seSt->getName());
     }
 
     void SpanRenderer::updateConnectCb(const boost::system::error_code& ec,
@@ -82,8 +76,8 @@ namespace opflexagent {
         spanDeleted(pSt);
     }
 
-    void SpanRenderer::sessionDeleted(shared_ptr<SessionState>& seSt) {
-        deleteMirror(seSt->getName());
+    void SpanRenderer::sessionDeleted(const string &sessionName) {
+        deleteMirror(sessionName);
         // There is only one ERSPAN port.
         deleteErspanPort(ERSPAN_PORT_NAME);
     }
@@ -121,12 +115,12 @@ namespace opflexagent {
 
         // There should be at least one source and one destination.
         // Admin state should be ON.
-        if (seSt.get()->getSrcEndPointSet().empty() ||
-            seSt.get()->getDstEndPointMap().empty() ||
+        if (seSt.get()->hasSrcEndpoints() ||
+            seSt.get()->hasDstEndpoints() ||
             seSt.get()->getAdminState() == 0) {
             if (isMirProv) {
                 LOG(DEBUG) << "deleting mirror";
-                sessionDeleted(seSt.get());
+                sessionDeleted(seSt.get()->getName());
             }
             LOG(DEBUG) << "No mirror config";
             return;
@@ -136,14 +130,16 @@ namespace opflexagent {
         set<string> srcPort;
         set<string> dstPort;
 
-        for (auto& src : seSt.get()->getSrcEndPointSet()) {
-            if (src->getDirection() == DirectionEnumT::CONST_BIDIRECTIONAL ||
-                    src->getDirection() == DirectionEnumT::CONST_OUT) {
-                srcPort.emplace(src->getPort());
+        SessionState::srcEpSet srcEps;
+        seSt.get()->getSrcEndpointSet(srcEps);
+        for (auto& src : srcEps) {
+            if (src.getDirection() == DirectionEnumT::CONST_BIDIRECTIONAL ||
+                    src.getDirection() == DirectionEnumT::CONST_OUT) {
+                srcPort.emplace(src.getPort());
             }
-            if (src->getDirection() == DirectionEnumT::CONST_BIDIRECTIONAL ||
-                    src->getDirection() == DirectionEnumT::CONST_IN) {
-                dstPort.emplace(src->getPort());
+            if (src.getDirection() == DirectionEnumT::CONST_BIDIRECTIONAL ||
+                    src.getDirection() == DirectionEnumT::CONST_IN) {
+                dstPort.emplace(src.getPort());
             }
         }
 
@@ -188,9 +184,11 @@ namespace opflexagent {
 
         // check out port config
         // get the destination IPs
+        unordered_map<URI, address> dstMap;
+        seSt.get()->getDstEndpointMap(dstMap);
         set<address> dstIp;
-        for (auto& dst : seSt.get()->getDstEndPointMap()) {
-            dstIp.emplace(dst.second->getAddress());
+        for (auto& dst : dstMap) {
+            dstIp.emplace(dst.second);
         }
         // get the first element of the set as only one
         // destination is allowed in OVS 2.10
@@ -209,27 +207,30 @@ namespace opflexagent {
         }
     }
 
-    void SpanRenderer::updateMirrorConfig(shared_ptr<SessionState> seSt) {
-        sessionDeleted(seSt);
+    void SpanRenderer::updateMirrorConfig(const shared_ptr<SessionState>& seSt) {
+        sessionDeleted(seSt->getName());
         // get the source ports.
         set<string> srcPort;
         set<string> dstPort;
-
-        for (auto& src : seSt->getSrcEndPointSet()) {
-            if (src->getDirection() == DirectionEnumT::CONST_BIDIRECTIONAL ||
-                    src->getDirection() == DirectionEnumT::CONST_OUT) {
-                srcPort.emplace(src->getPort());
+        SessionState::srcEpSet srcEps;
+        seSt->getSrcEndpointSet(srcEps);
+        for (auto& src : srcEps) {
+            if (src.getDirection() == DirectionEnumT::CONST_BIDIRECTIONAL ||
+                    src.getDirection() == DirectionEnumT::CONST_OUT) {
+                srcPort.emplace(src.getPort());
             }
-            if (src->getDirection() == DirectionEnumT::CONST_BIDIRECTIONAL ||
-                    src->getDirection() == DirectionEnumT::CONST_IN) {
-                dstPort.emplace(src->getPort());
+            if (src.getDirection() == DirectionEnumT::CONST_BIDIRECTIONAL ||
+                    src.getDirection() == DirectionEnumT::CONST_IN) {
+                dstPort.emplace(src.getPort());
             }
         }
 
         // get the destination IPs
+        unordered_map<URI, address> dstIpMap;
+        seSt->getDstEndpointMap(dstIpMap);
         set<address> dstIp;
-        for (auto& dst : seSt->getDstEndPointMap()) {
-            dstIp.emplace(dst.second->getAddress());
+        for (auto& dst : dstIpMap) {
+            dstIp.emplace(dst.second);
         }
         // get the first element of the set as only one
         // destination is allowed in OVS 2.10
@@ -239,7 +240,7 @@ namespace opflexagent {
         createMirror(seSt->getName(), srcPort, dstPort);
     }
 
-    bool SpanRenderer::deleteMirror(const string &sess) {
+    bool SpanRenderer::deleteMirror(const string& sess) {
         LOG(DEBUG) << "deleting mirror";
         if (!jRpc->deleteMirror(switchName)) {
             LOG(DEBUG) << "Unable to delete mirror";
@@ -251,7 +252,7 @@ namespace opflexagent {
     bool SpanRenderer::addErspanPort(const string &brName, const string &ipAddr,
             const uint8_t version) {
         LOG(DEBUG) << "adding erspan port";
-       shared_ptr<JsonRpc::erspan_ifc> ep;
+        shared_ptr<JsonRpc::erspan_ifc> ep;
         if (version == 1) {
             ep = make_shared<JsonRpc::erspan_ifc_v1>();
             // current OVS implementation supports only one ERSPAN port.
