@@ -98,6 +98,9 @@ bool PacketLogHandler::startListener()
         return false;
     }
     pktDecoder.configure();
+    if(!socketListener->startListener()) {
+        return false;
+    }
     socketListener->startReceive();
     LOG(INFO) << "PacketLogHandler started!";
     return true;
@@ -136,11 +139,11 @@ void PacketLogHandler::stopExporter()
 
 void UdpServer::handleReceive(const boost::system::error_code& error,
       std::size_t bytes_transferred) {
+
     if (!error || error == boost::asio::error::message_size)
     {
         uint32_t length = (bytes_transferred > 4096) ? 4096: bytes_transferred;
-        server_io.post([=](){this->pktLogger.parseLog(recv_buffer.data(),
-                length);});
+        this->pktLogger.parseLog(recv_buffer.data(), length);
     }
     if(!stopped) {
         startReceive();

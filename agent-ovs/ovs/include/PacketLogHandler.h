@@ -45,13 +45,31 @@ public:
     UdpServer(PacketLogHandler &logHandler,
             boost::asio::io_service& io_service_,
                boost::asio::ip::address &addr, uint16_t port)
-    : pktLogger(logHandler), server_io(io_service_), serverSocket(io_service_,
-            boost::asio::ip::udp::endpoint(addr, port)),
-            stopped(false) {
-        serverSocket.set_option(boost::asio::socket_base::reuse_address(true));
+    : pktLogger(logHandler), server_io(io_service_), serverSocket(io_service_),
+            localEndpoint(addr, port), stopped(false) {
     }
     /**
      * Start UDP listener
+     * @return true if bind succeeded
+     */
+    bool startListener() {
+        boost::system::error_code ec;
+	serverSocket.open(localEndpoint.protocol());
+        boost::asio::socket_base::reuse_address option(true);
+        serverSocket.set_option(boost::asio::socket_base::reuse_address(true),
+			ec);
+        if(ec) {
+            LOG(ERROR) << "Failed to set SO_REUSE: " << ec;
+            ec=make_error_code(boost::system::errc::success);
+        }
+        serverSocket.bind(localEndpoint, ec);
+        if(ec) {
+            LOG(ERROR) << "Failed to bind " << ec;
+        }
+        return !(ec);
+    }
+    /**
+     * Start UDP receive
      */
     void startReceive() {
         serverSocket.async_receive_from(
@@ -78,6 +96,7 @@ private:
     PacketLogHandler &pktLogger;
     boost::asio::io_service &server_io;
     boost::asio::ip::udp::socket serverSocket;
+    boost::asio::ip::udp::endpoint localEndpoint;
     boost::asio::ip::udp::endpoint remoteEndpoint;
     boost::array<unsigned char, 4096> recv_buffer;
     bool stopped;

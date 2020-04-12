@@ -63,9 +63,9 @@
         //               // The IP address used for the destination IP in
         //               // the encapsulated traffic.
         //               "remote-ip": "192.168.1.2",
-        //               // Full path of the network namespace in which the
-        //               // packet logger runs. DropLog is the network namespace name
-        //               "namespace": "/var/run/netns/DropLog"
+        //               // Geneve packets destined to the remote-ip will be
+        //               // redirected to this port locally
+        //               "local-port": 50000
         //         }
         //     },
         //

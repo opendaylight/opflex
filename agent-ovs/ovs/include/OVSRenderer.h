@@ -129,8 +129,8 @@ private:
     NetFlowRenderer netflowRenderer;
 
     bool started;
-    std::string dropLogIntIface, dropLogAccessIface, dropLogRemoteIp, dropLogNs;
-    uint16_t dropLogRemotePort;
+    std::string dropLogIntIface, dropLogAccessIface, dropLogRemoteIp;
+    uint16_t dropLogRemotePort, dropLogLocalPort;
     boost::asio::io_service pktLoggerIO;
     boost::asio::io_service exporterIO;
     PacketLogHandler pktLogger;
