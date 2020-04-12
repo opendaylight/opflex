@@ -157,39 +157,33 @@ static bool checkSrcEps(boost::optional<shared_ptr<SessionState>> pSess,
         return false;
     }
     SessionState::srcEpSet srcEps;
-    pSess.get()->getSrcEndPointSet(srcEps);
+    pSess.get()->getSrcEndpointSet(srcEps);
     if (srcEps.size() != 2) {
         return false;
     }
     auto it = srcEps.begin();
     for (; it != srcEps.end(); it++) {
         bool retVal = true;
-        if (srcMem->getDir().get() != (*it)->getDirection())
+        if (srcMem->getDir().get() != it->getDirection())
             retVal = false;
-        if (l2e->getInterfaceName().get() != (*it)->getPort())
+        if (l2e->getInterfaceName().get() != it->getPort())
             retVal = false;
         if (retVal)
             return true;
     }
-
-    LOG(DEBUG) << "returning false";
     return false;
 }
 
-static bool checkDst(boost::optional<shared_ptr<SessionState>> pSess,
-    shared_ptr<span::DstSummary> dstSumm1) {
+static bool checkDst(boost::optional<shared_ptr<SessionState>> pSess, shared_ptr<span::DstSummary> dstSumm1) {
     if (!pSess) {
         return false;
     }
-    unordered_map<URI, shared_ptr<DstEndPoint>> dstMap;
-    pSess.get()->getDstEndPointMap(dstMap);
-    unordered_map<URI, shared_ptr<DstEndPoint>>::iterator it;
-    it = dstMap.find(dstSumm1->getURI());
+    unordered_map<URI, address> dstMap;
+    pSess.get()->getDstEndpointMap(dstMap);
+    auto it = dstMap.find(dstSumm1->getURI());
     if (it == dstMap.end())
         return false;
-    if (it->second->getAddress().to_string() != dstSumm1->getDest().get())
-        return false;
-    return true;
+    return !(it->second.to_string() != dstSumm1->getDest().get());
 }
 
 static bool testGetSession(shared_ptr<LocalEp> le, optional<URI> uri) {
@@ -199,11 +193,7 @@ static bool testGetSession(shared_ptr<LocalEp> le, optional<URI> uri) {
         return false;
     if (!uri && SpanManager::getSession(le))
         return false;
-
-    if (SpanManager::getSession(le).get() != uri)
-        return false;
-    else
-        return true;
+    return !(SpanManager::getSession(le).get() != uri);
 }
 
 BOOST_FIXTURE_TEST_CASE( verify_artifacts, SpanFixture ) {

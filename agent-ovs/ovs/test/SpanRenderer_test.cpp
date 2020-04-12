@@ -60,7 +60,8 @@ static bool verifyCreateDestroy(const shared_ptr<SpanRenderer>& spr) {
         return false;
     }
 
-    if (!spr->jRpc->deleteMirror("br-int")) {
+    string sessionName("abc");
+    if (!spr->deleteMirror(sessionName)) {
         return false;
     }
     shared_ptr<JsonRpc::erspan_ifc_v1> ep = make_shared<JsonRpc::erspan_ifc_v1>();

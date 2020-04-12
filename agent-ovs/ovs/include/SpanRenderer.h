@@ -14,7 +14,6 @@
 #define OPFLEX_SPANRENDERER_H
 
 #include <boost/noncopyable.hpp>
-#include <opflexagent/PolicyListener.h>
 #include <opflexagent/SpanListener.h>
 #include "JsonRpcRenderer.h"
 
@@ -68,6 +67,13 @@ public:
     bool createMirror(const string& session, const set<string>& srcPorts,
                       const set<string>& dstPorts);
 
+    /**
+     * deletes mirror session
+     * @param[in] session name of session
+     * @return true if success, false otherwise.
+     */
+    bool deleteMirror(const string& session);
+
 private:
     /**
      * Compare and update span config
@@ -75,11 +81,10 @@ private:
      * @param spanURI URI of the changed span object
      */
     void handleSpanUpdate(const opflex::modb::URI& spanURI);
-    virtual void sessionDeleted(shared_ptr<SessionState>& sesSt);
+    virtual void sessionDeleted(const string &sessionName);
     bool deleteErspanPort(const string& name);
-    bool deleteMirror(const string& session);
     bool addErspanPort(const string& brName, const string& ipAddr, const uint8_t version);
-    void updateMirrorConfig(shared_ptr<SessionState> seSt);
+    void updateMirrorConfig(const shared_ptr<SessionState>& seSt);
     void updateConnectCb(const boost::system::error_code& ec, const opflex::modb::URI& uri);
     void delConnectPtrCb(const boost::system::error_code& ec, shared_ptr<SessionState> pSt);
 };

@@ -46,34 +46,9 @@ using namespace boost::asio::ip;
 using namespace opflex::modb;
 
 /**
- * class to represent a destination end point
- */
-class DstEndPoint {
-    public:
-        /**
-         * constructor that accepts destination IP address.
-         * @param ip ip address of destination end point
-         */
-        DstEndPoint(const address& ip) : dstIp(ip) {};
-        /**
-         * copy constructor
-         * @param dp reference to object being copied from
-         */
-        DstEndPoint(const DstEndPoint& dp) : dstIp(dp.dstIp) {};
-        /**
-         * get the address of this destination end point
-         * @return address address of this destination end point.
-         */
-        const address& getAddress() const { return dstIp; };
-
-    private:
-        address dstIp;
-};
-
-/**
  * class to represent a source end point
  */
-class SourceEndPoint {
+class SourceEndpoint {
     public:
         /**
          * constructor takes a name and port
@@ -81,8 +56,14 @@ class SourceEndPoint {
          * @param[in] port_ source port name on the vswitch
          * @param[in] dir_ direction to be set
          */
-        SourceEndPoint(const string& name_, const string& port_, const unsigned char dir_) :
+        SourceEndpoint(const string& name_, const string& port_, const unsigned char dir_) :
             name(name_), port(port_), dir(dir_) {};
+
+        /**
+         * Copy constructor
+         */
+        SourceEndpoint(const SourceEndpoint& copy) : name(copy.name), port(copy.port), dir(copy.dir) {}
+
         /**
          * gets the name of the source end point
          * @return name of source end point
@@ -121,9 +102,9 @@ class SessionState {
              * @param src2 shared pointer to source end point 2
              * @return bool true if comparison passes.
              */
-            bool operator()(const std::shared_ptr<SourceEndPoint>& src1,
-                            const std::shared_ptr<SourceEndPoint>& src2) const {
-                return src1->getPort() == src2->getPort();
+            bool operator()(const SourceEndpoint& src1,
+                            const SourceEndpoint& src2) const {
+                return src1.getPort() == src2.getPort();
             }
         };
         /**
@@ -136,17 +117,18 @@ class SessionState {
              * @param src shared pointer to source end point
              * @return size_t
              */
-            size_t operator()(shared_ptr<SourceEndPoint> src) const {
-                string strHash(src->getPort());
-                strHash += src->getDirection();
+            size_t operator()(const SourceEndpoint& src) const {
+                string strHash(src.getPort());
+                strHash += src.getDirection();
                 return std::hash<string>()(strHash);
             }
         };
+
         /**
          * typedef for source end point set
          */
-        typedef unordered_set<shared_ptr<SourceEndPoint>, SrcHash, SrcCompare>
-            srcEpSet;
+        typedef unordered_set<SourceEndpoint, SrcHash, SrcCompare> srcEpSet;
+
         /**
          * constructor that takes a URI that points to a Session object
          * @param uri_ URI to a Session object
@@ -166,40 +148,40 @@ class SessionState {
         /**
          * add a destination end point to the internal map
          * @param uri uri pointing to the DstSummary object
-         * @param dEp shared pointer to a DstEndPoint object.
+         * @param dst dst IP
          */
-        void addDstEndPoint(const URI& uri, const shared_ptr<DstEndPoint>& dEp);
+        void addDstEndpoint(const URI& uri, const address& dst);
 
         /**
          * add a source end point to the internal map
-         * @param srcEp shared pointer to a SourceEndPoint object.
+         * @param srcEp shared pointer to a SourceEndpoint object.
          */
-        void addSrcEndPoint(const shared_ptr<SourceEndPoint>& srcEp);
+        void addSrcEndpoint(const SourceEndpoint& srcEp);
 
         /**
-         * get the source end point set reference
-         * @return a reference to the source end point set
+         * are there any src endpoints
+         * @return has src endpoints
          */
-        const srcEpSet& getSrcEndPointSet();
+        bool hasSrcEndpoints();
 
         /**
          * get a copy of the source end points
          * @param ep reference to end point set
          */
-        const void getSrcEndPointSet(srcEpSet& ep);
+        void getSrcEndpointSet(srcEpSet& ep);
 
         /**
-         * gets the destination end point map reference
-         * @return a reference to the destination end point map.
+         * are there any destination endpoints
+         * @return has dest endpoints
          */
-        const unordered_map<URI, shared_ptr<DstEndPoint>>&
-             getDstEndPointMap();
+        bool hasDstEndpoints();
 
         /**
          * get a copy of destination end point map
-         * @param dMap a reference to a map of URI,DstEndPoint
+         * @param dMap a reference to a map of URI, dst IP
          */
-        const void getDstEndPointMap(unordered_map<URI, shared_ptr<DstEndPoint>>& dMap);
+        void getDstEndpointMap(unordered_map<URI, address>& dMap);
+
         /**
          * gets the name string for this object
          * @return the name attribute string.
@@ -227,13 +209,6 @@ class SessionState {
         * @param ver ERSPAN version
         */
        void setVersion(uint8_t ver) { version = ver;};
-       /**
-        * overloading output stream operator
-        * @param out output stream reference
-        * @param seSt SessionState reference
-        * @return output stream.
-        */
-       friend ostream& operator<< (ostream& out, const SessionState& seSt);
 
     private:
         URI uri;
@@ -241,9 +216,9 @@ class SessionState {
         uint8_t adminState;
         uint8_t version;
 
-        srcEpSet srcEndPoints;
-        // mapping DstSummary to DstEndPoint
-        unordered_map<URI, shared_ptr<DstEndPoint>> dstEndPoints;
+        srcEpSet srcEndpoints;
+        // mapping DstSummary to dst IP
+        unordered_map<URI, address> dstEndpoints;
 };
 }
 
