@@ -78,8 +78,9 @@ public:
 
     /**
      * Module start
+     * @param serviceStatsFlowDisabled toggle service stats flow creation based on agent config
      */
-    void start();
+    void start(bool serviceStatsFlowDisabled=false);
 
     /**
      * Installs listeners for receiving updates to MODB state.
@@ -833,6 +834,7 @@ private:
     std::string dropLogIface;
     boost::asio::ip::address dropLogDst;
     uint16_t dropLogRemotePort;
+    bool serviceStatsFlowDisabled;
 
     /* Map containing ingress and egress cookie: Flows generated out
      * of same pod<-->svc uuid will use these cookies */

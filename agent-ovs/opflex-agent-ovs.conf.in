@@ -125,6 +125,9 @@
        //      "interval": 10
        //   },
        //   "service": {
+       //      // Disable/Enable stats flow creation
+       //      "flow-disabled": false,
+       //      // Disable/Enable stats collection
        //      "enabled": true,
        //      "interval": 10
        //   },
