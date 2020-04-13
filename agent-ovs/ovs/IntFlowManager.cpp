@@ -154,6 +154,7 @@ IntFlowManager::IntFlowManager(Agent& agent_,
     floodScope(FLOOD_DOMAIN), tunnelPortStr("4789"),
     virtualRouterEnabled(false), routerAdv(false),
     virtualDHCPEnabled(false), conntrackEnabled(false), dropLogRemotePort(0),
+    serviceStatsFlowDisabled(false),
     advertManager(agent, *this), isSyncing(false), stopping(false) {
     // set up flow tables
     switchManager.setMaxFlowTables(NUM_FLOW_TABLES);
@@ -168,8 +169,11 @@ IntFlowManager::IntFlowManager(Agent& agent_,
     agent.getFramework().registerPeerStatusListener(this);
 }
 
-void IntFlowManager::start() {
-    LOG(DEBUG) << "Starting IntFlowManager";
+void IntFlowManager::start(bool serviceStatsFlowDisabled_) {
+    LOG(DEBUG) << "Starting IntFlowManager"
+               << " serviceStatsFlowDisabled: " << serviceStatsFlowDisabled_;
+    serviceStatsFlowDisabled = serviceStatsFlowDisabled_;
+
     // set up port mapper
     switchManager.getPortMapper().registerPortStatusListener(this);
     advertManager.setPortMapper(&switchManager.getPortMapper());
@@ -2168,6 +2172,14 @@ updateSvcStatsCounters (const uint64_t &cookie,
 {
     const std::lock_guard<mutex> lock(svcStatMutex);
 
+    // Additional safety for stats flows:
+    // Nothing must be reported from ServiceStatsManager
+    // if serviceStatsFlowDisabled=true, since the stats flows wont be created
+    // in the first place.
+    // If service stats collection is also disabled, we dont need this safety.
+    if (serviceStatsFlowDisabled)
+        return;
+
     boost::optional<std::string> str =
         idGen.getStringForId(ID_NMSPC_SVCSTATS, cookie);
     if (str == boost::none) {
@@ -2530,6 +2542,10 @@ void IntFlowManager::updateSvcStatsFlows (const string& uuid,
                                           const bool& is_add)
 {
     const std::lock_guard<mutex> lock(svcStatMutex);
+
+    if (serviceStatsFlowDisabled)
+        return;
+
     updatePodSvcStatsFlows(uuid, is_svc, is_add);
     updateSvcTgtStatsFlows(uuid, is_svc, is_add);
 }
@@ -3227,11 +3243,13 @@ void IntFlowManager::programServiceSnatDnatFlows (const string& uuid)
 
                         // If a cookie was already allocated by updateSvcTgtStatsFlows(), then
                         // use it.
-                        const string& ingStr = "antosvc:svc-tgt:"+uuid+":"+nextHopAddr.to_string();
-                        uint32_t cookieIdIg = idGen.getIdNoAlloc(ID_NMSPC_SVCSTATS, ingStr);
-                        if (cookieIdIg != static_cast<uint32_t>(-1)) {
-                            ipMap.cookie(ovs_htonll((uint64_t)cookieIdIg))
-                                 .flags(OFPUTIL_FF_SEND_FLOW_REM);
+                        if (!serviceStatsFlowDisabled) {
+                            const string& ingStr = "antosvc:svc-tgt:"+uuid+":"+nextHopAddr.to_string();
+                            uint32_t cookieIdIg = idGen.getIdNoAlloc(ID_NMSPC_SVCSTATS, ingStr);
+                            if (cookieIdIg != static_cast<uint32_t>(-1)) {
+                                ipMap.cookie(ovs_htonll((uint64_t)cookieIdIg))
+                                     .flags(OFPUTIL_FF_SEND_FLOW_REM);
+                            }
                         }
 
                         ipMap.action()
@@ -3271,11 +3289,13 @@ void IntFlowManager::programServiceSnatDnatFlows (const string& uuid)
 
                         // If a cookie was already allocated by updateSvcTgtStatsFlows(), then
                         // use it.
-                        const string& egrStr = "svctoan:svc-tgt:"+uuid+":"+nextHopAddr.to_string();
-                        uint32_t cookieIdEg = idGen.getIdNoAlloc(ID_NMSPC_SVCSTATS, egrStr);
-                        if (cookieIdEg != static_cast<uint32_t>(-1)) {
-                            ipRevMap.cookie(ovs_htonll((uint64_t)cookieIdEg))
-                                    .flags(OFPUTIL_FF_SEND_FLOW_REM);
+                        if (!serviceStatsFlowDisabled) {
+                            const string& egrStr = "svctoan:svc-tgt:"+uuid+":"+nextHopAddr.to_string();
+                            uint32_t cookieIdEg = idGen.getIdNoAlloc(ID_NMSPC_SVCSTATS, egrStr);
+                            if (cookieIdEg != static_cast<uint32_t>(-1)) {
+                                ipRevMap.cookie(ovs_htonll((uint64_t)cookieIdEg))
+                                        .flags(OFPUTIL_FF_SEND_FLOW_REM);
+                            }
                         }
                         ipRevMap.priority(100)
                             .ipSrc(nextHopAddr)
