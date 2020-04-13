@@ -154,6 +154,7 @@ IntFlowManager::IntFlowManager(Agent& agent_,
     floodScope(FLOOD_DOMAIN), tunnelPortStr("4789"),
     virtualRouterEnabled(false), routerAdv(false),
     virtualDHCPEnabled(false), conntrackEnabled(false), dropLogRemotePort(0),
+    serviceStatsFlowDisabled(false),
     advertManager(agent, *this), isSyncing(false), stopping(false) {
     // set up flow tables
     switchManager.setMaxFlowTables(NUM_FLOW_TABLES);
@@ -168,8 +169,11 @@ IntFlowManager::IntFlowManager(Agent& agent_,
     agent.getFramework().registerPeerStatusListener(this);
 }
 
-void IntFlowManager::start() {
-    LOG(DEBUG) << "Starting IntFlowManager";
+void IntFlowManager::start(bool serviceStatsFlowDisabled_) {
+    LOG(DEBUG) << "Starting IntFlowManager"
+               << " serviceStatsFlowDisabled: " << serviceStatsFlowDisabled_;
+    serviceStatsFlowDisabled = serviceStatsFlowDisabled_;
+
     // set up port mapper
     switchManager.getPortMapper().registerPortStatusListener(this);
     advertManager.setPortMapper(&switchManager.getPortMapper());
@@ -2168,6 +2172,17 @@ updateSvcStatsCounters (const uint64_t &cookie,
 {
     const std::lock_guard<mutex> lock(svcStatMutex);
 
+    // Additional safety for stats flows:
+    // Nothing must be reported from ServiceStatsManager
+    // if serviceStatsFlowDisabled=true, since the stats flows wont be created
+    // in the first place.
+    // If idgen had previously allocated cookies for SNAT/DNAT flows. Then
+    // those stats could be reported. So need to bail out for agent restart
+    // scenarios. eventually the idgen ids will be garbage collected every 180 seconds.
+    // However, if service stats collection is disabled, we dont need this.
+    if (serviceStatsFlowDisabled)
+        return;
+
     boost::optional<std::string> str =
         idGen.getStringForId(ID_NMSPC_SVCSTATS, cookie);
     if (str == boost::none) {
@@ -2530,6 +2545,10 @@ void IntFlowManager::updateSvcStatsFlows (const string& uuid,
                                           const bool& is_add)
 {
     const std::lock_guard<mutex> lock(svcStatMutex);
+
+    if (serviceStatsFlowDisabled)
+        return;
+
     updatePodSvcStatsFlows(uuid, is_svc, is_add);
     updateSvcTgtStatsFlows(uuid, is_svc, is_add);
 }

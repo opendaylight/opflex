@@ -77,7 +77,7 @@ OVSRenderer::OVSRenderer(Agent& agent_)
       virtualDHCP(true), connTrack(true), ctZoneRangeStart(0),
       ctZoneRangeEnd(0), ifaceStatsEnabled(true), ifaceStatsInterval(0),
       contractStatsEnabled(true), contractStatsInterval(0),
-      serviceStatsEnabled(true), serviceStatsInterval(0),
+      serviceStatsFlowDisabled(false), serviceStatsEnabled(true), serviceStatsInterval(0),
       secGroupStatsEnabled(true), secGroupStatsInterval(0),
       tableDropStatsEnabled(true), tableDropStatsInterval(0),
       spanRenderer(agent_), netflowRenderer(agent_), started(false),
@@ -160,7 +160,7 @@ void OVSRenderer::start() {
         accessSwitchManager.registerStateHandler(&accessFlowManager);
         accessSwitchManager.start(accessBridgeName);
     }
-    intFlowManager.start();
+    intFlowManager.start(serviceStatsFlowDisabled);
     intFlowManager.registerModbListeners();
 
     if (accessBridgeName != "") {
@@ -444,6 +444,8 @@ void OVSRenderer::setProperties(const ptree& properties) {
                                                     ".contract.enabled");
     static const std::string STATS_CONTRACT_INTERVAL("statistics"
                                                     ".contract.interval");
+    static const std::string STATS_SERVICE_FLOWDISABLED("statistics"
+                                                        ".service.flow-disabled");
     static const std::string STATS_SERVICE_ENABLED("statistics"
                                                   ".service.enabled");
     static const std::string STATS_SERVICE_INTERVAL("statistics"
@@ -564,6 +566,7 @@ void OVSRenderer::setProperties(const ptree& properties) {
 
     ifaceStatsEnabled = properties.get<bool>(STATS_INTERFACE_ENABLED, true);
     contractStatsEnabled = properties.get<bool>(STATS_CONTRACT_ENABLED, true);
+    serviceStatsFlowDisabled = properties.get<bool>(STATS_SERVICE_FLOWDISABLED, false);
     serviceStatsEnabled = properties.get<bool>(STATS_SERVICE_ENABLED, true);
     secGroupStatsEnabled = properties.get<bool>(STATS_SECGROUP_ENABLED, true);
     ifaceStatsInterval = properties.get<long>(STATS_INTERFACE_INTERVAL, 30000);

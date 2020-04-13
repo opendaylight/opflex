@@ -117,6 +117,7 @@ private:
     long ifaceStatsInterval;
     bool contractStatsEnabled;
     long contractStatsInterval;
+    bool serviceStatsFlowDisabled;
     bool serviceStatsEnabled;
     long serviceStatsInterval;
     bool secGroupStatsEnabled;
