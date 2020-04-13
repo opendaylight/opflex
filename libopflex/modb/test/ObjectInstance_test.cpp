@@ -137,6 +137,10 @@ BOOST_AUTO_TEST_CASE( vector ) {
     oi->setString(1, stv);
     checkVector(oi);
 
+    auto o3 = shared_ptr<ObjectInstance>(new ObjectInstance(1));
+    const std::vector<MAC> macv = list_of(MAC("11:22:33:44:55:66"))(MAC("77:88:99:AA:BB:CC"));
+    o3->setMAC(1, macv);
+
     BOOST_CHECK(*oi == *oi2);
     oi2->addUInt64(1, 5);
     BOOST_CHECK(*oi != *oi2);

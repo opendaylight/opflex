@@ -72,9 +72,9 @@ void OpflexPool::enableSSL(const string& caStorePath,
         throw std::runtime_error("Could not enable SSL");
 
     if (verifyPeers)
-        clientCtx.get()->setVerify();
+        clientCtx->setVerify();
     else
-        clientCtx.get()->setNoVerify();
+        clientCtx->setNoVerify();
 }
 
 void OpflexPool::enableSSL(const string& caStorePath,
@@ -85,9 +85,9 @@ void OpflexPool::enableSSL(const string& caStorePath,
         throw std::runtime_error("Could not enable SSL");
 
     if (verifyPeers)
-        clientCtx.get()->setVerify();
+        clientCtx->setVerify();
     else
-        clientCtx.get()->setNoVerify();
+        clientCtx->setNoVerify();
 }
 
 void OpflexPool::on_conn_async(uv_async_t* handle) {

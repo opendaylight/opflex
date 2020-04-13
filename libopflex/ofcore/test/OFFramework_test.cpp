@@ -53,4 +53,23 @@ BOOST_AUTO_TEST_CASE( init_adaptor ) {
     fw.stop();
 }
 
+
+BOOST_AUTO_TEST_CASE( test_misc ) {
+    using opflex::ofcore::OFFramework;
+
+    OFFramework fw;
+    fw.setOpflexIdentity("name", "domain", "location");
+    fw.setElementMode(opflex::ofcore::OFConstants::TRANSPORT_MODE);
+    fw.setTunnelMac(opflex::modb::MAC("A1:A2:A3:A4:A5:A6"));
+    BOOST_CHECK_EQUAL(opflex::ofcore::OFConstants::TRANSPORT_MODE, fw.getElementMode());
+    fw.setPrrTimerDuration(12345);
+    fw.setHandshakeTimeout(54321);
+    boost::asio::ip::address_v4 proxy;
+    fw.getV4Proxy(proxy);
+    fw.getV6Proxy(proxy);
+    fw.getMacProxy(proxy);
+    fw.overrideObservableReporting(1, false);
+    fw.disableObservableReporting();
+}
+
 BOOST_AUTO_TEST_SUITE_END()

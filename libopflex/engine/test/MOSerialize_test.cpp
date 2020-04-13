@@ -80,7 +80,7 @@ BOOST_FIXTURE_TEST_CASE( mo_serialize , BaseFixture ) {
     writer.Uint(42);
     writer.EndObject();
 
-    //std::cout << buffer.GetString() << std::endl;
+    serializer.serializeUnresolved(1, uri, *client1, writer, true);
 
     Document d;
     d.Parse(buffer.GetString());
