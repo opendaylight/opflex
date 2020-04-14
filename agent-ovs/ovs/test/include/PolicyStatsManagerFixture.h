@@ -71,9 +71,8 @@ public:
 class PolicyStatsManagerFixture : public FlowManagerFixture {
 public:
     PolicyStatsManagerFixture (
-            opflex_elem_t mode = opflex_elem_t::INVALID_MODE,
-            bool intBridgeTableDesc = true ): FlowManagerFixture (
-                    mode, intBridgeTableDesc) {
+            opflex_elem_t mode = opflex_elem_t::INVALID_MODE):
+            FlowManagerFixture (mode) {
     };
 
     void verifyFlowStats(shared_ptr<L24Classifier> classifier,

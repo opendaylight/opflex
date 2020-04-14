@@ -46,22 +46,48 @@ class TableDropStatsManagerFixture : public PolicyStatsManagerFixture {
 
 public:
     TableDropStatsManagerFixture() : PolicyStatsManagerFixture(),
-                                  intBridge(),
-                                  accBridge(opflex_elem_t::INVALID_MODE,
-                                            false),
+                                  accPortConn(TEST_CONN_TYPE_ACC),
+                                  intPortConn(TEST_CONN_TYPE_INT),
+                                  accBr(agent, exec, reader,
+                                        accPortMapper),
+                                  intFlowManager(agent, switchManager, idGen,
+                                                 ctZoneManager, pktInHandler,
+                                                 tunnelEpManager),
+                                  accFlowManager(agent, accBr, idGen,
+                                                 ctZoneManager),
+                                  pktInHandler(agent, intFlowManager),
                                   tableDropStatsManager(&agent, idGen,
-                                            intBridge.switchManager,
-                                            accBridge.switchManager, 2000000) {
-        intBridge.switchManager.setMaxFlowTables(IntFlowManager::NUM_FLOW_TABLES);
-        accBridge.switchManager.setMaxFlowTables(AccessFlowManager::NUM_FLOW_TABLES);
+                                            switchManager, accBr, 20000000) {
         tableDropStatsManager.setAgentUUID(agent.getUuid());
     }
     virtual ~TableDropStatsManagerFixture() {
-        intBridge.stop();
-        accBridge.stop();
+        tableDropStatsManager.stop();
+        accFlowManager.stop();
+        intFlowManager.stop();
+        stop();
     }
-
-    PolicyStatsManagerFixture intBridge, accBridge;
+    void start() {
+        FlowManagerFixture::start();
+        intFlowManager.setEncapType(IntFlowManager::ENCAP_VXLAN);
+        intFlowManager.start();
+        accFlowManager.start();
+        setConnected();
+        tableDropStatsManager.registerConnection(&intPortConn,
+                &accPortConn);
+        tableDropStatsManager.start();
+    }
+    PolicyStatsManager &getIntTableDropStatsManager() {
+        return tableDropStatsManager.intTableDropStatsMgr;
+    }
+    PolicyStatsManager &getAccTableDropStatsManager() {
+        return tableDropStatsManager.accTableDropStatsMgr;
+    }
+    MockConnection accPortConn, intPortConn;
+    PortMapper accPortMapper;
+    MockSwitchManager accBr;
+    IntFlowManager intFlowManager;
+    AccessFlowManager accFlowManager;
+    PacketInHandler pktInHandler;
     TableDropStatsManager tableDropStatsManager;
 
     void createIntBridgeDropFlowList(uint32_t table_id,
@@ -71,14 +97,41 @@ public:
     void testOneStaticDropFlow(MockConnection& portConn,
                                uint32_t table_id,
                                PolicyStatsManager &statsManager,
-                               SwitchManager &swMgr);
+                               SwitchManager &swMgr,
+                               bool refresh_aging);
     void verifyDropFlowStats(uint64_t exp_packet_count,
                              uint64_t exp_byte_count,
                              uint32_t table_id,
                              MockConnection& portConn,
                              PolicyStatsManager &statsManager);
 
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    const string cmd = "curl --proxy \"\" --compressed --silent http://127.0.0.1:9612/metrics 2>&1;";
+    void checkPrometheusCounters(uint64_t exp_packet_count,
+                                 uint64_t exp_byte_count,
+                                 const std::string &bridgeName,
+                                 const std::string &tableName);
+#endif
 };
+
+#ifdef HAVE_PROMETHEUS_SUPPORT
+void TableDropStatsManagerFixture::checkPrometheusCounters(uint64_t exp_packet_count,
+                             uint64_t exp_byte_count,
+                             const std::string &bridgeName,
+                             const std::string &tableName) {
+    const string& output = BaseFixture::getOutputFromCommand(cmd);
+    const string& promCtr= bridgeName+ "_" +tableName;
+    string packets_key = "opflex_table_drop_packets{table=\"" + promCtr + "\"} "
+        + boost::lexical_cast<std::string>(exp_packet_count) + ".000000";
+    string bytes_key = "opflex_table_drop_bytes{table=\"" + promCtr + "\"} "
+        + boost::lexical_cast<std::string>(exp_byte_count) + ".000000";
+    string::size_type pos = output.find(packets_key);
+    BOOST_CHECK_NE(pos, string::npos);
+    pos = output.find(bytes_key);
+    BOOST_CHECK_NE(pos, string::npos);
+    return;
+}
+#endif
 
 void TableDropStatsManagerFixture::verifyDropFlowStats (
                                     uint64_t exp_packet_count,
@@ -166,7 +219,8 @@ void TableDropStatsManagerFixture::testOneStaticDropFlow (
         MockConnection& portConn,
         uint32_t table_id,
         PolicyStatsManager &statsManager,
-	SwitchManager &swMgr)
+        SwitchManager &swMgr,
+        bool refresh_aged_flow=false)
 {
     uint64_t expected_pkt_count = INITIAL_PACKET_COUNT,
             expected_byte_count = INITIAL_PACKET_COUNT * PACKET_SIZE;
@@ -182,14 +236,19 @@ void TableDropStatsManagerFixture::testOneStaticDropFlow (
         createAccBridgeDropFlowList(table_id,
                         dropLogFlows);
     }
-    FlowEntryList entryListCopy(dropLogFlows);
-    swMgr.writeFlow("DropLogStatic", table_id, entryListCopy);
+    int ctr = 1;
+    if(refresh_aged_flow) {
+        ctr++;
+    }
     // Call on_timer function to process the flow entries received from
     // switchManager.
     boost::system::error_code ec;
-    ec = make_error_code(boost::system::errc::success);
-    statsManager.on_timer(ec);
-    LOG(DEBUG) << "Called on_timer";
+    do{
+        ec = make_error_code(boost::system::errc::success);
+        statsManager.on_timer(ec);
+        LOG(DEBUG) << "Called on_timer";
+        ctr--;
+    } while(ctr>0);
     // create first flow stats reply message
     struct ofpbuf *res_msg =
         makeFlowStatReplyMessage_2(&portConn,
@@ -206,7 +265,6 @@ void TableDropStatsManagerFixture::testOneStaticDropFlow (
                          OFPTYPE_FLOW_STATS_REPLY, res_msg);
     LOG(DEBUG) << "1 FlowStatsReplyMessage handled";
     ofpbuf_delete(res_msg);
-
     ec = make_error_code(boost::system::errc::success);
     statsManager.on_timer(ec);
     LOG(DEBUG) << "Called on_timer";
@@ -235,36 +293,37 @@ void TableDropStatsManagerFixture::testOneStaticDropFlow (
     verifyDropFlowStats(expected_pkt_count,
                         expected_byte_count,
                         table_id, portConn, statsManager);
-    LOG(DEBUG) << "FlowStatsReplyMessage verification successful";
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    SwitchManager::TableDescriptionMap fwdTableMap;
+    swMgr.getForwardingTableList(fwdTableMap);
+    checkPrometheusCounters(expected_pkt_count,
+                            expected_byte_count,
+                            portConn.getSwitchName(),
+                            fwdTableMap[table_id].first);
+#endif
 
 }
 
 BOOST_AUTO_TEST_SUITE(TableDropStatsManager_test)
 
 BOOST_FIXTURE_TEST_CASE(testStaticDropFlowsInt, TableDropStatsManagerFixture) {
-    MockConnection accPortConn(TEST_CONN_TYPE_ACC);
-    MockConnection intPortConn(TEST_CONN_TYPE_INT);
-    tableDropStatsManager.registerConnection(&intPortConn, &accPortConn);
-    tableDropStatsManager.start();
+    start();
     for(int i=IntFlowManager::SEC_TABLE_ID ;
             i < IntFlowManager::EXP_DROP_TABLE_ID ; i++) {
         testOneStaticDropFlow(intPortConn, i,
-            tableDropStatsManager.getIntTableDropStatsMgr(),
-            intBridge.switchManager);
+                getIntTableDropStatsManager(),
+                switchManager, (i>3));
     }
     tableDropStatsManager.stop();
 }
 
 BOOST_FIXTURE_TEST_CASE(testStaticDropFlowsAcc, TableDropStatsManagerFixture) {
-    MockConnection accPortConn(TEST_CONN_TYPE_ACC);
-    MockConnection intPortConn(TEST_CONN_TYPE_INT);
-    tableDropStatsManager.registerConnection(&intPortConn, &accPortConn);
-    tableDropStatsManager.start();
+    start();
     for(int i = AccessFlowManager::GROUP_MAP_TABLE_ID;
             i < AccessFlowManager::EXP_DROP_TABLE_ID; i++) {
         testOneStaticDropFlow(accPortConn, i,
-            tableDropStatsManager.getAccTableDropStatsMgr(),
-            accBridge.switchManager);
+                              getAccTableDropStatsManager(),
+                              accBr, (i>3));
     }
     tableDropStatsManager.stop();
 }

@@ -29,17 +29,9 @@ namespace opflexagent {
 
 class FlowManagerFixture : public ModbFixture {
 public:
-    FlowManagerFixture(opflex_elem_t mode = opflex_elem_t::INVALID_MODE,
-            bool intBridgeTableDesc = true)
+    FlowManagerFixture(opflex_elem_t mode = opflex_elem_t::INVALID_MODE)
         : ModbFixture(mode), ctZoneManager(idGen),
         switchManager(agent, exec, reader, portmapper) {
-        SwitchManager::TableDescriptionMap fwdTblDescr;
-        if(intBridgeTableDesc) {
-            IntFlowManager::populateTableDescriptionMap(fwdTblDescr);
-        } else {
-            AccessFlowManager::populateTableDescriptionMap(fwdTblDescr);
-        }
-        switchManager.setForwardingTableList(fwdTblDescr);
         switchManager.setSyncDelayOnConnect(0);
         ctZoneManager.setCtZoneRange(1, 65534);
         ctZoneManager.init("conntrack");
