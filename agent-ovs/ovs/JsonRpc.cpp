@@ -215,9 +215,7 @@ bool JsonRpc::updateBridgePorts(tuple<string,set<string>> ports,
 }
 
 bool JsonRpc::handleGetBridgePortList(uint64_t reqId,
-    const Document& payload, shared_ptr<BrPortResult>& brPtr) {
-    tuple<string, set<string>> brPorts;
-    string brPortUuid;
+    const Document& payload, BrPortResult& result) {
     set<string> brPortSet;
     list<string> ids = {"0","rows","0","ports","0"};
     Value val;
@@ -245,11 +243,11 @@ bool JsonRpc::handleGetBridgePortList(uint64_t reqId,
     ids = {"0", "rows", "0", "_uuid", "1"};
     Value val3;
     opflexagent::getValue(payload, ids, val3);
-    brPortUuid = val3.GetString();
-    brPorts = make_tuple(brPortUuid, brPortSet);
+    string brPortUuid = val3.GetString();
+    tuple<string, set<string>> brPorts = make_tuple(brPortUuid, brPortSet);
 
-    brPtr->brUuid = brPortUuid;
-    brPtr->portUuids.insert(brPortSet.begin(), brPortSet.end());
+    result.brUuid = brPortUuid;
+    result.portUuids.insert(brPortSet.begin(), brPortSet.end());
     return true;
 }
 
@@ -293,12 +291,7 @@ bool JsonRpc::getBridgePortList(const string& bridge, BrPortResult& res) {
         return false;
     }
 
-    shared_ptr<BrPortResult> brPtr = make_shared<BrPortResult>();
-    if (handleGetBridgePortList(pResp->reqId, pResp->payload, brPtr)) {
-        res = *brPtr;
-        return true;
-    }
-    return false;
+    return handleGetBridgePortList(pResp->reqId, pResp->payload, res);
 }
 
 bool JsonRpc::getOvsdbMirrorConfig(mirror& mir) {

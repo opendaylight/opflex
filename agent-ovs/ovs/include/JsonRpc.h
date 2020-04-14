@@ -306,11 +306,10 @@ public:
      * process bridge port list response
      * @param[in] reqId request ID
      * @param[in] payload body of the response
-     * @param[out] brPtr shared pointer to result struct
+     * @param[out] result result struct
      * @return true id success, false otherwise
      */
-    static bool handleGetBridgePortList(uint64_t reqId, const rapidjson::Document& payload,
-            shared_ptr<BrPortResult>& brPtr);
+    static bool handleGetBridgePortList(uint64_t reqId, const rapidjson::Document& payload, BrPortResult& result);
 
     /**
      * process bridge port list response

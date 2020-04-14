@@ -83,6 +83,14 @@ static bool verifyCreateDestroy(const shared_ptr<SpanRenderer>& spr) {
 BOOST_FIXTURE_TEST_CASE( verify_getport, SpanRendererFixture ) {
     WAIT_FOR(verifyCreateDestroy(spr), 500);
 }
+
+BOOST_FIXTURE_TEST_CASE( verify_add_remote_port, SpanRendererFixture ) {
+    spr->jRpc->setNextId(1013);
+
+    BOOST_CHECK_EQUAL(true, spr->addErspanPort("br-int", "3.3.3.3", 2));
+    BOOST_CHECK_EQUAL(true, spr->deleteErspanPort("erspan"));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }
