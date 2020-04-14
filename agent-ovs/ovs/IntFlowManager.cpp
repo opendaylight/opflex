@@ -2381,36 +2381,42 @@ updatePodSvcStatsCounters (const uint64_t &cookie,
         if (isEpToSvc) {
             auto pEpToSvc = su.get()->resolveGbpeEpToSvcCounter(
                                         agent.getUuid(), idStr);
-            if (!pEpToSvc) {
-                pEpToSvc = su.get()->addGbpeEpToSvcCounter(
-                                        agent.getUuid(), idStr);
-            }
-
-            auto oldPktCount = pEpToSvc.get()->getPackets(0);
-            auto oldByteCount = pEpToSvc.get()->getBytes(0);
-            pEpToSvc.get()->setPackets(oldPktCount + newPktCount)
-                           .setBytes(oldByteCount + newByteCount);
+            // Create mo and update attributes only during cfg update
             if (!newPktCount) {
+                if (!pEpToSvc) {
+                    pEpToSvc = su.get()->addGbpeEpToSvcCounter(
+                                       agent.getUuid(), idStr);
+                }
                 updatePodSvcStatsAttr<EpToSvcCounter>(pEpToSvc.get(),
                                                       epAttr,
                                                       svcAttr);
             }
+
+            if (pEpToSvc) {
+                auto oldPktCount = pEpToSvc.get()->getPackets(0);
+                auto oldByteCount = pEpToSvc.get()->getBytes(0);
+                pEpToSvc.get()->setPackets(oldPktCount + newPktCount)
+                               .setBytes(oldByteCount + newByteCount);
+            }
         } else {
             auto pSvcToEp = su.get()->resolveGbpeSvcToEpCounter(
                                         agent.getUuid(), idStr);
-            if (!pSvcToEp) {
-                pSvcToEp = su.get()->addGbpeSvcToEpCounter(
-                                        agent.getUuid(), idStr);
-            }
-
-            auto oldPktCount = pSvcToEp.get()->getPackets(0);
-            auto oldByteCount = pSvcToEp.get()->getBytes(0);
-            pSvcToEp.get()->setPackets(oldPktCount + newPktCount)
-                           .setBytes(oldByteCount + newByteCount);
+            // Create mo and update attributes only during cfg update
             if (!newPktCount) {
+                if (!pSvcToEp) {
+                    pSvcToEp = su.get()->addGbpeSvcToEpCounter(
+                                        agent.getUuid(), idStr);
+                }
                 updatePodSvcStatsAttr<SvcToEpCounter>(pSvcToEp.get(),
                                                       epAttr,
                                                       svcAttr);
+            }
+
+            if (pSvcToEp) {
+                auto oldPktCount = pSvcToEp.get()->getPackets(0);
+                auto oldByteCount = pSvcToEp.get()->getBytes(0);
+                pSvcToEp.get()->setPackets(oldPktCount + newPktCount)
+                               .setBytes(oldByteCount + newByteCount);
             }
         }
     }
