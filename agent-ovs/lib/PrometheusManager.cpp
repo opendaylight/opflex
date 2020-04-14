@@ -1305,7 +1305,7 @@ string PrometheusManager::stringizeClassifier (const string& tenant,
         if (ct)
             compressed += "ct:" + to_string(ct.get());
     } else {
-        LOG(ERROR) << "No classifier found for tenant: " << tenant
+        LOG(DEBUG) << "No classifier found for tenant: " << tenant
                    << " classifier: " << classifier;
     }
 
