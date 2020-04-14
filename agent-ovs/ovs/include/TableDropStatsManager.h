@@ -227,24 +227,10 @@ public:
         }
     }
 
-    /**
-     * TestRoutine: Get the IntegrationTableDropStats manager.
-     * @return  IntTableDropStatsManager
-     */
-    PolicyStatsManager& getIntTableDropStatsMgr() {
-        return intTableDropStatsMgr;
-    }
-
-    /**
-     * TestRoutine: Get the AccessTableDropStats manager.
-     * @return  AccessTableDropStatsManager
-     */
-    PolicyStatsManager& getAccTableDropStatsMgr() {
-        return accTableDropStatsMgr;
-    }
 private:
     IntTableDropStatsManager intTableDropStatsMgr;
     AccessTableDropStatsManager accTableDropStatsMgr;
+    friend class TableDropStatsManagerFixture;
 };
 
 } /* namespace opflexagent */
