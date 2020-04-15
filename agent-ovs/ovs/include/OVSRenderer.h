@@ -141,6 +141,11 @@ private:
      */
     void onCleanupTimer(const boost::system::error_code& ec);
     std::unique_ptr<boost::asio::deadline_timer> cleanupTimer;
+
+    /**
+     * Start packet logger
+     */
+    void startPacketLogger();
 };
 
 /**

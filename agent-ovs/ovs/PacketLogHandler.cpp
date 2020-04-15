@@ -31,6 +31,8 @@ void LocalClient::run() {
     for(;;) {
         if(stopped) {
             boost::system::error_code ec;
+            clientSocket.shutdown(
+		    boost::asio::local::stream_protocol::socket::shutdown_both);
             clientSocket.cancel(ec);
             clientSocket.close(ec);
             break;

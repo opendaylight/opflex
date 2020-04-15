@@ -54,7 +54,7 @@ public:
      */
     bool startListener() {
         boost::system::error_code ec;
-	serverSocket.open(localEndpoint.protocol());
+        serverSocket.open(localEndpoint.protocol());
         boost::asio::socket_base::reuse_address option(true);
         serverSocket.set_option(boost::asio::socket_base::reuse_address(true),
 			ec);
@@ -84,6 +84,7 @@ public:
     void stop() {
         boost::system::error_code ec;
         stopped = true;
+        serverSocket.shutdown(boost::asio::ip::udp::socket::shutdown_both);
         serverSocket.cancel(ec);
         serverSocket.close(ec);
     }
