@@ -83,7 +83,6 @@ namespace opflexagent {
     }
 
     void SpanRenderer::handleSpanUpdate(const opflex::modb::URI& spanURI) {
-        LOG(DEBUG) << "Span handle update, thread " << std::this_thread::get_id();
         unique_lock<mutex> lock(handlerMutex);
         SpanManager& spMgr = agent.getSpanManager();
         lock_guard<recursive_mutex> guard(opflexagent::SpanManager::updates);
@@ -194,14 +193,14 @@ namespace opflexagent {
         // destination is allowed in OVS 2.10
         string ipAddr = (*(dstIp.begin())).to_string();
         // get ERSPAN interface params if configured
-        shared_ptr<JsonRpc::erspan_ifc> pEp;
-        if (!jRpc->getErspanIfcParams(pEp)) {
+        JsonRpc::erspan_ifc params;
+        if (!jRpc->getErspanIfcParams(params)) {
             LOG(DEBUG) << "Unable to get ERSPAN parameters";
             return;
         }
         // check for change in config, push it if there is a change.
-        if (pEp->remote_ip == ipAddr ||
-            pEp->erspan_ver != seSt.get()->getVersion()) {
+        if (params.remote_ip == ipAddr ||
+            params.erspan_ver != seSt.get()->getVersion()) {
             updateMirrorConfig(seSt.get());
             return;
         }
@@ -251,27 +250,29 @@ namespace opflexagent {
 
     bool SpanRenderer::addErspanPort(const string &brName, const string &ipAddr, const uint8_t version) {
         LOG(DEBUG) << "adding erspan port";
-        shared_ptr<JsonRpc::erspan_ifc> ep;
+        JsonRpc::erspan_ifc ep;
         if (version == 1) {
-            ep = make_shared<JsonRpc::erspan_ifc_v1>();
+            JsonRpc::erspan_ifc_v1 params = JsonRpc::erspan_ifc_v1();
             // current OVS implementation supports only one ERSPAN port.
             // use 1 as ersan_idx
-            static_pointer_cast<JsonRpc::erspan_ifc_v1>(ep)->erspan_idx = 1;
+            params.erspan_idx = 1;
+            ep = params;
         } else if (version == 2) {
-            ep = make_shared<JsonRpc::erspan_ifc_v2>();
+            JsonRpc::erspan_ifc_v2 params = JsonRpc::erspan_ifc_v2();
             // current OVS implementation supports one ERSPAN port and mirror
             // choose 1 for hw_id.
             // dir can be set to 0 as it does not have an affect on the mirror traffic.
-            static_pointer_cast<JsonRpc::erspan_ifc_v2>(ep)->erspan_hw_id = 1;
-            static_pointer_cast<JsonRpc::erspan_ifc_v2>(ep)->erspan_dir = 0;
+            params.erspan_hw_id = 1;
+            params.erspan_dir = 0;
+            ep = params;
         } else {
             return false;
         }
-        ep->name = ERSPAN_PORT_NAME;
-        ep->remote_ip = ipAddr;
+        ep.name = ERSPAN_PORT_NAME;
+        ep.remote_ip = ipAddr;
         // current OVS implementation supports only one ERPSAN port and mirror.
         // choose 1 as the key.
-        ep->key = 1;
+        ep.key = 1;
         if (!jRpc->addErspanPort(brName, ep)) {
             LOG(DEBUG) << "add erspan port failed";
             return false;

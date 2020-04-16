@@ -62,7 +62,6 @@ namespace opflexagent {
     void SpanManager::SpanUniverseListener::objectUpdated(class_id_t classId,
                                                           const URI &uri) {
         lock_guard <recursive_mutex> guard(SpanManager::updates);
-        LOG(DEBUG) << "update on class ID " << classId << " URI " << uri;
 
         // updates on parent container for session are received for
         // session creation. Deletion and modification updates are
@@ -151,7 +150,6 @@ namespace opflexagent {
 
     void SpanManager::notifyListeners(const URI& spanURI) {
         lock_guard<mutex> guard(listener_mutex);
-        LOG(DEBUG) << "notifying update listener";
         for (SpanListener *listener : spanListeners) {
             listener->spanUpdated(spanURI);
         }
@@ -159,7 +157,6 @@ namespace opflexagent {
 
     void SpanManager::notifyListeners(const shared_ptr<SessionState>& seSt) {
         lock_guard<mutex> guard(listener_mutex);
-        LOG(DEBUG) << "notifying delete listener";
         for (SpanListener *listener : spanListeners) {
             listener->spanDeleted(seSt);
         }
@@ -362,8 +359,7 @@ namespace opflexagent {
 
     void SpanManager::SpanUniverseListener::
         addEndPoint(const shared_ptr<LocalEp>& lEp, const shared_ptr<L2Ep>& l2Ep, const srcMemInfo& sInfo) {
-        LOG(DEBUG) << "get parent lEp " << (lEp ? "set" : "null") <<
-                      " l2Ep " << (l2Ep ? "set" : "null");
+        LOG(DEBUG) << "get parent lEp " << (lEp ? "set" : "null") << " l2Ep " << (l2Ep ? "set" : "null");
         optional<URI> parent = SpanManager::getSession(lEp);
         if (parent) {
             spanmanager.notifyUpdate.insert(parent.get());

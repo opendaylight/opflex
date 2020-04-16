@@ -257,7 +257,7 @@ public:
      * @param[in] port erspan_ifc struct
      * @return true if success, false otherwise
      */
-    bool addErspanPort(const string& bridgeName, shared_ptr<erspan_ifc> port);
+    bool addErspanPort(const string& bridgeName, erspan_ifc& port);
 
     /**
      * createNetFlow
@@ -347,10 +347,10 @@ public:
 
     /**
      * get ERSPAN interface parameters from OVSDB
-     * @param[out] pIfc empty shared pointer reference to erspan interface struct
+     * @param[out] params erspan interface struct
      * @return true if success, false otherwise
      */
-    bool getErspanIfcParams(shared_ptr<erspan_ifc>& pIfc);
+    bool getErspanIfcParams(erspan_ifc& params);
 
     /**
      * check if connection has been established
@@ -397,7 +397,7 @@ private:
      * @param[out] pIfc empty shared pointer to ERSPAN
      * interface struct
      */
-    static bool getErspanOptions(const uint64_t reqId, const Document& payload, shared_ptr<erspan_ifc>& pIfc);
+    static bool getErspanOptions(const uint64_t reqId, const Document& payload, erspan_ifc& pIfc);
 
     template <typename T>
     inline bool sendRequestAndAwaitResponse(const list<T>& tl, uint64_t reqId) {
