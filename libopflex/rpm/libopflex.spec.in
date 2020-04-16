@@ -22,7 +22,7 @@ URL: https://wiki.opendaylight.org/view/OpFlex:Main
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 Source: %{name}-%{version}.tar.gz
-Requires: libuv >= 1.8.0
+Requires: libuv >= 1.18.0
 Requires: openssl >= 1.0.1
 BuildRequires: libuv-devel
 BuildRequires: openssl-devel
