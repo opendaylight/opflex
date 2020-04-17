@@ -41,7 +41,7 @@ public:
 };
 
 static bool verifyCreateDestroy(const shared_ptr<NetFlowRenderer>& nfr) {
-    nfr->jRpc->setNextId(2000);
+    nfr->setNextId(2000);
 
     bool result = nfr->createNetFlow("5.5.5.6", 10);
     result = result && nfr->deleteNetFlow();

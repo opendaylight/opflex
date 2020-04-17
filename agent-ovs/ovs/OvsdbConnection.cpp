@@ -36,9 +36,11 @@ void OvsdbConnection::send_req_cb(uv_async_t* handle) {
     delete(reqCbd);
 }
 
-void OvsdbConnection::sendTransaction(const uint64_t& reqId, const list<JsonRpcTransactMessage>& requests, Transaction* trans) {
+void OvsdbConnection::sendTransaction(const list<JsonRpcTransactMessage>& requests, Transaction* trans) {
+    uint64_t reqId = 0;
     {
         unique_lock<mutex> lock(transactionMutex);
+        reqId = getNextId();
         transactions[reqId] = trans;
     }
     auto* reqCbd = new req_cb_data();

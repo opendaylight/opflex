@@ -50,6 +50,12 @@ public:
      */
     unique_ptr<JsonRpc> jRpc;
 
+    /**
+     * set the next request ID
+     * @param id request id
+     */
+    void setNextId(uint64_t id) { conn->setNextId(id);}
+
 protected:
     /**
      * reference to instance of Agent

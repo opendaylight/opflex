@@ -41,7 +41,7 @@ public:
 };
 
 static bool verifyCreateDestroy(const shared_ptr<SpanRenderer>& spr) {
-    spr->jRpc->setNextId(1000);
+    spr->setNextId(1000);
     JsonRpc::mirror mir;
     if (!spr->jRpc->getOvsdbMirrorConfig(mir)) {
         return false;
@@ -81,18 +81,18 @@ static bool verifyCreateDestroy(const shared_ptr<SpanRenderer>& spr) {
 }
 
 BOOST_FIXTURE_TEST_CASE( verify_getport, SpanRendererFixture ) {
-    WAIT_FOR(verifyCreateDestroy(spr), 500);
+    BOOST_CHECK_EQUAL(true,verifyCreateDestroy(spr));
 }
 
 BOOST_FIXTURE_TEST_CASE( verify_add_remote_port, SpanRendererFixture ) {
-    spr->jRpc->setNextId(1013);
+    spr->setNextId(1013);
 
     BOOST_CHECK_EQUAL(true, spr->addErspanPort("br-int", "3.3.3.3", 2));
     BOOST_CHECK_EQUAL(true, spr->deleteErspanPort("erspan"));
 }
 
 BOOST_FIXTURE_TEST_CASE( verify_get_erspan_params, SpanRendererFixture ) {
-    spr->jRpc->setNextId(1018);
+    spr->setNextId(1018);
 
     JsonRpc::erspan_ifc_v1 params;
     params.remote_ip = "2.2.2.1";

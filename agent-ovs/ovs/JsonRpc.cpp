@@ -69,10 +69,8 @@ bool JsonRpc::createNetFlow(const string& brUuid, const string& target, const in
     tdSet = TupleDataSet(tuples);
     msg2.rows.emplace("netflow", tdSet);
 
-    uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests = {msg1, msg2};
-
-    if (!sendRequestAndAwaitResponse(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests)) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
@@ -104,10 +102,8 @@ bool JsonRpc::createIpfix(const string& brUuid, const string& target, const int&
     tdSet = TupleDataSet(tuples);
     msg2.rows.emplace("ipfix", tdSet);
 
-    uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests = {msg1, msg2};
-
-    if (!sendRequestAndAwaitResponse(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests)) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
@@ -125,10 +121,8 @@ bool JsonRpc::deleteNetFlow(const string& brName) {
     TupleDataSet tdSet(tuples, "set");
     msg1.rows.emplace("netflow", tdSet);
 
-    uint64_t reqId = getNextId();
     list<JsonRpcTransactMessage> requests = {msg1};
-
-    if (!sendRequestAndAwaitResponse(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests)) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
@@ -147,10 +141,8 @@ bool JsonRpc::deleteIpfix(const string& brName) {
     TupleDataSet tdSet(tuples, "set");
     msg1.rows.emplace("ipfix", tdSet);
 
-    uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests = {msg1};
-
-    if (!sendRequestAndAwaitResponse(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests)) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
@@ -203,10 +195,8 @@ bool JsonRpc::updateBridgePorts(tuple<string,set<string>> ports,
     TupleDataSet tdSet(tuples, "set");
     msg1.rows.emplace("ports", tdSet);
 
-    uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests = {msg1};
-
-    if (!sendRequestAndAwaitResponse(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests)) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
@@ -282,10 +272,8 @@ bool JsonRpc::getBridgePortList(const string& bridge, BrPortResult& res) {
     msg1.conditions = condSet;
     msg1.columns.emplace("ports");
     msg1.columns.emplace("_uuid");
-    uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests = {msg1};
-
-    if (!sendRequestAndAwaitResponse(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests)) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
@@ -295,10 +283,8 @@ bool JsonRpc::getBridgePortList(const string& bridge, BrPortResult& res) {
 
 bool JsonRpc::getOvsdbMirrorConfig(mirror& mir) {
     JsonRpcTransactMessage msg1(OvsdbOperation::SELECT, OvsdbTable::MIRROR);
-    uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests1 = {msg1};
-
-    if (!sendRequestAndAwaitResponse(requests1, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests1)) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
@@ -315,10 +301,8 @@ bool JsonRpc::getOvsdbMirrorConfig(mirror& mir) {
     JsonRpcTransactMessage msg2(OvsdbOperation::SELECT, OvsdbTable::PORT);
     msg2.columns.emplace("name");
     msg2.columns.emplace("_uuid");
-    reqId = getNextId();
     const list<JsonRpcTransactMessage> requests2 = {msg2};
-
-    if (!sendRequestAndAwaitResponse(requests2, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests2)) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
@@ -343,10 +327,8 @@ bool JsonRpc::getErspanIfcParams(erspan_ifc& pIfc) {
     msg1.conditions = condSet;
     msg1.columns.emplace("options");
 
-    uint64_t reqId = getNextId();
-    list<JsonRpcTransactMessage> requests;
-
-    if (!sendRequestAndAwaitResponse(requests, reqId)) {
+    list<JsonRpcTransactMessage> requests = {msg1};
+    if (!sendRequestAndAwaitResponse(requests)) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
@@ -422,7 +404,6 @@ bool JsonRpc::getPortList(const uint64_t reqId, const Document& payload, unorder
     return true;
 }
 
-
 bool JsonRpc::getErspanOptions(const uint64_t reqId, const Document& payload, erspan_ifc& pIfc) {
     if (!payload.IsArray()) {
         LOG(DEBUG) << "payload is not an array";
@@ -487,10 +468,8 @@ void JsonRpc::getPortUuid(const string& name, string& uuid) {
     condSet.emplace(cond1);
     msg1.conditions = condSet;
 
-    uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests{msg1};
-
-    if (!sendRequestAndAwaitResponse(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests)) {
         LOG(WARNING) << "Error sending message";
         return;
     }
@@ -518,10 +497,8 @@ void JsonRpc::getBridgeUuid(const string& name, string& uuid) {
     msg1.conditions = condSet;
     msg1.columns.emplace("_uuid");
 
-    uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests{msg1};
-
-    if (!sendRequestAndAwaitResponse(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests)) {
         LOG(DEBUG) << "Error sending message";
     }
     handleGetBridgeUuidResp(pResp->reqId, pResp->payload, uuid);
@@ -606,10 +583,8 @@ bool JsonRpc::createMirror(const string& brUuid, const string& name, const set<s
     tdSet = TupleDataSet(tuples);
     msg2.rows.emplace("mirrors", tdSet);
 
-    uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests = {msg1};
-
-    if (!sendRequestAndAwaitResponse(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests)) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
@@ -686,10 +661,8 @@ bool JsonRpc::addErspanPort(const string& bridge, erspan_ifc& port) {
     tdSet = TupleDataSet(tuples, "set");
     msg3.rows.emplace("ports", tdSet);
 
-    uint64_t reqId = getNextId();
     const list<JsonRpcTransactMessage> requests = {msg1, msg2, msg3};
-
-    if (!sendRequestAndAwaitResponse(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests)) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
@@ -732,10 +705,8 @@ bool JsonRpc::deleteMirror(const string& brName) {
     tdSet.label = "set";
     msg.rows.emplace("mirrors", tdSet);
 
-    uint64_t reqId = getNextId();
     list<JsonRpcTransactMessage> requests = {msg};
-
-    if (!sendRequestAndAwaitResponse(requests, reqId)) {
+    if (!sendRequestAndAwaitResponse(requests)) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }

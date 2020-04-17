@@ -249,7 +249,7 @@ namespace opflexagent {
     }
 
     bool SpanRenderer::addErspanPort(const string &brName, const string &ipAddr, const uint8_t version) {
-        LOG(DEBUG) << "adding erspan port";
+        LOG(DEBUG) << "adding erspan port IP " << ipAddr << " and version " << version;
         JsonRpc::erspan_ifc ep;
         if (version == 1) {
             JsonRpc::erspan_ifc_v1 params = JsonRpc::erspan_ifc_v1();

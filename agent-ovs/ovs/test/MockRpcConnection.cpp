@@ -35,8 +35,9 @@ ResponseDict& ResponseDict::Instance() {
     return inst;
 }
 
-void MockRpcConnection::sendTransaction(const uint64_t& reqId, const list<JsonRpcTransactMessage>& requests, Transaction* trans) {
+void MockRpcConnection::sendTransaction(const list<JsonRpcTransactMessage>& requests, Transaction* trans) {
     // prepare request
+    uint64_t reqId = getNextId();
     std::shared_ptr<TransactReq> transactReq = std::make_shared<TransactReq>(TransactReq(requests, reqId));
     yajr::rpc::MethodName method(transactReq->getMethod().c_str());
     opflex::jsonrpc::PayloadWrapper wrapper(transactReq.get());

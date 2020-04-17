@@ -135,11 +135,10 @@ class OvsdbConnection : public opflex::jsonrpc::RpcConnection {
     /**
      * send transaction request
      *
-     * @param[in] reqId request ID
      * @param[in] requests list of Transact messages
      * @param[in] trans callback
      */
-    virtual void sendTransaction(const uint64_t& reqId, const list<JsonRpcTransactMessage>& requests, Transaction* trans);
+    virtual void sendTransaction(const list<JsonRpcTransactMessage>& requests, Transaction* trans);
 
     /**
      * call back for transaction response
@@ -160,6 +159,23 @@ class OvsdbConnection : public opflex::jsonrpc::RpcConnection {
      */
     mutex mtx;
 
+    /**
+     * set the next request ID
+     * @param id_ request id
+     */
+    void setNextId(uint64_t id_) {
+        unique_lock<mutex> lock(transactionMutex);
+        id = id_;
+    }
+
+protected:
+
+    /**
+     * Get the next req ID
+     * @return req ID
+     */
+    uint64_t getNextId() { return ++id; }
+
 private:
 
     yajr::Peer* peer;
@@ -177,6 +193,7 @@ private:
     std::atomic<bool> connected;
     mutex transactionMutex;
     bool ovsdbUseLocalTcpPort;
+    uint64_t id = 0;
 };
 
 
