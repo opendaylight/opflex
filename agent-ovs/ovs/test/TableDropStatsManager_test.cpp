@@ -222,8 +222,8 @@ void TableDropStatsManagerFixture::testOneStaticDropFlow (
         SwitchManager &swMgr,
         bool refresh_aged_flow=false)
 {
-    uint64_t expected_pkt_count = INITIAL_PACKET_COUNT,
-            expected_byte_count = INITIAL_PACKET_COUNT * PACKET_SIZE;
+    uint64_t expected_pkt_count = INITIAL_PACKET_COUNT*2,
+            expected_byte_count = INITIAL_PACKET_COUNT*2*PACKET_SIZE;
     FlowEntryList dropLogFlows;
     if(portConn.getSwitchName()=="int_conn") {
         createIntBridgeDropFlowList(table_id,
