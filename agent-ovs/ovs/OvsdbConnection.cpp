@@ -61,11 +61,17 @@ void OvsdbConnection::start() {
 
 void OvsdbConnection::connect_cb(uv_async_t* handle) {
     OvsdbConnection* ocp = (OvsdbConnection*)handle->data;
-    // TODO - don't hardcode socket...this whole thing needs to moved out of libopflex
-    std::string swPath;
-    swPath.append(ovs_rundir()).append("/db.sock");
-    ocp->peer = yajr::Peer::create(swPath, on_state_change,
-                                   ocp, loop_selector, false);
+    if (ocp->ovsdbUseLocalTcpPort) {
+        ocp->peer = yajr::Peer::create("127.0.0.1",
+                                       "6640",
+                                       on_state_change,
+                                       ocp, loop_selector, false);
+    } else {
+        std::string swPath;
+        swPath.append(ovs_rundir()).append("/db.sock");
+        ocp->peer = yajr::Peer::create(swPath, on_state_change,
+                                       ocp, loop_selector, false);
+    }
     assert(ocp->peer);
 }
 

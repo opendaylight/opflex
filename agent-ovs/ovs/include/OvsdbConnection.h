@@ -53,7 +53,7 @@ class OvsdbConnection : public opflex::jsonrpc::RpcConnection {
     /**
      * Construct an OVSDB connection
      */
-    OvsdbConnection() : opflex::jsonrpc::RpcConnection(), peer(nullptr), connected(false) {}
+    OvsdbConnection(bool useLocalTcpPort) : opflex::jsonrpc::RpcConnection(), peer(nullptr), connected(false), ovsdbUseLocalTcpPort(useLocalTcpPort) {}
 
     /**
      * destructor
@@ -176,6 +176,7 @@ private:
     unordered_map<uint64_t, Transaction*> transactions;
     std::atomic<bool> connected;
     mutex transactionMutex;
+    bool ovsdbUseLocalTcpPort;
 };
 
 

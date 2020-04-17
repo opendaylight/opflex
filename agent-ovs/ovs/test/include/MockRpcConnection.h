@@ -22,7 +22,7 @@ public:
     /**
      * constructor that takes a Transaction object reference
      */
-    MockRpcConnection() : OvsdbConnection() {}
+    MockRpcConnection() : OvsdbConnection(false) {}
 
     /**
      * establish mock connection

@@ -75,7 +75,7 @@ OVSRenderer::OVSRenderer(Agent& agent_)
       tunnelEndpointAdvMode(AdvertManager::EPADV_RARP_BROADCAST),
       tunnelEndpointAdvIntvl(300),
       virtualDHCP(true), connTrack(true), ctZoneRangeStart(0),
-      ctZoneRangeEnd(0), ifaceStatsEnabled(true), ifaceStatsInterval(0),
+      ctZoneRangeEnd(0), ovsdbUseLocalTcpPort(false), ifaceStatsEnabled(true), ifaceStatsInterval(0),
       contractStatsEnabled(true), contractStatsInterval(0),
       serviceStatsFlowDisabled(false), serviceStatsEnabled(true), serviceStatsInterval(0),
       secGroupStatsEnabled(true), secGroupStatsInterval(0),
@@ -236,8 +236,7 @@ void OVSRenderer::start() {
     cleanupTimer->async_wait(bind(&OVSRenderer::onCleanupTimer,
                                   this, error));
 
-
-    ovsdbConnection.reset(new OvsdbConnection());
+    ovsdbConnection.reset(new OvsdbConnection(ovsdbUseLocalTcpPort));
     ovsdbConnection->start();
 
     if (getAgent().isFeatureEnabled(FeatureList::ERSPAN))
@@ -379,6 +378,7 @@ void OVSRenderer::setProperties(const ptree& properties) {
                                                        ".table-drop.interval");
     static const std::string DROP_LOG_ENCAP_GENEVE("drop-log.geneve");
     static const std::string REMOTE_NAMESPACE("namespace");
+    static const std::string OVSDB_USE_LOCAL_TCPPORT("ovsdb-use-local-tcp-port");
 
     intBridgeName =
         properties.get<std::string>(OVS_BRIDGE_NAME, "br-int");
@@ -481,6 +481,8 @@ void OVSRenderer::setProperties(const ptree& properties) {
 
     mcastGroupFile = properties.get<std::string>(MCAST_GROUP_FILE,
                                                  DEF_MCAST_GROUPFILE);
+
+    ovsdbUseLocalTcpPort = properties.get<bool>(OVSDB_USE_LOCAL_TCPPORT, false);
 
     ifaceStatsEnabled = properties.get<bool>(STATS_INTERFACE_ENABLED, true);
     contractStatsEnabled = properties.get<bool>(STATS_CONTRACT_ENABLED, true);

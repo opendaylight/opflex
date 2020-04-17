@@ -152,6 +152,11 @@
         //     // Location to write multicast groups for the mcast-daemon
         //     // Default: "DEFAULT_MCAST_GROUP_FILE"
         //     "mcast-group-file": "DEFAULT_MCAST_GROUP_FILE"
+        //
+        //     // OVSDB connection to use local ptcp port 6640
+        //     // instead of the local socket
+        //     // Default: false
+        //     "ovsdb-use-local-tcp-port": "false"
         // }
     }
 }
