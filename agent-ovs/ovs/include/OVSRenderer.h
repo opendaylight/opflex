@@ -112,6 +112,7 @@ private:
     bool connTrack;
     uint16_t ctZoneRangeStart;
     uint16_t ctZoneRangeEnd;
+    bool ovsdbUseLocalTcpPort;
 
     bool ifaceStatsEnabled;
     long ifaceStatsInterval;
