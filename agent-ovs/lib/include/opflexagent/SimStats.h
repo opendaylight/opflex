@@ -97,9 +97,7 @@ private:
     std::unordered_set<opflex::modb::URI> secGroups;
     std::atomic<uint64_t> intCounter;
     std::atomic<uint64_t> contractCounter;
-    std::atomic<uint64_t> contractGenIdCounter;
     std::atomic<uint64_t> secGrpCounter;
-    std::atomic<uint64_t> secGrpGenIdCounter;
     boost::asio::io_service io;
     std::atomic_bool stopping;
     std::shared_ptr<std::thread> io_service_thread;
