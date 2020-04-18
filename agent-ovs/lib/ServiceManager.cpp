@@ -268,9 +268,7 @@ ServiceManager::updateSvcObserverMoDB (const opflexagent::Service& service, bool
         auto scopeItr = svcAttr.find("scope");
         if (scopeItr != svcAttr.end()) {
             pService->setScope(scopeItr->second);
-            // For cluster services, create service targets as well
-            if (scopeItr->second == "cluster")
-                updateSvcTargetObserverMoDB(service, true, pService);
+            updateSvcTargetObserverMoDB(service, true, pService);
         } else
             pService->unsetScope();
 
@@ -284,7 +282,6 @@ ServiceManager::updateSvcObserverMoDB (const opflexagent::Service& service, bool
 #endif
     } else {
         if (opService) {
-            // For external services, svc target removal will be noop
             updateSvcTargetObserverMoDB(service, false, opService.get());
             opService.get()->remove();
 #ifdef HAVE_PROMETHEUS_SUPPORT

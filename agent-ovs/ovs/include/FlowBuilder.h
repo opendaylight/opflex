@@ -257,9 +257,10 @@ public:
      * Add a match against the value of a register
      * @param reg the register to match against
      * @param value the value of the register to match
+     * @param mask the mask for the match
      * @return this flow builder for chaining
      */
-    FlowBuilder& reg(uint8_t reg, uint32_t value);
+    FlowBuilder& reg(uint8_t reg, uint32_t value, uint32_t mask = ~0l);
 
     /**
      * Add a match against the value of the flow metadata

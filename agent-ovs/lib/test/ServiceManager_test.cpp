@@ -48,14 +48,14 @@ public:
     }
 
     void removeServiceObjects(void);
-    void updateServices(bool isLB);
+    void updateServices(bool isLB, bool isExternal = false);
     void checkServiceState(bool isAdd);
-    void createServices(bool isLB);
+    void createServices(bool isLB, bool isExternal=false);
     Service as;
 #ifdef HAVE_PROMETHEUS_SUPPORT
-    void checkServicePromMetrics(bool isAdd, bool isUpdate);
-    void checkServiceTargetPromMetrics(bool isAdd, const string& ip, bool isUpdate);
-    void checkServiceExists(bool isAdd, bool isUpdate=false);
+    void checkServicePromMetrics(bool isAdd, bool isExternal, bool isUpdate);
+    void checkServiceTargetPromMetrics(bool isAdd, const string& ip, bool isExternal, bool isUpdate);
+    void checkServiceExists(bool isAdd, bool isExternal=false, bool isUpdate=false);
     /**
      * Following commented commands didnt work in test environment, but will work from a regular terminal:
      * const string cmd = "curl --no-proxy \"*\" --compressed --silent http://127.0.0.1:9612/metrics 2>&1";
@@ -82,7 +82,7 @@ void ServiceManagerFixture::removeServiceObjects (void)
     servSrc.removeService(as.getUUID());
 }
 
-void ServiceManagerFixture::createServices (bool isLB)
+void ServiceManagerFixture::createServices (bool isLB, bool isExternal)
 {
     as.setUUID("ed84daef-1696-4b98-8c80-6b22d85f4dc2");
     as.setDomainURI(URI(rd0->getURI()));
@@ -107,13 +107,20 @@ void ServiceManagerFixture::createServices (bool isLB)
     as.addServiceMapping(sm2);
 
     as.addAttribute("name", "coredns");
-    as.addAttribute("scope", "cluster");
+    if (isExternal) {
+        as.setInterfaceName("service-iface");
+        as.setIfaceIP("1.1.1.1");
+        as.setIfaceVlan(4003);
+        as.addAttribute("scope", "ext");
+    } else {
+        as.addAttribute("scope", "cluster");
+    }
     as.addAttribute("namespace", "kube-system");
 
     servSrc.updateService(as);
 }
 
-void ServiceManagerFixture::updateServices (bool isLB)
+void ServiceManagerFixture::updateServices (bool isLB, bool isExternal)
 {
     if (isLB)
         as.setServiceMode(Service::LOADBALANCER);
@@ -141,7 +148,10 @@ void ServiceManagerFixture::updateServices (bool isLB)
 
     as.clearAttributes();
     as.addAttribute("name", "nginx");
-    as.addAttribute("scope", "cluster");
+    if (isExternal)
+        as.addAttribute("scope", "ext");
+    else
+        as.addAttribute("scope", "cluster");
 
     servSrc.updateService(as);
 }
@@ -269,15 +279,24 @@ static inline void expPosition (bool isAdd, const size_t& pos)
 }
 
 // Check prom dyn gauge service metrics
-void ServiceManagerFixture::checkServicePromMetrics (bool isAdd, bool isUpdate)
+void ServiceManagerFixture::checkServicePromMetrics (bool isAdd, bool isExternal, bool isUpdate)
 {
     const string& output = BaseFixture::getOutputFromCommand(cmd);
     size_t pos = std::string::npos;
+
+    string scope;
+    if (isExternal) {
+        scope = "ext";
+    } else
+        scope = "cluster";
+
     string str;
     if (isUpdate)
-        str = "name=\"nginx\",scope=\"cluster\"";
+        str = "name=\"nginx\",scope=\"" + scope + "\"";
     else
-        str = "name=\"coredns\",namespace=\"kube-system\",scope=\"cluster\"";
+        str = "name=\"coredns\",namespace=\"kube-system\",scope=\"" + scope + "\"";
+
+    LOG(DEBUG) << "str is " << str;
     pos = output.find("opflex_svc_rx_bytes{" + str + "} 0.000000");
     expPosition(isAdd, pos);
     pos = output.find("opflex_svc_rx_packets{" + str + "} 0.000000");
@@ -290,15 +309,23 @@ void ServiceManagerFixture::checkServicePromMetrics (bool isAdd, bool isUpdate)
 // Check prom dyn gauge service target metrics
 void ServiceManagerFixture::checkServiceTargetPromMetrics (bool isAdd,
                                                            const string& ip,
+                                                           bool isExternal,
                                                            bool isUpdate)
 {
     const string& output = BaseFixture::getOutputFromCommand(cmd);
     size_t pos = std::string::npos;
+
+    string scope;
+    if (isExternal)
+        scope = "ext";
+    else
+        scope = "cluster";
+
     string str;
     if (isUpdate)
-        str = "\",svc_name=\"nginx\",svc_scope=\"cluster\"} 0.000000";
+        str = "\",svc_name=\"nginx\",svc_scope=\"" + scope + "\"} 0.000000";
     else
-        str = "\",svc_name=\"coredns\",svc_namespace=\"kube-system\",svc_scope=\"cluster\"} 0.000000";
+        str = "\",svc_name=\"coredns\",svc_namespace=\"kube-system\",svc_scope=\"" + scope + "\"} 0.000000";
     pos = output.find("opflex_svc_target_rx_bytes{ip=\""+ip+str);
     expPosition(isAdd, pos);
     pos = output.find("opflex_svc_target_rx_packets{ip=\""+ip+str);
@@ -312,7 +339,7 @@ void ServiceManagerFixture::checkServiceTargetPromMetrics (bool isAdd,
 
 // Check service presence during create vs delete
 #ifdef HAVE_PROMETHEUS_SUPPORT
-void ServiceManagerFixture::checkServiceExists (bool isAdd, bool isUpdate)
+void ServiceManagerFixture::checkServiceExists (bool isAdd, bool isExternal, bool isUpdate)
 #else
 void ServiceManagerFixture::checkServiceExists (bool isAdd)
 #endif
@@ -335,7 +362,7 @@ void ServiceManagerFixture::checkServiceExists (bool isAdd)
                                 ssu.get()->resolveGbpeSvcCounter(as.getUUID());
             BOOST_CHECK(opSvcCounter);
 #ifdef HAVE_PROMETHEUS_SUPPORT
-            checkServicePromMetrics(isAdd, isUpdate);
+            checkServicePromMetrics(isAdd, isExternal, isUpdate);
 #endif
             for (const auto& sm : as.getServiceMappings()) {
                 for (const auto& ip : sm.getNextHopIPs()) {
@@ -343,18 +370,18 @@ void ServiceManagerFixture::checkServiceExists (bool isAdd)
                                        500,,
                                        LOG(ERROR) << "SvcTargetCounter obs Obj not resolved";);
 #ifdef HAVE_PROMETHEUS_SUPPORT
-                    checkServiceTargetPromMetrics(isAdd, ip, isUpdate);
+                    checkServiceTargetPromMetrics(isAdd, ip, isExternal, isUpdate);
 #endif
                 }
             }
         } else {
             BOOST_CHECK(!ssu.get()->resolveGbpeSvcCounter(as.getUUID()));
 #ifdef HAVE_PROMETHEUS_SUPPORT
-            checkServicePromMetrics(false, isUpdate);
-            checkServiceTargetPromMetrics(false, "10.20.44.2", isUpdate);
-            checkServiceTargetPromMetrics(false, "169.254.169.2", isUpdate);
-            checkServiceTargetPromMetrics(false, "2001:db8::2", isUpdate);
-            checkServiceTargetPromMetrics(false, "fe80::a9:fe:a9:2", isUpdate);
+            checkServicePromMetrics(false, isExternal, isUpdate);
+            checkServiceTargetPromMetrics(false, "10.20.44.2", isExternal, isUpdate);
+            checkServiceTargetPromMetrics(false, "169.254.169.2", isExternal, isUpdate);
+            checkServiceTargetPromMetrics(false, "2001:db8::2", isExternal, isUpdate);
+            checkServiceTargetPromMetrics(false, "fe80::a9:fe:a9:2", isExternal, isUpdate);
 #endif
         }
     } else {
@@ -365,11 +392,11 @@ void ServiceManagerFixture::checkServiceExists (bool isAdd)
                            500,,
                            LOG(ERROR) << "Service obs Obj still present";);
 #ifdef HAVE_PROMETHEUS_SUPPORT
-        checkServicePromMetrics(isAdd, isUpdate);
-        checkServiceTargetPromMetrics(isAdd, "10.20.44.2", isUpdate);
-        checkServiceTargetPromMetrics(isAdd, "169.254.169.2", isUpdate);
-        checkServiceTargetPromMetrics(isAdd, "2001:db8::2", isUpdate);
-        checkServiceTargetPromMetrics(isAdd, "fe80::a9:fe:a9:2", isUpdate);
+        checkServicePromMetrics(isAdd, isExternal, isUpdate);
+        checkServiceTargetPromMetrics(isAdd, "10.20.44.2", isExternal, isUpdate);
+        checkServiceTargetPromMetrics(isAdd, "169.254.169.2", isExternal, isUpdate);
+        checkServiceTargetPromMetrics(isAdd, "2001:db8::2", isExternal, isUpdate);
+        checkServiceTargetPromMetrics(isAdd, "fe80::a9:fe:a9:2", isExternal, isUpdate);
 #endif
     }
 }
@@ -443,7 +470,7 @@ BOOST_FIXTURE_TEST_CASE(testUpdate, ServiceManagerFixture) {
 #ifndef HAVE_PROMETHEUS_SUPPORT
     checkServiceExists(true);
 #else
-    checkServiceExists(true, true);
+    checkServiceExists(true, false, true);
     const string& output2 = BaseFixture::getOutputFromCommand(cmd);
     pos = std::string::npos;
     pos = output2.find("opflex_svc_active_total 1.000000");
@@ -520,6 +547,127 @@ BOOST_FIXTURE_TEST_CASE(testDeleteAnycast, ServiceManagerFixture) {
     BOOST_CHECK_NE(pos, std::string::npos);
 #endif
     LOG(DEBUG) << "############# SERVICE DELETE END ############";
+}
+
+BOOST_FIXTURE_TEST_CASE(testCreateExternalLB, ServiceManagerFixture) {
+    LOG(DEBUG) << "#### SERVICE EXT CREATE START ####";
+    createServices(true, true);
+    LOG(DEBUG) << "#### SERVICE EXT CREATE END ####";
+    LOG(DEBUG) << "############# SERVICE EXT CREATE CHECK START ############";
+    checkServiceState(true);
+#ifndef HAVE_PROMETHEUS_SUPPORT
+    checkServiceExists(true);
+#else
+    checkServiceExists(true, true);
+    const string& output = BaseFixture::getOutputFromCommand(cmd);
+    size_t pos = std::string::npos;
+    pos = output.find("opflex_svc_active_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output.find("opflex_svc_created_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output.find("opflex_svc_removed_total 0.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+#endif
+    LOG(DEBUG) << "############# SERVICE EXT CREATE CHECK END ############";
+}
+
+BOOST_FIXTURE_TEST_CASE(testUpdateExtLB, ServiceManagerFixture) {
+    LOG(DEBUG) << "#### SERVICE EXT CREATE START ####";
+    createServices(true, true);
+    LOG(DEBUG) << "#### SERVICE EXT CREATE END ####";
+    LOG(DEBUG) << "############# SERVICE EXT UPDATE START ############";
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    checkServiceExists(true, true);
+#else
+    checkServiceExists(true);
+#endif
+
+    // update to anycast
+    updateServices(false, true);
+    checkServiceState(false);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    const string& output1 = BaseFixture::getOutputFromCommand(cmd);
+    size_t pos = std::string::npos;
+    pos = output1.find("opflex_svc_active_total 0.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output1.find("opflex_svc_created_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output1.find("opflex_svc_removed_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+#endif
+
+    // update to lb
+    updateServices(true, true);
+    checkServiceState(false);
+#ifndef HAVE_PROMETHEUS_SUPPORT
+    checkServiceExists(true);
+#else
+    checkServiceExists(true, true, true);
+    const string& output2 = BaseFixture::getOutputFromCommand(cmd);
+    pos = std::string::npos;
+    pos = output2.find("opflex_svc_active_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output2.find("opflex_svc_created_total 2.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output2.find("opflex_svc_removed_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+#endif
+    LOG(DEBUG) << "############# SERVICE EXT UPDATE END ############";
+}
+
+BOOST_FIXTURE_TEST_CASE(testDeleteExtLB, ServiceManagerFixture) {
+    LOG(DEBUG) << "#### SERVICE EXT CREATE START ####";
+    createServices(true, true);
+    LOG(DEBUG) << "#### SERVICE EXT CREATE END ####";
+    LOG(DEBUG) << "############# SERVICE EXT DELETE START ############";
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    checkServiceExists(true, true);
+#else
+    checkServiceExists(true);
+#endif
+    removeServiceObjects();
+#ifndef HAVE_PROMETHEUS_SUPPORT
+    checkServiceExists(false);
+#else
+    checkServiceExists(false, true);
+    const string& output1 = BaseFixture::getOutputFromCommand(cmd);
+    size_t pos = std::string::npos;
+    pos = output1.find("opflex_svc_active_total 0.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output1.find("opflex_svc_created_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output1.find("opflex_svc_removed_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+#endif
+
+    createServices(true, true);
+#ifndef HAVE_PROMETHEUS_SUPPORT
+    checkServiceExists(true);
+#else
+    checkServiceExists(true, true);
+    const string& output2 = BaseFixture::getOutputFromCommand(cmd);
+    pos = output2.find("opflex_svc_active_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output2.find("opflex_svc_created_total 2.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output2.find("opflex_svc_removed_total 1.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+#endif
+
+    removeServiceObjects();
+#ifndef HAVE_PROMETHEUS_SUPPORT
+    checkServiceExists(false);
+#else
+    checkServiceExists(false, true);
+    const string& output3 = BaseFixture::getOutputFromCommand(cmd);
+    pos = output3.find("opflex_svc_active_total 0.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output3.find("opflex_svc_created_total 2.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output3.find("opflex_svc_removed_total 2.000000");
+    BOOST_CHECK_NE(pos, std::string::npos);
+#endif
+    LOG(DEBUG) << "############# SERVICE EXT DELETE END ############";
 }
 
 BOOST_AUTO_TEST_SUITE_END()
