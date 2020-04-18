@@ -305,8 +305,8 @@ FlowBuilder& FlowBuilder::tunId(uint64_t tunId) {
     return *this;
 }
 
-FlowBuilder& FlowBuilder::reg(uint8_t reg, uint32_t value) {
-    match_set_reg(match(), reg, value);
+FlowBuilder& FlowBuilder::reg(uint8_t reg, uint32_t value, uint32_t mask) {
+    match_set_reg_masked(match(), reg, value, mask);
     return *this;
 }
 

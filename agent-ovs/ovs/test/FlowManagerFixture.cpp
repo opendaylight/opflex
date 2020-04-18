@@ -113,7 +113,7 @@ void diffTables(Agent& agent,
 static string rstr[] = {
     "NXM_NX_REG0[]", "NXM_NX_REG0[0..11]", "NXM_NX_REG2[]", "NXM_NX_REG4[]",
     "NXM_NX_REG5[]", "NXM_NX_REG5[0..11]", "NXM_NX_REG6[]", "NXM_NX_REG7[]",
-    "NXM_NX_REG8[]", "NXM_NX_REG9[]", "NXM_NX_REG10[]", "NXM_NX_REG11[]",
+    "NXM_NX_REG8[]", "NXM_NX_REG9[]", "NXM_NX_REG10[]", "NXM_NX_REG11[]", "NXM_NX_REG12[]",
     "NXM_NX_TUN_ID[0..31]", "NXM_NX_TUN_IPV4_SRC[]", "NXM_NX_TUN_IPV4_DST[]",
     "OXM_OF_VLAN_VID[]", "NXM_OF_ETH_SRC[]", "NXM_OF_ETH_DST[]",
     "NXM_OF_ARP_OP[]", "NXM_NX_ARP_SHA[]", "NXM_NX_ARP_THA[]",
@@ -122,7 +122,7 @@ static string rstr[] = {
 };
 static string rstr1[] =
     { "reg0", "reg0", "reg2", "reg4", "reg5", "reg5", "reg6", "reg7",
-      "reg8", "reg9", "reg10", "reg11",
+      "reg8", "reg9", "reg10", "reg11", "reg12",
       "", "", "", "", "", "", "" ,"", "", "", "", ""};
 
 Bldr::Bldr() :
@@ -155,6 +155,11 @@ std::string Bldr::done() {
 }
 Bldr& Bldr::reg(REG r, uint32_t v) {
     m(rstr1[r], str(v, true));
+    return *this;
+}
+
+Bldr& Bldr::reg(REG r, const string& v) {
+    m(rstr1[r], v);
     return *this;
 }
 

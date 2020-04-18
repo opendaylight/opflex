@@ -566,6 +566,17 @@ private:
                              const bool &is_add);
 
     /**
+     * Update ext<-->svc-tgt flows due to changes in a service/ep
+     *
+     * @param uuid UUID of the changed service/ep
+     * @param is_svc true if the uuid belongs to svc
+     * @param is_add true if the svc/ep is added
+     */
+    void updateSvcExtStatsFlows(const std::string &uuid,
+                                const bool &is_svc,
+                                const bool &is_add);
+
+    /**
      * Update any<-->svc-tgt flows due to changes in a service/ep.
      *
      * @param uuid UUID of the changed service/ep
@@ -593,9 +604,11 @@ private:
      *
      * @param uuid      The uuid of svc
      * @param attr_map  The attribute map of service
+     * @param isExternal  is this update for external or cluster svc
      */
     void clearSvcStatsCounters(const std::string& uuid,
-                               const attr_map& attr_map);
+                               const attr_map& attr_map,
+                               bool isExternal);
 
     /**
      * Clear svc-tgt counters
@@ -603,10 +616,12 @@ private:
      * @param uuid The uuid of svc
      * @param nhip The ip of svc-tgt
      * @param attr_map  The attribute map of service
+     * @param isExternal  is this update for external or cluster tgt
      */
     void clearSvcTgtStatsCounters(const std::string& uuid,
                                   const std::string& nhip,
-                                  const attr_map& attr_map);
+                                  const attr_map& attr_map,
+                                  bool isExternal);
 
     /**
      * Clear podsvc counter objects

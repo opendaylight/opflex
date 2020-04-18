@@ -1475,7 +1475,6 @@ void BaseIntFlowManagerFixture::loadBalancedServiceTest() {
     sm2.addNextHopIP("fe80::a9:fe:a9:2");
     as2.addServiceMapping(sm2);
 
-
     as1.addAttribute("name", "coredns");
     as1.addAttribute("scope", "cluster");
     as1.addAttribute("namespace", "default");
@@ -1539,6 +1538,16 @@ void BaseIntFlowManagerFixture::loadBalancedServiceTest() {
     as1.addServiceMapping(sm1);
     sm2.setConntrackMode(false);
     as2.addServiceMapping(sm2);
+
+    as1.clearAttributes();
+    as1.addAttribute("name", "coredns");
+    as1.addAttribute("scope", "ext");
+    as1.addAttribute("namespace", "default");
+
+    as2.clearAttributes();
+    as2.addAttribute("name", "redis-master");
+    as2.addAttribute("scope", "ext");
+    as2.addAttribute("namespace", "kube-system");
 
     servSrc.updateService(as1);
     servSrc.updateService(as2);
@@ -2873,12 +2882,14 @@ void BaseIntFlowManagerFixture::initExpAnySvcStats (const string& nh_ip,
         ADDF(Bldr(SEND_FLOW_REM).table(STAT)
              .cookie(rxCookie)
              .priority(97).udp()
+             .reg(CTMARK, "0/0x80000000")
              .isIpDst(nh_ip).isTpDst(nh_port)
              .actions().go(OUT).done());
         // from svc
         ADDF(Bldr(SEND_FLOW_REM).table(STAT)
              .cookie(txCookie)
              .priority(97).udp()
+             .reg(CTMARK, "0/0x80000000")
              .isIpSrc(nh_ip).isTpSrc(nh_port)
              .actions().go(OUT).done());
     } else {
@@ -2886,12 +2897,14 @@ void BaseIntFlowManagerFixture::initExpAnySvcStats (const string& nh_ip,
         ADDF(Bldr(SEND_FLOW_REM).table(STAT)
              .cookie(rxCookie)
              .priority(97).tcp6()
+             .reg(CTMARK, "0/0x80000000")
              .isIpv6Dst(nh_ip).isTpDst(nh_port)
              .actions().go(OUT).done());
         // from svc
         ADDF(Bldr(SEND_FLOW_REM).table(STAT)
              .cookie(txCookie)
              .priority(97).tcp6()
+             .reg(CTMARK, "0/0x80000000")
              .isIpv6Src(nh_ip).isTpSrc(nh_port)
              .actions().go(OUT).done());
     }
@@ -2908,36 +2921,64 @@ void BaseIntFlowManagerFixture::initExpLBService(Service &as1,
     memcpy(rmacArr, intFlowManager.getRouterMacAddr(), sizeof(rmacArr));
     string rmac = MAC(rmacArr).toString();
 
-    initExpPodServiceStats("169.254.169.254", ep0, as1, "udp", 53, 5353);
-    initExpPodServiceStats("169.254.169.254", ep2, as1, "udp", 53, 5353);
-    initExpPodServiceStats("169.254.169.254", ep3, as1, "udp", 53, 5353);
-    initExpPodServiceStats("169.254.169.254", ep4, as1, "udp", 53, 5353);
-    initExpPodServiceStats("fe80::a9:fe:a9:fe", ep0, as2, "tcp", 80, 80);
+    uint64_t rxCookie1 = 0;
+    uint64_t txCookie1 = 0;
+    uint64_t rxCookie2 = 0;
+    uint64_t txCookie2 = 0;
+    if (!exposed) {
+        initExpPodServiceStats("169.254.169.254", ep0, as1, "udp", 53, 5353);
+        initExpPodServiceStats("169.254.169.254", ep2, as1, "udp", 53, 5353);
+        initExpPodServiceStats("169.254.169.254", ep3, as1, "udp", 53, 5353);
+        initExpPodServiceStats("169.254.169.254", ep4, as1, "udp", 53, 5353);
+        initExpPodServiceStats("fe80::a9:fe:a9:fe", ep0, as2, "tcp", 80, 80);
 
-    const string& anyToSvcKey1 = "antosvc:svc-tgt:"+as1.getUUID()+":10.20.44.2";
-    const string& svcToAnyKey1 = "svctoan:svc-tgt:"+as1.getUUID()+":10.20.44.2";
-    const string& anyToSvcKey2 = "antosvc:svc-tgt:"+as2.getUUID()+":2001:db8::2";
-    const string& svcToAnyKey2 = "svctoan:svc-tgt:"+as2.getUUID()+":2001:db8::2";
-    WAIT_FOR_DO_ONFAIL((idGen.getIdNoAlloc("svcstats", anyToSvcKey1) != (uint32_t)-1),
-                        500,,
-                        LOG(ERROR) << "cookie not yet alloc'd for: " << anyToSvcKey1;);
-    WAIT_FOR_DO_ONFAIL((idGen.getIdNoAlloc("svcstats", svcToAnyKey1) != (uint32_t)-1),
-                        500,,
-                        LOG(ERROR) << "cookie not yet alloc'd for: " << svcToAnyKey1;);
-    WAIT_FOR_DO_ONFAIL((idGen.getIdNoAlloc("svcstats", anyToSvcKey2) != (uint32_t)-1),
-                        500,,
-                        LOG(ERROR) << "cookie not yet alloc'd for: " << anyToSvcKey2;);
-    WAIT_FOR_DO_ONFAIL((idGen.getIdNoAlloc("svcstats", svcToAnyKey2) != (uint32_t)-1),
-                        500,,
-                        LOG(ERROR) << "cookie not yet alloc'd for: " << svcToAnyKey2;);
+        const string& anyToSvcKey1 = "antosvc:svc-tgt:"+as1.getUUID()+":10.20.44.2";
+        const string& svcToAnyKey1 = "svctoan:svc-tgt:"+as1.getUUID()+":10.20.44.2";
+        const string& anyToSvcKey2 = "antosvc:svc-tgt:"+as2.getUUID()+":2001:db8::2";
+        const string& svcToAnyKey2 = "svctoan:svc-tgt:"+as2.getUUID()+":2001:db8::2";
+        WAIT_FOR_DO_ONFAIL((idGen.getIdNoAlloc("svcstats", anyToSvcKey1) != (uint32_t)-1),
+                            500,,
+                            LOG(ERROR) << "cookie not yet alloc'd for: " << anyToSvcKey1;);
+        WAIT_FOR_DO_ONFAIL((idGen.getIdNoAlloc("svcstats", svcToAnyKey1) != (uint32_t)-1),
+                            500,,
+                            LOG(ERROR) << "cookie not yet alloc'd for: " << svcToAnyKey1;);
+        WAIT_FOR_DO_ONFAIL((idGen.getIdNoAlloc("svcstats", anyToSvcKey2) != (uint32_t)-1),
+                            500,,
+                            LOG(ERROR) << "cookie not yet alloc'd for: " << anyToSvcKey2;);
+        WAIT_FOR_DO_ONFAIL((idGen.getIdNoAlloc("svcstats", svcToAnyKey2) != (uint32_t)-1),
+                            500,,
+                            LOG(ERROR) << "cookie not yet alloc'd for: " << svcToAnyKey2;);
 
-    uint64_t rxCookie1 = idGen.getIdNoAlloc("svcstats", anyToSvcKey1);
-    uint64_t txCookie1 = idGen.getIdNoAlloc("svcstats", svcToAnyKey1);
-    uint64_t rxCookie2 = idGen.getIdNoAlloc("svcstats", anyToSvcKey2);
-    uint64_t txCookie2 = idGen.getIdNoAlloc("svcstats", svcToAnyKey2);
+        rxCookie1 = idGen.getIdNoAlloc("svcstats", anyToSvcKey1);
+        txCookie1 = idGen.getIdNoAlloc("svcstats", svcToAnyKey1);
+        rxCookie2 = idGen.getIdNoAlloc("svcstats", anyToSvcKey2);
+        txCookie2 = idGen.getIdNoAlloc("svcstats", svcToAnyKey2);
 
-    initExpAnySvcStats("10.20.44.2", 5353, as1.getUUID(), rxCookie1, txCookie1);
-    initExpAnySvcStats("2001:db8::2", 80, as2.getUUID(), rxCookie2, txCookie2);
+        initExpAnySvcStats("10.20.44.2", 5353, as1.getUUID(), rxCookie1, txCookie1);
+        initExpAnySvcStats("2001:db8::2", 80, as2.getUUID(), rxCookie2, txCookie2);
+    } else {
+        const string& extToSvcKey1 = "extosvc:svc-ext:"+as1.getUUID()+":10.20.44.2";
+        const string& svcToExtKey1 = "svctoex:svc-ext:"+as1.getUUID()+":10.20.44.2";
+        const string& extToSvcKey2 = "extosvc:svc-ext:"+as2.getUUID()+":2001:db8::2";
+        const string& svcToExtKey2 = "svctoex:svc-ext:"+as2.getUUID()+":2001:db8::2";
+        WAIT_FOR_DO_ONFAIL((idGen.getIdNoAlloc("svcstats", extToSvcKey1) != (uint32_t)-1),
+                            500,,
+                            LOG(ERROR) << "cookie not yet alloc'd for: " << extToSvcKey1;);
+        WAIT_FOR_DO_ONFAIL((idGen.getIdNoAlloc("svcstats", svcToExtKey1) != (uint32_t)-1),
+                            500,,
+                            LOG(ERROR) << "cookie not yet alloc'd for: " << svcToExtKey1;);
+        WAIT_FOR_DO_ONFAIL((idGen.getIdNoAlloc("svcstats", extToSvcKey2) != (uint32_t)-1),
+                            500,,
+                            LOG(ERROR) << "cookie not yet alloc'd for: " << extToSvcKey2;);
+        WAIT_FOR_DO_ONFAIL((idGen.getIdNoAlloc("svcstats", svcToExtKey2) != (uint32_t)-1),
+                            500,,
+                            LOG(ERROR) << "cookie not yet alloc'd for: " << svcToExtKey2;);
+
+        rxCookie1 = idGen.getIdNoAlloc("svcstats", extToSvcKey1);
+        txCookie1 = idGen.getIdNoAlloc("svcstats", svcToExtKey1);
+        rxCookie2 = idGen.getIdNoAlloc("svcstats", extToSvcKey2);
+        txCookie2 = idGen.getIdNoAlloc("svcstats", svcToExtKey2);
+    }
 
     if (exposed) {
         ADDF(Bldr().table(SEC).priority(90).in(17).isVlan(4003)
@@ -3035,6 +3076,7 @@ void BaseIntFlowManagerFixture::initExpLBService(Service &as1,
              .tpDst(5353).ipDst("10.20.44.2")
              .decTtl()
              .load(SVCADDR1, 0xa9fea9fe)
+             .load(CTMARK, exposed?0x80000001:0x1)
              .ct(commit1)
              .meta(flow::meta::ROUTED, flow::meta::ROUTED)
              .go(RT).done());
@@ -3044,7 +3086,9 @@ void BaseIntFlowManagerFixture::initExpLBService(Service &as1,
              .actions()
              .tpDst(5353).ipDst("169.254.169.2")
              .decTtl()
-             .load(SVCADDR1, 0xa9fea9fe).ct(commit1)
+             .load(SVCADDR1, 0xa9fea9fe)
+             .load(CTMARK, exposed?0x80000001:0x1)
+             .ct(commit1)
              .meta(flow::meta::ROUTED, flow::meta::ROUTED)
              .go(RT).done());
         ADDF(Bldr(SEND_FLOW_REM).table(SVH)
@@ -3059,6 +3103,7 @@ void BaseIntFlowManagerFixture::initExpLBService(Service &as1,
              .load(SVCADDR2, 0x0)
              .load(SVCADDR3, 0xa900fe)
              .load(SVCADDR4, 0xa900fe)
+             .load(CTMARK, exposed?0x80000002:0x2)
              .ct(commit2)
              .meta(flow::meta::ROUTED, flow::meta::ROUTED)
              .go(RT).done());
@@ -3072,6 +3117,7 @@ void BaseIntFlowManagerFixture::initExpLBService(Service &as1,
              .load(SVCADDR2, 0x0)
              .load(SVCADDR3, 0xa900fe)
              .load(SVCADDR4, 0xa900fe)
+             .load(CTMARK, exposed?0x80000002:0x2)
              .ct(commit2)
              .meta(flow::meta::ROUTED, flow::meta::ROUTED)
              .go(RT).done());

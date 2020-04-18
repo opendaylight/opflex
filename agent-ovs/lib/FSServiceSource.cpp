@@ -159,10 +159,11 @@ void FSServiceSource::updated(const fs::path& filePath) {
         // named "scope" with either "cluster" or "ext" or "nodeport" or something else.
         const auto& uuid = newserv.getUUID();
         if ((uuid.size() > sizeof("-external"))
-                && boost::algorithm::ends_with(uuid, "-external"))
+                && boost::algorithm::ends_with(uuid, "-external")) {
             newserv.addAttribute("scope", "ext");
-        else
+        } else {
             newserv.addAttribute("scope", "cluster");
+        }
 
         optional<ptree&> sms =
             properties.get_child_optional(SERVICE_MAPPING);
