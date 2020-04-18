@@ -19,12 +19,32 @@ namespace opflexagent {
 class SimStatsFixture : public BaseFixture {
 public:
     SimStatsFixture() : BaseFixture(), epSource(&agent.getEndpointManager()), simStats(agent) {
-
+        shared_ptr<modelgbp::policy::Universe> pUniverse =
+            modelgbp::policy::Universe::resolve(framework).get();
+        Mutator mutator(framework, "policyreg");
+        simSpace = pUniverse->addPolicySpace("simTest");
+        auto epg1 = simSpace->addGbpEpGroup("a");
+        auto epg2 = simSpace->addGbpEpGroup("b");
+        auto simClassifier = simSpace->addGbpeL24Classifier("classifier");
+        simClassifier->setDFromPort(80);
+        simClassifier->setDToPort(80);
+        simContract = simSpace->addGbpContract("test");
+        auto simSubj = simContract->addGbpSubject("subj");
+        auto simRule = simSubj->addGbpRule("rule");
+        auto classifierTarget = simRule->addGbpRuleToClassifierRSrc("targetName");
+        classifierTarget->setTargetL24Classifier(simClassifier->getURI());
+        auto targetA = epg1->addGbpEpGroupToProvContractRSrc("targetA");
+        targetA->setTargetContract(simContract->getURI());
+        auto targetB = epg2->addGbpEpGroupToConsContractRSrc("targetB");
+        targetB->setTargetContract(simContract->getURI());
+        mutator.commit();
     }
 
     virtual ~SimStatsFixture() {
     }
 
+    shared_ptr<modelgbp::policy::Space> simSpace;
+    shared_ptr<modelgbp::gbp::Contract> simContract;
     MockEndpointSource epSource;
     SimStats simStats;
 };
@@ -44,5 +64,10 @@ BOOST_FIXTURE_TEST_CASE(interface_counters, SimStatsFixture ) {
     BOOST_CHECK_EQUAL(1, eps.size());
 
     simStats.updateInterfaceCounters();
+}
+
+BOOST_FIXTURE_TEST_CASE(contract_counters, SimStatsFixture ) {
+    simStats.contractUpdated(simContract->getURI());
+    simStats.updateContractCounters();
 }
 }

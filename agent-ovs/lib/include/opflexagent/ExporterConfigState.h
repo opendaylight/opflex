@@ -14,7 +14,6 @@
 #define OPFLEX_EXPORTERCONFIGSTATE
 
 #include <opflex/modb/URI.h>
-#include <boost/asio.hpp>
 
 
 namespace opflexagent
@@ -31,9 +30,7 @@ class ExporterConfigState
 
 private:
     string dstAddr;
-    string srcAddr;
     uint32_t activeFlowTimeOut;
-    uint32_t idleFlowTimeOut;
     uint32_t samplingRate;
     uint16_t dstPort;
     URI uri;
@@ -48,8 +45,8 @@ public:
      * @param name_ name of Session object
      */
     ExporterConfigState(const URI& uri_, const string& name_) : dstAddr(""),
-        srcAddr(""), activeFlowTimeOut(0), idleFlowTimeOut(0), samplingRate(0),
-        dstPort(0),uri(uri_), name(name_), version(0), dscp(0)
+        activeFlowTimeOut(0), samplingRate(0), dstPort(0), uri(uri_),
+        name(name_), version(0), dscp(0)
      { };
     /**
      * get the name of this ExporterConfig
@@ -67,16 +64,6 @@ public:
      */
     void setDstAddress(const string& dstAddr_ )  { dstAddr = dstAddr_; };
     /**
-     * get the address of the source of ExporterConfig
-     * @return address  of the source ExporterConfig
-     */
-    const string& getSrcAddress() const { return srcAddr; };
-    /**
-     * set the address of the source of ExporterConfig
-     * @param[in] srcAddr_  source address of the source ExporterConfig
-     */
-    void setSrcAddress(const string& srcAddr_ ) { srcAddr = srcAddr_; };
-    /**
      * get the activeFlowTimeOut of  ExporterConfig
      * @return activeFlowTimeOut  of the  ExporterConfig
      */
@@ -86,16 +73,6 @@ public:
      * @param[in] activeFlowTimeOut_ activeFlowTimeOut of the ExporterConfig
      */
     void setActiveFlowTimeOut(const uint32_t& activeFlowTimeOut_ ) { activeFlowTimeOut = activeFlowTimeOut_; };
-    /**
-     * get the idleFlowTimeOut of  ExporterConfig
-     * @return idleFlowTimeOut  of the  ExporterConfig
-     */
-    const uint32_t& getIdleFlowTimeOut() const { return idleFlowTimeOut; };
-    /**
-     * set the  idleFlowTimeOut of ExporterConfig
-     * @param[in] idleFlowTimeOut_ idleFlowTimeOut  of the  ExporterConfig
-     */
-    void setIdleFlowTimeOut(const uint32_t& idleFlowTimeOut_ ) { idleFlowTimeOut = idleFlowTimeOut_; };
     /**
      * get the samplingRate of  ExporterConfig
      * @return samplingRate  of the  ExporterConfig
