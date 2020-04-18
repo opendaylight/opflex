@@ -14,7 +14,6 @@
 #include <modelgbp/gbpe/L24ClassifierCounter.hpp>
 
 
-
 namespace opflexagent {
 
 using namespace modelgbp::gbpe;
@@ -32,8 +31,7 @@ void SimStats::updateInterfaceCounters() {
     std::unordered_set<std::string> eps;
     epMgr.getEndpointUUIDs(eps);
     for (auto& uuid : eps) {
-        opflexagent::EndpointManager::EpCounters counters;
-        memset(&counters, 0, sizeof(counters));
+        opflexagent::EndpointManager::EpCounters counters{};
         uint64_t c = ++intCounter;
         counters.txPackets = c;
         counters.rxPackets = c;

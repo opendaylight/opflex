@@ -15,6 +15,8 @@
 #include <NetFlowRenderer.h>
 #include "MockJsonRpc.h"
 
+#include <modelgbp/netflow/CollectorVersionEnumT.hpp>
+
 namespace opflexagent {
 
 using namespace std;
@@ -44,10 +46,15 @@ static bool verifyCreateDestroy(const shared_ptr<NetFlowRenderer>& nfr) {
     nfr->setNextId(2000);
 
     bool result = nfr->createNetFlow("5.5.5.6", 10);
-    result = result && nfr->deleteNetFlow();
+    URI exporterURI("/PolicyUniverse/");
+    ExporterConfigState state(exporterURI, "test");
+    state.setVersion(1); // modelgbp::netflow::CollectorVersionEnumT::CONST_V5
+    shared_ptr<ExporterConfigState> statePtr = make_shared<ExporterConfigState>(state);
+    nfr->exporterDeleted(statePtr);
 
     result = result && nfr->createIpfix("5.5.5.5", 500);
-    result = result && nfr->deleteIpfix();
+    statePtr->setVersion(2); // modelgbp::netflow::CollectorVersionEnumT::CONST_V9
+    nfr->exporterDeleted(statePtr);
     return result;
 }
 
