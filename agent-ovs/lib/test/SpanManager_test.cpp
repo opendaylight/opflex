@@ -145,10 +145,7 @@ static bool checkSpan(boost::optional<shared_ptr<SessionState>> pSess,
                       const URI& spanUri) {
     if (!pSess)
         return false;
-    if (spanUri == pSess.get()->getUri())
-        return true;
-    else
-        return false;
+    return spanUri == pSess.get()->getUri();
 }
 
 static bool checkSrcEps(boost::optional<shared_ptr<SessionState>> pSess,
@@ -207,6 +204,8 @@ BOOST_FIXTURE_TEST_CASE( verify_artifacts, SpanFixture ) {
             dstSumm1), 500);
     boost::optional<URI> uri("/SpanUniverse/SpanSession/sess1/");
     BOOST_CHECK(testGetSession(lEp1, uri));
+    const auto& state = agent.getSpanManager().getSessionState(sess->getURI());
+    BOOST_CHECK_EQUAL(sess->getName().get(), state.get()->getName());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
