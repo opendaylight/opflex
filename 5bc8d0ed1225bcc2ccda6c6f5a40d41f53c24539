@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9af3cbac_b29529f4",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 2591,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2020-04-18T04:57:05Z",
+      "side": 1,
+      "message": "Could you consolidate the number of debugs in this function, errors are fine. Just the ones that are printed for every service.",
+      "revId": "5bc8d0ed1225bcc2ccda6c6f5a40d41f53c24539",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a2d23f0a_865eeb9d",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 2792,
+      "author": {
+        "id": 8294
+      },
+      "writtenOn": "2020-04-18T04:57:05Z",
+      "side": 1,
+      "message": "In what context is this function called ? Is it possible that a different thread is servicing programServiceSnatDnatFlows via handleServiceUpdate ? Cant you do the programming there itself ?",
+      "revId": "5bc8d0ed1225bcc2ccda6c6f5a40d41f53c24539",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
