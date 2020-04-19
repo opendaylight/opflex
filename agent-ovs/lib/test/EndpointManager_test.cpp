@@ -137,7 +137,7 @@ public:
     void rmEpAttributeSet() {
         EpAttributeSet::remove(framework, "72ffb982-b2d5-4ae4-91ac-0dd61daf527a");
     }
-    opflex::modb::URI getExtL3BDURI(std::string& name) {
+    static opflex::modb::URI getExtL3BDURI(std::string& name) {
         return URIBuilder().addElement("PolicyUniverse")
                .addElement("PolicySpace")
                .addElement("test")
@@ -1028,7 +1028,7 @@ BOOST_FIXTURE_TEST_CASE( fsextsvisource, FSEndpointFixture ) {
             "83f18f0b-80f7-46e2-b06c-4d9487b0c793") != nullptr), 500);
     auto extSviEp = agent.getEndpointManager().getEndpoint(
             "83f18f0b-80f7-46e2-b06c-4d9487b0c793");
-    BOOST_CHECK(extSviEp->isExternal() == true);
+    BOOST_CHECK(extSviEp->isExternal());
     BOOST_CHECK(extSviEp->getExtEncapId() == 1000);
 
     // check for removing an endpoint

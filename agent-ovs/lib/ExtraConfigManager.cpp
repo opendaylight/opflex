@@ -15,7 +15,6 @@
 #include <modelgbp/observer/DropFlowConfigUniverse.hpp>
 #include <modelgbp/observer/DropFlowConfig.hpp>
 #include <opflex/modb/Mutator.h>
-#include <opflexagent/logging.h>
 
 #include <memory>
 
@@ -72,7 +71,7 @@ void ExtraConfigManager::updateRDConfig(const RDConfig& rdConfig) {
 
 void ExtraConfigManager::removeRDConfig(const opflex::modb::URI& uri) {
     unique_lock<mutex> guard(ec_mutex);
-    rdc_map_t::iterator it = rdc_map.find(uri);
+    auto it = rdc_map.find(uri);
     if (it != rdc_map.end()) {
         rdc_map.erase(it);
     }

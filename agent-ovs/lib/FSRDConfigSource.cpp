@@ -43,7 +43,7 @@ FSRDConfigSource::FSRDConfigSource(ExtraConfigManager* manager_,
     listener.addWatch(serviceDir, *this);
 }
 
-static bool isrdconfig(fs::path filePath) {
+static bool isrdconfig(const fs::path& filePath) {
     string fstr = filePath.filename().string();
     return (boost::algorithm::ends_with(fstr, ".rdconfig") &&
             !boost::algorithm::starts_with(fstr, "."));
@@ -124,8 +124,8 @@ void FSRDConfigSource::updated(const fs::path& filePath) {
 
 void FSRDConfigSource::deleted(const fs::path& filePath) {
     try {
-        string pathstr = filePath.string();
-        rdc_map_t::iterator it = knownDomainConfigs.find(pathstr);
+        const string& pathstr = filePath.string();
+        auto it = knownDomainConfigs.find(pathstr);
         if (it != knownDomainConfigs.end()) {
             LOG(INFO) << "Removed routing domain config "
                       << it->second
