@@ -46,14 +46,14 @@ git apply ~/prometheus-cpp.patch
 mkdir _build && cd _build
 cmake .. -DBUILD_SHARED_LIBS=ON &> /dev/null
 make $make_args
-make install
+sudo make install
 ls -l /usr/local/lib64
-mv /usr/local/lib64/libprometheus-cpp-* /usr/local/lib/
+sudo mv /usr/local/lib64/libprometheus-cpp-* /usr/local/lib/
 popd
 
 pushd agent-ovs
 ./autogen.sh &> /dev/null
-./configure --enable-coverage --enable-prometheus &> /dev/null
+./configure --enable-coverage --enable-prometheus
 make -j2
 sudo make install
 make check
