@@ -12,6 +12,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/assign/list_of.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/optional.hpp>
 
 #include <opflexagent/test/ModbFixture.h>
 #include "ovs-ofputil.h"
@@ -141,7 +142,9 @@ void TableDropStatsManagerFixture::verifyDropFlowStats (
                                     PolicyStatsManager &statsManager) {
     optional<shared_ptr<PolicyStatUniverse>> su =
                 PolicyStatUniverse::resolve(agent.getFramework());
-    optional<shared_ptr<TableDropCounter>> tableDropCounter;
+    optional<shared_ptr<TableDropCounter>> tableDropCounter
+        = boost::make_optional<shared_ptr<TableDropCounter>>(false,
+                shared_ptr<TableDropCounter>(nullptr));
     if (su) {
         tableDropCounter = su.get()->resolveGbpeTableDropCounter(
                                         agent.getUuid(),
