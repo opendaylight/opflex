@@ -1848,8 +1848,10 @@ bool PolicyManager::updateExternalInterface(const URI& uri, bool &toRemove) {
     optional<URI> extDomURI, extBDURI, extRDURI, pfxURI;
     optional<shared_ptr<RoutingDomain>> newRD =
         boost::make_optional<shared_ptr<RoutingDomain>>(false, nullptr);
-    optional<shared_ptr<L3ExternalDomain>> newExtDom;
-    optional<shared_ptr<ExternalL3BridgeDomain>> newExtBD;
+    optional<shared_ptr<L3ExternalDomain>> newExtDom =
+        boost::make_optional<shared_ptr<L3ExternalDomain>>(false, nullptr);
+    optional<shared_ptr<ExternalL3BridgeDomain>> newExtBD =
+        boost::make_optional<shared_ptr<ExternalL3BridgeDomain>>(false, nullptr);
     optional<shared_ptr<InstContext>> newRDContext, newBDContext;
     subnet_map_t newsmap;
     ExternalInterfaceState  &eis = ext_int_map[uri];
