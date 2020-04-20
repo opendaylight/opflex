@@ -97,22 +97,17 @@ void SimStats::updateContractCounters() {
 }
 
 void SimStats::updateSecGrpCounters() {
-
     auto& polMgr = agent.getPolicyManager();
     auto su = modelgbp::observer::PolicyStatUniverse::resolve(agent.getFramework());
     std::unique_lock<std::mutex> guard(mutex);
     opflex::modb::Mutator mutator(agent.getFramework(), "policyelement");
-
     opflexagent::PolicyManager::rule_list_t rules;
-
-
     uint64_t c = ++secGrpCounter;
     for (auto& sec : secGroups) {
         polMgr.getSecGroupRules(sec, rules);
         for (auto& rule : rules) {
             auto& l24Classifier =
                 rule->getL24Classifier()->getURI().toString();
-
             SecGrpClassifierCounter::remove(agent.getFramework(), agent.getUuid(), (c - 1),
                                     l24Classifier);
             su.get()->addGbpeSecGrpClassifierCounter(agent.getUuid(), c,
@@ -124,7 +119,6 @@ void SimStats::updateSecGrpCounters() {
         }
     }
     mutator.commit();
-
 }
 
 void SimStats::on_timer_contract(const boost::system::error_code& ec) {
