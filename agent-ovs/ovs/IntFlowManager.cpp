@@ -1268,6 +1268,7 @@ static void flowsEndpointDHCPSource(IntFlowManager& flowMgr,
 static void flowsEndpointSource(FlowEntryList& elSrc,
                                 const Endpoint& endPoint,
                                 uint32_t ofPort,
+                                bool hostAcc,
                                 bool hasMac,
                                 uint8_t* macAddr,
                                 uint8_t unkFloodMode,
@@ -1286,7 +1287,7 @@ static void flowsEndpointSource(FlowEntryList& elSrc,
         // Map on L2. Port security rules filter L2
         // and L3 before we reach this table, except
         // for promiscuous endpoints.
-        if (!endPoint.isNatMode()) {
+        if (!endPoint.isNatMode() && !hostAcc) {
             actionSource(l2Classify, epgVnid, bdId, fgrpId, rdId)
                 .build(elSrc);
             return;
@@ -1300,17 +1301,14 @@ static void flowsEndpointSource(FlowEntryList& elSrc,
             .build(elSrc);
 
         for (const string& ipStr : endPoint.getIPs()) {
-
-            boost::system::error_code ec;
-
-            address addr = address::from_string(ipStr, ec);
-            if (ec) {
+            network::cidr_t cidr;
+            if (!network::cidr_from_string(ipStr, cidr), false) {
                 LOG(WARNING) << "Invalid endpoint IP: "
-                             << ipStr << ": " << ec.message();
+                             << ipStr;
                 continue;
             }
             actionSource(FlowBuilder().priority(140)
-                         .ipSrc(addr)
+                         .ipSrc(cidr.first, cidr.second)
                          .inPort(ofPort).ethSrc(macAddr),
                          epgVnid, bdId, fgrpId, rdId)
                 .build(elSrc);
@@ -1396,6 +1394,29 @@ static void flowRevMapCt(FlowEntryList& serviceRevFlows,
     ipRevMapCt.build(serviceRevFlows);
 }
 
+bool getHostAccess(EndpointManager& epMgr,
+                   SwitchManager& switchMgr,
+                   uint32_t& hostPort,
+                   uint8_t* hostMac) {
+    unordered_set<std::string> eps;
+    epMgr.getEndpointsByAccessIface("veth_host_ac", eps);
+    for (const std::string& ep : eps) {
+        shared_ptr<const Endpoint> epWrapper = epMgr.getEndpoint(ep);
+        if (epWrapper) {
+           const Endpoint& endPoint = *epWrapper.get();
+           bool hasMac = endPoint.getMAC() != boost::none;
+           if (hasMac)
+               endPoint.getMAC().get().toUIntArray(hostMac);
+           hostPort = OFPP_NONE;
+           const optional<string>& ofPortName = endPoint.getInterfaceName();
+           if (ofPortName)
+               hostPort = switchMgr.getPortMapper().FindPort(ofPortName.get());
+           return (hasMac && hostPort != OFPP_NONE);
+        }
+    }
+    return false;
+}
+
 void IntFlowManager::handleRemoteEndpointUpdate(const string& uuid) {
     LOG(DEBUG) << "Updating remote endpoint " << uuid;
 
@@ -1405,6 +1426,7 @@ void IntFlowManager::handleRemoteEndpointUpdate(const string& uuid) {
     if (!ep || (encapType == ENCAP_VLAN || encapType == ENCAP_NONE)) {
         switchManager.clearFlows(uuid, BRIDGE_TABLE_ID);
         switchManager.clearFlows(uuid, ROUTE_TABLE_ID);
+        switchManager.clearFlows(uuid, SRC_TABLE_ID);
         return;
     }
 
@@ -1445,18 +1467,24 @@ void IntFlowManager::handleRemoteEndpointUpdate(const string& uuid) {
 
     FlowEntryList elBridgeDst;
     FlowEntryList elRouteDst;
+    FlowEntryList elSrc;
     std::vector<std::shared_ptr<modelgbp::inv::RemoteIp>> invIps;
 
     if (hasForwardingInfo) {
         FlowBuilder bridgeFlow;
         uint32_t outReg = 0;
         uint64_t meta;
+        uint32_t hostPort = OFPP_NONE;
+        bool hasHostMac = false;
+        uint8_t hostMac[6];
 
         if (hasTunDest) {
             outReg = tunDst->to_v4().to_ulong();
             meta = flow::meta::out::REMOTE_TUNNEL;
         } else {
             meta = flow::meta::out::HOST_ACCESS;
+            hasHostMac = getHostAccess(agent.getEndpointManager(),
+                                       switchManager, hostPort, hostMac);
         }
 
         if (hasMac) {
@@ -1470,6 +1498,7 @@ void IntFlowManager::handleRemoteEndpointUpdate(const string& uuid) {
                 .go(POL_TABLE_ID)
                 .parent().build(elBridgeDst);
         }
+
 
         // Get remote endpoint IP addresses
         ep.get()->resolveInvRemoteIp(invIps);
@@ -1507,6 +1536,25 @@ void IntFlowManager::handleRemoteEndpointUpdate(const string& uuid) {
                     .go(POL_TABLE_ID)
                     .parent().build(elRouteDst);
             } else {
+                /*
+                 * ingress (=> pod) uses veth_host mac and inPort
+                 * but epg from the subnet. A priority 140 rule
+                 * for veth_host subnets overrides these rules
+                 * in the source table. So the SEPG will either
+                 * be EPG of veth_host for its subnets or EPG
+                 * of ext policy for ext policy subnets programmed
+                 * here. These flows only depend on veth_host
+                 * endpoint file which should always be there in
+                 * the cloud case.
+                 */
+                if (hasHostMac && hostPort != OFPP_NONE) {
+                    actionSource(FlowBuilder().priority(10 + prefix)
+                                 .ipSrc(addr, prefix)
+                                 .inPort(hostPort).ethSrc(hostMac),
+                                 epgVnid, bdId, fgrpId, rdId)
+                         .build(elSrc);
+                }
+                // egress (<= pod)
                 routeFlow
                     .priority(10 + prefix)
                     .ethType(eth::type::IP)
@@ -1543,6 +1591,7 @@ void IntFlowManager::handleRemoteEndpointUpdate(const string& uuid) {
         }
     }
 
+    switchManager.writeFlow(uuid, SRC_TABLE_ID, elSrc);
     switchManager.writeFlow(uuid, BRIDGE_TABLE_ID, elBridgeDst);
     switchManager.writeFlow(uuid, ROUTE_TABLE_ID, elRouteDst);
 }
@@ -1605,9 +1654,8 @@ static void flowsEndpointSNAT(SnatManager& snatMgr,
     uint8_t prefixlen = 0;
 
     for (const string& ipStr : endPoint.getIPs()) {
-        address nwSrc =
-            address::from_string(ipStr, ec);
-        if (ec) {
+        network::cidr_t cidr;
+        if (!network::cidr_from_string(ipStr, cidr, false)) {
             LOG(WARNING) << "Invalid endpoint IP: "
                          << ipStr << ": " << ec.message();
             continue;
@@ -1617,14 +1665,14 @@ static void flowsEndpointSNAT(SnatManager& snatMgr,
         for (auto it = as.getDest().begin(); it != as.getDest().end(); ++it) {
             if (count >= 32) {
                 LOG(WARNING) << "Limit 32 reached when adding SNAT for rdId "
-                             << rdId << " src " << nwSrc << " dst " << *it
+                             << rdId << " src " << cidr.first << " dst " << *it
                              << " , hence skipping";
                 continue;
             }
             FlowBuilder frd;
             frd.priority(300 - count)
                .reg(6, rdId)
-               .ipSrc(nwSrc);
+               .ipSrc(cidr.first);
             std::stringstream ss(*it);
             std::string addr, mask;
             std::getline(ss, addr, '/');
@@ -1650,7 +1698,7 @@ static void flowsEndpointSNAT(SnatManager& snatMgr,
             boost::optional<Snat::PortRanges> prs = as.getPortRanges("local");
             if (prs != boost::none && prs.get().size() > 0) {
                 for (const auto& pr : prs.get()) {
-                    flowsEndpointPortRangeSNAT(as, nwSrc, nwDst, prefixlen,
+                    flowsEndpointPortRangeSNAT(as, cidr.first, nwDst, prefixlen,
                                                pr.start, pr.end,
                                                rdId, zoneId, ofPort, count,
                                                elSnat);
@@ -1662,7 +1710,7 @@ static void flowsEndpointSNAT(SnatManager& snatMgr,
         // Program reverse flows to reach this endpoint
         FlowBuilder()
             .priority(10)
-            .ipDst(nwSrc)
+            .ipDst(cidr.first)
             .conntrackState(FlowBuilder::CT_TRACKED |
                             FlowBuilder::CT_ESTABLISHED,
                             FlowBuilder::CT_TRACKED |
@@ -1705,12 +1753,12 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
 
     std::vector<address> ipAddresses;
     for (const string& ipStr : endPoint.getIPs()) {
-        address addr = address::from_string(ipStr, ec);
-        if (ec) {
+        network::cidr_t cidr;
+        if (!network::cidr_from_string(ipStr, cidr, false)) {
             LOG(WARNING) << "Invalid endpoint IP: "
                          << ipStr << ": " << ec.message();
         } else {
-            ipAddresses.push_back(addr);
+            ipAddresses.push_back(cidr.first);
         }
     }
     if (hasMac) {
@@ -1786,11 +1834,13 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
                             hasMac, macAddr, virtualDHCPEnabled,
                             hasForwardingInfo, epgVnid, rdId, bdId);
 
+    bool hostAcc = false;
     /* Add ARP responder for veth_host */
     if (uuid.find("veth_host_ac") != std::string::npos) {
+        hostAcc = true;
         for (const string& ipStr : endPoint.getIPs()) {
-            address ipa = address::from_string(ipStr, ec);
-            if (ec) {
+            network::cidr_t cidr;
+            if (!network::cidr_from_string(ipStr, cidr, false)) {
                 LOG(WARNING) << "Invalid endpoint IP: "
                              << ipStr << ": " << ec.message();
                 continue;
@@ -1800,7 +1850,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
             }
             FlowBuilder proxyArp;
             proxyArp.priority(41).inPort(ofPort)
-                .ethSrc(macAddr).arpSrc(ipa)
+                .ethSrc(macAddr).arpSrc(cidr.first)
                 .proto(arp::op::REQUEST)
                 .ethDst(packets::MAC_ADDR_BROADCAST)
                 .action()
@@ -1810,7 +1860,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
                     .regMove(MFF_ARP_SHA, MFF_ARP_THA)
                     .reg(MFF_ARP_SHA, getRouterMacAddr())
                     .regMove(MFF_ARP_TPA, MFF_ARP_SPA)
-                    .reg(MFF_ARP_TPA, ipa.to_v4().to_ulong())
+                    .reg(MFF_ARP_TPA, cidr.first.to_v4().to_ulong())
                     .output(OFPP_IN_PORT)
                     .parent().build(elPortSec);
         }
@@ -1854,7 +1904,7 @@ void IntFlowManager::handleEndpointUpdate(const string& uuid) {
                              hasMac, macAddr, ipAddresses);
 
         /* Source Table flows; applicable only to local endpoints */
-        flowsEndpointSource(elSrc, endPoint, ofPort,
+        flowsEndpointSource(elSrc, endPoint, ofPort, hostAcc,
                             hasMac, macAddr, unkFloodMode, bcastFloodMode,
                             epgVnid, bdId, fgrpId, rdId);
 
@@ -3245,12 +3295,15 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
                 }
 
                 for (const string& epipStr : endPoint.getIPs()) {
+                    network::cidr_t cidr;
+                    if (!network::cidr_from_string(epipStr, cidr, false))
+                        continue;
                     // Dont create EPIP <--> SVCIP flows if EPIP is one of the
                     // next hops of this service.
                     const auto& nhips = sm.getNextHopIPs();
-                    if (nhips.find(epipStr) == nhips.end()) {
+                    if (nhips.find(cidr.first.to_string()) == nhips.end()) {
                         podSvcFlowAddExpr(epUuid+":"+uuid,
-                                          epipStr, sm,
+                                          cidr.first.to_string(), sm,
                                           endPoint.getAttributes(),
                                           as.getAttributes());
                     } else {
@@ -3304,6 +3357,9 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
         // cleaned up.
         unordered_set<string> epsvc_uuids;
         for (const string& epipStr : endPoint.getIPs()) {
+             network::cidr_t cidr;
+             if (!network::cidr_from_string(epipStr, cidr, false))
+                 continue;
 
             for (const string& svcUuid : svcUuids) {
                 shared_ptr<const Service> asWrapper
@@ -3328,9 +3384,9 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
                     // Dont create EPIP <--> SVCIP flows if EPIP is one of the
                     // next hops of this service.
                     const auto& nhips = sm.getNextHopIPs();
-                    if (nhips.find(epipStr) == nhips.end()) {
+                    if (nhips.find(cidr.first.to_string()) == nhips.end()) {
                         podSvcFlowAddExpr(uuid+":"+svcUuid,
-                                          epipStr, sm,
+                                          cidr.first.to_string(), sm,
                                           endPoint.getAttributes(),
                                           as.getAttributes());
                     } else {
