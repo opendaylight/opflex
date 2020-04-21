@@ -612,7 +612,7 @@ void AdvertManager::onEndpointAdvTimer(const boost::system::error_code& ec) {
     }
 }
 
-void AdvertManager::sendTunnelEpAdvs(const string& uuid) {
+void AdvertManager::sendTunnelEpRarp(const string& uuid) {
 #ifdef __linux__
     const std::string tunnelIp  =
             intFlowManager.getTunnelEpManager().getTerminationIp(uuid);
@@ -646,56 +646,109 @@ void AdvertManager::sendTunnelEpAdvs(const string& uuid) {
     arp_ptr->hlen = ETH_ALEN;
     arp_ptr->plen = 4;
     unsigned char *ptr = (unsigned char *)((unsigned char *)arp_ptr + sizeof(arp::arp_hdr));
-    if(tunnelEndpointAdv == EndpointAdvMode::EPADV_GRATUITOUS_BROADCAST) {
-        boost::system::error_code ec;
-        address addr = address::from_string(tunnelIp, ec);
-        if (ec || !addr.is_v4()) {
-            LOG(ERROR) << "Invalid IPv4 address: " << tunnelIp;
-            if(ec) {
-                LOG(ERROR) << ": " << ec.message();
-            }
-            return;
-        }
-        uint32_t addrv = htonl(addr.to_v4().to_ulong());
-        sockfd = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_ARP));
-        if(sockfd < 0) {
-            LOG(ERROR) << "Failed to create socket: " << sockfd;
-            return;
-        }
-        sa_ll.sll_protocol = htons(ETH_P_ARP);
-
-        arp_ptr->op = htons(opflexagent::arp::op::REQUEST);
-        memcpy(ptr, tunnelMacBytes, ETH_ALEN);
-        ptr+=ETH_ALEN;
-        memcpy(ptr, &addrv, 4);
-        ptr += 4;
-        memset(ptr, 0xff, ETH_ALEN);
-        ptr+=ETH_ALEN;
-        memcpy(ptr, &addrv, 4);
-    } else {
-        sockfd = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_RARP));
-        if(sockfd < 0) {
-            LOG(ERROR) << "Failed to create socket: " << sockfd;
-            return;
-        }
-        sa_ll.sll_protocol = htons(ETH_P_RARP);
-
-        arp_ptr->op = htons((opflexagent::arp::op::REVERSE_REQUEST));
-        memcpy(ptr, tunnelMacBytes, ETH_ALEN);
-        ptr += (ETH_ALEN + 4);
-        memcpy(ptr, tunnelMacBytes, ETH_ALEN);
+    sockfd = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_RARP));
+    if(sockfd < 0) {
+        LOG(ERROR) << "Failed to create socket: " << sockfd;
+        return;
     }
+    sa_ll.sll_protocol = htons(ETH_P_RARP);
 
+    arp_ptr->op = htons((opflexagent::arp::op::REVERSE_REQUEST));
+    memcpy(ptr, tunnelMacBytes, ETH_ALEN);
+    ptr += (ETH_ALEN + 4);
+    memcpy(ptr, tunnelMacBytes, ETH_ALEN);
     ssize_t error = sendto(sockfd, buf, 46 , htonl(SO_BROADCAST),
             (struct sockaddr*)&sa_ll, sizeof(struct sockaddr_ll));
     if (error < 0) {
         LOG(ERROR) << "Could not send tunnel advertisement: "
                    << error;
     } else {
-       LOG(DEBUG) << "Sent advertisement for TunnelEp: " << tunnelMac << " " << tunnelIp;
+       LOG(DEBUG) << "Sent RARP advertisement for TunnelEp: " << tunnelMac << " " << tunnelIp;
     }
     close(sockfd);
 #endif
+}
+
+void AdvertManager::sendTunnelEpGarp(const string& uuid) {
+#ifdef __linux__
+    const std::string tunnelIp  =
+            intFlowManager.getTunnelEpManager().getTerminationIp(uuid);
+    const std::string tunnelMac =
+            intFlowManager.getTunnelEpManager().getTerminationMac(uuid);
+    opflex::modb::MAC opMac(tunnelMac);
+    uint8_t tunnelMacBytes[ETH_ALEN];
+    opMac.toUIntArray(tunnelMacBytes);
+    unsigned char buf[46];
+    int sockfd;
+    ifreq ifReq;
+    memset(&ifReq, 0, sizeof(ifReq));
+    struct sockaddr_ll sa_ll;
+    memset(&sa_ll, 0, sizeof(sa_ll));
+    memset(buf, 0, 46);
+    struct arp::arp_hdr *arp_ptr = (struct arp::arp_hdr *) buf;
+    sa_ll.sll_family = htons(AF_PACKET);
+    sa_ll.sll_hatype = htons(1);
+    sa_ll.sll_halen = htons(ETH_ALEN);
+    string uplinkIface;
+    intFlowManager.getTunnelEpManager().getUplinkIface(uplinkIface);
+    sa_ll.sll_ifindex = if_nametoindex(uplinkIface.c_str());
+    if(sa_ll.sll_ifindex < 0) {
+        LOG(ERROR) << "Failed to get ifindex by name " << uplinkIface <<
+                ": " << sa_ll.sll_ifindex;
+        return;
+    }
+    memset(sa_ll.sll_addr, 0xff, ETH_ALEN);
+    arp_ptr->htype = htons(1);
+    arp_ptr->ptype = htons(0x0800);
+    arp_ptr->hlen = ETH_ALEN;
+    arp_ptr->plen = 4;
+    unsigned char *ptr = (unsigned char *)((unsigned char *)arp_ptr + sizeof(arp::arp_hdr));
+    boost::system::error_code ec;
+    address addr = address::from_string(tunnelIp, ec);
+    if (ec || !addr.is_v4()) {
+        LOG(ERROR) << "Invalid IPv4 address: " << tunnelIp;
+        if(ec) {
+            LOG(ERROR) << ": " << ec.message();
+        }
+        return;
+    }
+    uint32_t addrv = htonl(addr.to_v4().to_ulong());
+    sockfd = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_ARP));
+    if(sockfd < 0) {
+        LOG(ERROR) << "Failed to create socket: " << sockfd;
+        return;
+    }
+    sa_ll.sll_protocol = htons(ETH_P_ARP);
+
+    arp_ptr->op = htons(opflexagent::arp::op::REQUEST);
+    memcpy(ptr, tunnelMacBytes, ETH_ALEN);
+    ptr+=ETH_ALEN;
+    memcpy(ptr, &addrv, 4);
+    ptr += 4;
+    memset(ptr, 0xff, ETH_ALEN);
+    ptr+=ETH_ALEN;
+    memcpy(ptr, &addrv, 4);
+    ssize_t error = sendto(sockfd, buf, 46 , htonl(SO_BROADCAST),
+            (struct sockaddr*)&sa_ll, sizeof(struct sockaddr_ll));
+    if (error < 0) {
+        LOG(ERROR) << "Could not send tunnel advertisement: "
+                   << error;
+    } else {
+       LOG(DEBUG) << "Sent GARP advertisement for TunnelEp: " << tunnelMac << " " << tunnelIp;
+    }
+    close(sockfd);
+#endif
+}
+
+void AdvertManager::sendTunnelEpAdvs(const string& uuid) {
+    if(tunnelEndpointAdv == AdvertManager::EPADV_GRATUITOUS_BROADCAST) {
+        sendTunnelEpGarp(uuid);
+    } else if(tunnelEndpointAdv == AdvertManager::EPADV_RARP_BROADCAST){
+        sendTunnelEpRarp(uuid);
+    } else if(tunnelEndpointAdv == AdvertManager::EPADV_GARP_RARP_BROADCAST){
+        sendTunnelEpGarp(uuid);
+        sendTunnelEpRarp(uuid);
+    }
 }
 
 void AdvertManager::onTunnelEpAdvTimer(const boost::system::error_code& ec) {
