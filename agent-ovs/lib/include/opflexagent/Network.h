@@ -178,10 +178,12 @@ typedef std::pair<boost::asio::ip::address, uint8_t> cidr_t;
  *
  * @param cidrStr the CIDR string to parse
  * @param cidr the output CIDR object if parsing was successful
+ * @param do_mask_addr mask the IP address if true
  * @return true if the provided CIDR string is valid and was successfully
  * parsed
  */
-bool cidr_from_string(const std::string& cidrStr, cidr_t& cidr);
+bool cidr_from_string(const std::string& cidrStr, cidr_t& cidr,
+                      bool do_mask_addr = true);
 
 /**
  * Check if provided IP address belong to a CIDR range.
