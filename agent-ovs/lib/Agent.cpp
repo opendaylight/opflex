@@ -71,6 +71,7 @@ Agent::Agent(OFFramework& framework_, const LogParams& _logParams)
       netflowManager(framework,agent_io),
       prometheusEnabled(true),
       prometheusExposeLocalHostOnly(false),
+      prometheusExposeEpSvcNan(false),
       logParams(_logParams) {
 #else
 Agent::Agent(OFFramework& framework_, const LogParams& _logParams)
@@ -151,6 +152,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
 #ifdef HAVE_PROMETHEUS_SUPPORT
     static const std::string PROMETHEUS_ENABLED("prometheus.enabled");
     static const std::string PROMETHEUS_LOCALHOST_ONLY("prometheus.localhost-only");
+    static const std::string PROMETHEUS_EXPOSE_EPSVC_NAN("prometheus.expose-epsvc-nan");
     static const std::string PROMETHEUS_EP_ATTRIBUTES("prometheus.ep-attributes");
 #endif
     static const std::string ENDPOINT_SOURCE_FSPATH("endpoint-sources.filesystem");
@@ -266,6 +268,13 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     if (prometheusLocalHostOnly) {
         if (prometheusLocalHostOnly.get() == true)
             prometheusExposeLocalHostOnly = true;
+    }
+
+    boost::optional<bool> prometheusEpSvcNan =
+                properties.get_optional<bool>(PROMETHEUS_EXPOSE_EPSVC_NAN);
+    if (prometheusEpSvcNan) {
+        if (prometheusEpSvcNan.get() == true)
+            prometheusExposeEpSvcNan = true;
     }
 
     optional<const ptree&> epAttributes =
@@ -568,7 +577,8 @@ void Agent::start() {
     // instantiate other components
 #ifdef HAVE_PROMETHEUS_SUPPORT
     if (prometheusEnabled) {
-        prometheusManager.start(prometheusExposeLocalHostOnly);
+        prometheusManager.start(prometheusExposeLocalHostOnly,
+                                prometheusExposeEpSvcNan);
     } else {
         LOG(DEBUG) << "prometheus not enabled";
     }
