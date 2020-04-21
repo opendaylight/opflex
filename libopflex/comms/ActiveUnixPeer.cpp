@@ -37,25 +37,13 @@ void ::yajr::comms::internal::ActiveUnixPeer::onFailedConnect(int rc) {
 void ::yajr::comms::internal::ActiveUnixPeer::retry() {
 
     if (destroying_) {
-
-        LOG(INFO)
-            << this
-            << "Not retrying because of pending destroy"
-        ;
-
+        LOG(INFO) << this << "Not retrying because of pending destroy";
         return;
-
     }
     if (uvRefCnt_ != 1) {
-        LOG(INFO)
-            << this
-            << " has to wait for reference count to fall to 1 before retrying"
-        ;
-
+        LOG(INFO) << this  << " has to wait for reference count to fall to 1 before retrying";
         insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
-
         return;
-
     }
 
     int rc;
@@ -94,12 +82,6 @@ void ::yajr::comms::internal::ActiveUnixPeer::retry() {
     up();
     status_ = internal::Peer::kPS_CONNECTING;
     insert(internal::Peer::LoopData::ATTEMPTING_TO_CONNECT);
-
-    VLOG(1)
-        << this
-        << " issued a pipe connect request: " << socketName_
-    ;
-
 }
 
 

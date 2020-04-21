@@ -79,12 +79,7 @@
     }
 
     peer->nullTermination = nullTermination_;
-    VLOG(1)
-        << peer
-        << " queued up for resolution"
-    ;
     peer->insert(::yajr::comms::internal::Peer::LoopData::TO_RESOLVE);
-
     return peer;
 }
 
@@ -111,19 +106,11 @@
 #endif
 
     if (!peer) {
-        LOG(WARNING)
-            << ": out of memory, dropping new peer on the floor"
-        ;
+        LOG(WARNING) << ": out of memory, dropping new peer on the floor";
         return NULL;
     }
     peer->nullTermination = nullTermination_;
-
-    VLOG(1)
-        << peer
-        << " queued up for connect"
-    ;
     peer->insert(::yajr::comms::internal::Peer::LoopData::TO_RESOLVE);
-
     return peer;
 }
 
@@ -152,21 +139,12 @@ void on_active_connection(uv_connect_t *req, int status) {
 
         /* the peer might have been deleted, so we have to avoid accessing any
          * of its members */
-        VLOG(1)
-            << peer
-            << " has had a connection attempt canceled"
-        ;
-
+        VLOG(1) << peer << " has had a connection attempt canceled";
         peer->onError(status);
-
         return;
     }
 
     if (peer->destroying_) {
-        LOG(INFO)
-            << peer
-            << " peer is being destroyed. down() it"
-        ;
         peer->down();
         return;
     }
@@ -212,10 +190,7 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
     void retry_later(ActivePeer * peer);
 
     if (peer->destroying_) {
-        LOG(INFO)
-            << peer
-            << " peer is being destroyed. down() it"
-        ;
+        LOG(INFO) << peer << " peer is being destroyed. down() it";
         peer->down();
         return;
     }
@@ -225,8 +200,7 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
             << "getaddrinfo callback error: ["
             << uv_err_name(status)
             << "] "
-            << uv_strerror(status)
-        ;
+            << uv_strerror(status);
         peer->status_ = Peer::kPS_FAILED_TO_RESOLVE;
         uv_freeaddrinfo(resp);
 
@@ -251,8 +225,7 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
             << "connect_to_next_address: ["
             << uv_err_name(rc)
             << "] "
-            << uv_strerror(rc)
-        ;
+            << uv_strerror(rc);
         if (!uv_is_closing(peer->getHandle())) {
             uv_close(peer->getHandle(), on_close);
         }
@@ -260,12 +233,6 @@ void on_resolved(uv_getaddrinfo_t * req, int status, struct addrinfo *resp) {
     }
 
     peer->status_ = Peer::kPS_CONNECTING;
-
-    VLOG(1)
-        << peer
-        << " waiting for connection completion"
-    ;
-
 }
 
 
@@ -338,13 +305,8 @@ void debug_address(struct addrinfo const * ai, size_t m = 0) {
 void retry_later(ActivePeer * peer) {
 
     if (peer->destroying_) {
-        LOG(INFO)
-            << peer
-            << " peer is being destroyed. not inserting in RETRY_TO_CONNECT"
-        ;
-
+        LOG(INFO) << peer << " peer is being destroyed. not inserting in RETRY_TO_CONNECT";
         return;
-
     }
 
     peer->unlink();
@@ -356,10 +318,6 @@ void retry_later(ActivePeer * peer) {
 void swap_stack_on_close(uv_handle_t * h) {
 
     ActiveTcpPeer * peer = Peer::get<ActiveTcpPeer>(h);  // can't possibly crash yet
-
-    VLOG(1)
-        << peer
-    ;
 
     int rc;
     /* FIXME: pass the loop along */
@@ -376,8 +334,7 @@ void swap_stack_on_close(uv_handle_t * h) {
             << "connect_to_next_address: ["
             << uv_err_name(rc)
             << "] "
-            << uv_strerror(rc)
-        ;
+            << uv_strerror(rc);
         if (!uv_is_closing(peer->getHandle())) {
             uv_close(peer->getHandle(), on_close);
         }
@@ -395,10 +352,7 @@ int connect_to_next_address(ActiveTcpPeer * peer, bool swap_stack) {
     /* BAIL if destroying */
     if (peer->destroying_) {
 
-        LOG(INFO)
-            << peer
-            << " peer is being destroyed. down() it"
-        ;
+        LOG(INFO) << peer << " peer is being destroyed. down() it";
         peer->down();
         return UV_ECANCELED;
     }
@@ -444,7 +398,6 @@ int connect_to_next_address(ActiveTcpPeer * peer, bool swap_stack) {
         }
 
         ai = ai->ai_next;
-
         debug_address(ai);
     }
 
@@ -454,18 +407,6 @@ int connect_to_next_address(ActiveTcpPeer * peer, bool swap_stack) {
             uv_freeaddrinfo(peer->_.ai);
         }
         peer->_.ai = NULL;
-    }
-
-    if (rc) {
-        VLOG(1)
-            << peer
-            << " unable to issue a(nother) connect request"
-        ;
-    } else {
-        VLOG(1)
-            << peer
-            << " issued a connect request"
-        ;
     }
 
     return rc;

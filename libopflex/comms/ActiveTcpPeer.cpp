@@ -23,25 +23,13 @@ namespace yajr {
 void ::yajr::comms::internal::ActiveTcpPeer::retry() {
 
     if (destroying_) {
-
-        LOG(INFO)
-            << this
-            << "Not retrying because of pending destroy"
-        ;
-
+        LOG(INFO) << this << "Not retrying because of pending destroy";
         return;
-
     }
     if (uvRefCnt_ != 1) {
-        LOG(INFO)
-            << this
-            << " has to wait for reference count to fall to 1 before retrying"
-        ;
-
+        LOG(INFO) << this << " has to wait for reference count to fall to 1 before retrying";
         insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
-
         return;
-
     }
 
 
@@ -78,13 +66,9 @@ void ::yajr::comms::internal::ActiveTcpPeer::retry() {
         onError(rc);
         insert(internal::Peer::LoopData::RETRY_TO_CONNECT);
     } else {
-        VLOG(1)
-            << this
-            << " up() for a pending getaddrinfo()";
         up();
         insert(internal::Peer::LoopData::ATTEMPTING_TO_CONNECT);
     }
-
 }
 
 void ActiveTcpPeer::onFailedConnect(int rc) {
@@ -92,10 +76,7 @@ void ActiveTcpPeer::onFailedConnect(int rc) {
     extern void retry_later(ActivePeer * peer);
 
     if ((rc = connect_to_next_address(this))) {
-        LOG(WARNING)
-            << this
-            << "connect: no more resolved addresses"
-        ;
+        LOG(WARNING) << this << "connect: no more resolved addresses";
 
         /* since all attempts for all possible IP addresses have failed,
          * issue an error callback

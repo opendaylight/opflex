@@ -139,11 +139,7 @@ bool OutboundMessage::send() {
         cP->write();
 
         if (!ok) {
-            LOG(ERROR)
-                << cP
-                << " problem Accept()ing a message"
-                ;
-
+            LOG(ERROR) << cP << " problem Accept()ing a message";
             assert(ok);
         }
 
