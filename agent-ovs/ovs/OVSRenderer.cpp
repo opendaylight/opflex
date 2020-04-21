@@ -459,13 +459,15 @@ void OVSRenderer::setProperties(const ptree& properties) {
 
     std::string tnlEpAdvStr =
         properties.get<std::string>(ENDPOINT_TNL_ADV_MODE,
-                                    "rarp-broadcast");
+                                    "garp-rarp-broadcast");
     if (tnlEpAdvStr == "gratuitous-broadcast") {
         tunnelEndpointAdvMode = AdvertManager::EPADV_GRATUITOUS_BROADCAST;
     } else if(tnlEpAdvStr == "disabled") {
         tunnelEndpointAdvMode = AdvertManager::EPADV_DISABLED;
-    } else {
+    } else if(tnlEpAdvStr == "rarp-broadcast") {
         tunnelEndpointAdvMode = AdvertManager::EPADV_RARP_BROADCAST;
+    } else {
+        tunnelEndpointAdvMode = AdvertManager::EPADV_GARP_RARP_BROADCAST;
     }
 
     tunnelEndpointAdvIntvl =
