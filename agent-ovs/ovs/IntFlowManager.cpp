@@ -2661,6 +2661,11 @@ void IntFlowManager::updateSvcStatsFlows (const string& uuid,
     if (serviceStatsFlowDisabled)
         return;
 
+    LOG(DEBUG) << "##### Updating service stats flows:"
+               << " uuid: " << uuid
+               << " is_svc: " << is_svc
+               << " is_add: " << is_add << "#######";
+
     updatePodSvcStatsFlows(uuid, is_svc, is_add);
     updateSvcTgtStatsFlows(uuid, is_svc, is_add);
     updateSvcExtStatsFlows(uuid, is_svc, is_add);
@@ -2671,7 +2676,7 @@ void IntFlowManager::updateSvcExtStatsFlows (const string &uuid,
                                              const bool &is_add)
 {
 
-    LOG(DEBUG) << "##### Updating ext<-->svc-tgt flows:"
+    LOG(TRACE) << "##### Updating ext<-->svc-tgt flows:"
                << " uuid: " << uuid
                << " is_svc: " << is_svc
                << " is_add: " << is_add << "#######";
@@ -2772,15 +2777,19 @@ void IntFlowManager::updateSvcExtStatsFlows (const string &uuid,
         const string& egrStr = "svctoex:"+flow_uuid+":"+nhipStr;
         uint64_t cookieIdIg = (uint64_t)idGen.getId(ID_NMSPC_SVCSTATS, ingStr);
         uint64_t cookieIdEg = (uint64_t)idGen.getId(ID_NMSPC_SVCSTATS, egrStr);
+        if ((svc_nh_map.find(flow_uuid) == svc_nh_map.end())
+            || ((svc_nh_map.find(flow_uuid) != svc_nh_map.end())
+                && (svc_nh_map[flow_uuid].find(nhipStr) == svc_nh_map[flow_uuid].end()))) {
+            LOG(DEBUG) << "Created ext<-->svc-tgt cookies for"
+                       << " flow_uuid: " << flow_uuid
+                       << " NH IP: " << nhipStr
+                       << " SVC-SM IP: " << sm.getServiceIP().get()
+                       << " cookieIg: " << cookieIdIg
+                       << " cookieEg: " << cookieIdEg;
+        }
+
         svc_nh_map[flow_uuid].insert(nhipStr);
         nhips.insert(nhipStr);
-
-        LOG(DEBUG) << "Creating ext<-->svc-tgt counters for"
-                   << " flow_uuid: " << flow_uuid
-                   << " NH IP: " << nhipStr
-                   << " SVC-SM IP: " << sm.getServiceIP().get()
-                   << " cookieIg: " << cookieIdIg
-                   << " cookieEg: " << cookieIdEg;
 
         // updates to take care of pod name and namespace change
         updateSvcTgtStatsCounters(cookieIdIg, true, ingStr, 0, 0, svcAttr, epAttr);
@@ -2807,7 +2816,7 @@ void IntFlowManager::updateSvcExtStatsFlows (const string &uuid,
         const Service& as = *asWrapper;
         if ((as.getServiceMode() != Service::LOADBALANCER)
                                   || !as.isExternal()) {
-            LOG(DEBUG) << "ext<-->svc-tgt not handled for non-LB or non-ext services - svc_uuid: " << uuid;
+            LOG(TRACE) << "ext<-->svc-tgt not handled for non-LB or non-ext services - svc_uuid: " << uuid;
             // clear obs and prom metrics during update;
             // below will be no-op during create
             svcTgtCkRemExpr(flow_uuid, uuid);
@@ -2831,7 +2840,7 @@ void IntFlowManager::updateSvcExtStatsFlows (const string &uuid,
         // flush svc-tgt counters and idgen cookies of NH's that got
         // removed due to config updates of svc or ep/nh
         if (!uuid_ck_set.size()) {
-            LOG(DEBUG) << "#### ext<-->svc-tgt no cookies created for svc_uuid: " << uuid;
+            LOG(TRACE) << "#### ext<-->svc-tgt no cookies created for svc_uuid: " << uuid;
             // clear obs and prom metrics during update;
             // below will be no-op during create
             svcTgtCkRemExpr(flow_uuid, uuid);
@@ -2881,7 +2890,7 @@ void IntFlowManager::updateSvcTgtStatsFlows (const string &uuid,
                                              const bool &is_add)
 {
 
-    LOG(DEBUG) << "##### Updating *<-->svc-tgt flows:"
+    LOG(TRACE) << "##### Updating *<-->svc-tgt flows:"
                << " uuid: " << uuid
                << " is_svc: " << is_svc
                << " is_add: " << is_add << "#######";
@@ -2969,9 +2978,6 @@ void IntFlowManager::updateSvcTgtStatsFlows (const string &uuid,
                          << ": " << ec.message();
             return;
         }
-        LOG(DEBUG) << "Adding any<-->svc flow for"
-                   << " NH IP: " << nhipStr
-                   << " SVC-SM IP: " << sm.getServiceIP().get();
 
         uint8_t proto = 0;
         if (sm.getServiceProto()) {
@@ -2981,7 +2987,10 @@ void IntFlowManager::updateSvcTgtStatsFlows (const string &uuid,
             else if ("tcp" == protoStr)
                 proto = 6;
             else {
-                LOG(DEBUG) << "unhandled proto: " << protoStr;
+                LOG(DEBUG) << "unhandled proto: " << protoStr
+                           << " in any<-->svc flow for"
+                           << " NH IP: " << nhipStr
+                           << " SVC-SM IP: " << sm.getServiceIP().get();
                 return;
             }
         }
@@ -2990,13 +2999,19 @@ void IntFlowManager::updateSvcTgtStatsFlows (const string &uuid,
         const string& egrStr = "svctoan:"+flow_uuid+":"+nhipStr;
         uint64_t cookieIdIg = (uint64_t)idGen.getId(ID_NMSPC_SVCSTATS, ingStr);
         uint64_t cookieIdEg = (uint64_t)idGen.getId(ID_NMSPC_SVCSTATS, egrStr);
+        if ((svc_nh_map.find(flow_uuid) == svc_nh_map.end())
+            || ((svc_nh_map.find(flow_uuid) != svc_nh_map.end())
+                && (svc_nh_map[flow_uuid].find(nhipStr) == svc_nh_map[flow_uuid].end()))) {
+            LOG(DEBUG) << "Creating any<-->svc flows for"
+                       << " flow_uuid: " << flow_uuid
+                       << " NH IP: " << nhipStr
+                       << " SVC-SM IP: " << sm.getServiceIP().get()
+                       << " cookieIg: " << cookieIdIg
+                       << " cookieEg: " << cookieIdEg;
+        }
+
         svc_nh_map[flow_uuid].insert(nhipStr);
         nhips.insert(nhipStr);
-
-        LOG(DEBUG) << "Creating any<-->svc counters for"
-                   << " flow_uuid: " << flow_uuid
-                   << " cookieIg: " << cookieIdIg
-                   << " cookieEg: " << cookieIdEg;
 
         // updates to take care of pod name and namespace change
         updateSvcTgtStatsCounters(cookieIdIg, true, ingStr, 0, 0, svcAttr, epAttr);
@@ -3055,12 +3070,12 @@ void IntFlowManager::updateSvcTgtStatsFlows (const string &uuid,
         }
 
         const Service& as = *asWrapper;
-        LOG(DEBUG) << "####### *<-->svc-tgt Service ########";
-        LOG(DEBUG) << *asWrapper;
+        LOG(TRACE) << "####### *<-->svc-tgt Service ########";
+        LOG(TRACE) << *asWrapper;
 
         if ((as.getServiceMode() != Service::LOADBALANCER)
                                   || as.isExternal()) {
-            LOG(DEBUG) << "*<-->svc-tgt not handled for non-LB or ext services";
+            LOG(TRACE) << "*<-->svc-tgt not handled for non-LB or ext services";
             // clear obs and prom metrics during update;
             // below will be no-op during create
             svcTgtFlowRemExpr(flow_uuid, uuid);
@@ -3084,7 +3099,7 @@ void IntFlowManager::updateSvcTgtStatsFlows (const string &uuid,
         // flush svc-tgt counters and idgen cookies of NH flows that got
         // removed due to config updates of svc or ep/nh
         if (!uuid_felist_map.size()) {
-            LOG(DEBUG) << "####*<-->svc-tgt no flows created for svc_uuid: " << uuid;
+            LOG(TRACE) << "####*<-->svc-tgt no flows created for svc_uuid: " << uuid;
             // clear obs and prom metrics during update;
             // below will be no-op during create
             svcTgtFlowRemExpr(flow_uuid, uuid);
@@ -3135,7 +3150,7 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
                                              const bool &is_svc,
                                              const bool &is_add)
 {
-    LOG(DEBUG) << "##### Updating pod<-->svc flows:"
+    LOG(TRACE) << "##### Updating pod<-->svc flows:"
                << " uuid: " << uuid
                << " is_svc: " << is_svc
                << " is_add: " << is_add << "#######";
@@ -3185,13 +3200,13 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
                          << ": " << ec.message();
             return;
         }
-        LOG(DEBUG) << "Adding pod<-->svc flow between"
+        LOG(TRACE) << "Adding pod<-->svc flow between"
                    << " EP IP: " << epipStr
                    << " SVC-SM IP: " << sm.getServiceIP().get();
 
         // ensure flows are either v4 or v6 - no mix-n-match
         if (svcAddr.is_v4() != epAddr.is_v4()) {
-            LOG(DEBUG) << "Not adding flow - ip types are different";
+            LOG(TRACE) << "Not adding flow - ip types are different";
             return;
         }
 
@@ -3293,8 +3308,8 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
         }
 
         const Service& as = *asWrapper;
-        LOG(DEBUG) << "####### pod<-->svc Service ########";
-        LOG(DEBUG) << *asWrapper;
+        LOG(TRACE) << "####### pod<-->svc Service ########";
+        LOG(TRACE) << *asWrapper;
 
         // build this set to detect if a pod<-->svc flow got created or not.
         // For e.g. if a svc-next hop becomes same as an IP in EP, then flow wont be created.
@@ -3308,12 +3323,12 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
                 if (!epWrapper)
                     continue;
 
-                LOG(DEBUG) << "####### pod<-->svc Endpoint ########";
-                LOG(DEBUG) << *epWrapper;
+                LOG(TRACE) << "####### pod<-->svc Endpoint ########";
+                LOG(TRACE) << *epWrapper;
 
                 if ((as.getServiceMode() != Service::LOADBALANCER)
                                           || as.isExternal()) {
-                    LOG(DEBUG) << "podsvc not handled for non-LB or ext services";
+                    LOG(TRACE) << "podsvc not handled for non-LB or ext services";
                     // clear obs and prom metrics during update;
                     // below will be no-op during create
                     podSvcFlowRemExpr(epUuid+":"+uuid);
@@ -3322,7 +3337,7 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
 
                 const Endpoint& endPoint = *epWrapper.get();
                 if (endPoint.isExternal()) {
-                    LOG(DEBUG) << "pod<-->svc flows not handled for external endpoints";
+                    LOG(TRACE) << "pod<-->svc flows not handled for external endpoints";
                     continue;
                 }
 
@@ -3344,7 +3359,7 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
 
         for (const auto& epsvc_uuid: epsvc_uuids) {
             if (uuid_felist_map.find(epsvc_uuid) == uuid_felist_map.end()) {
-                LOG(DEBUG) << "podsvc: no flows created for epsvc_uuid: " << epsvc_uuid;
+                LOG(TRACE) << "podsvc: no flows created for epsvc_uuid: " << epsvc_uuid;
                 podSvcFlowRemExpr(epsvc_uuid);
             }
         }
@@ -3369,12 +3384,12 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
             return;
         }
 
-        LOG(DEBUG) << "####### pod<-->svc Endpoint ########";
-        LOG(DEBUG) << *epWrapper;
+        LOG(TRACE) << "####### pod<-->svc Endpoint ########";
+        LOG(TRACE) << *epWrapper;
 
         const Endpoint& endPoint = *epWrapper.get();
         if (endPoint.isExternal()) {
-            LOG(DEBUG) << "pod<-->svc flows not handled for external endpoints";
+            LOG(TRACE) << "pod<-->svc flows not handled for external endpoints";
             return;
         }
 
@@ -3396,13 +3411,13 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
                 if (!asWrapper)
                     continue;
 
-                LOG(DEBUG) << "####### pod<-->svc Service ########";
-                LOG(DEBUG) << *asWrapper;
+                LOG(TRACE) << "####### pod<-->svc Service ########";
+                LOG(TRACE) << *asWrapper;
 
                 const Service& as = *asWrapper.get();
                 if ((as.getServiceMode() != Service::LOADBALANCER)
                         || as.isExternal()) {
-                    LOG(DEBUG) << "podsvc not handled for non-LB or ext services";
+                    LOG(TRACE) << "podsvc not handled for non-LB or ext services";
                     // clear obs and prom metrics during update;
                     // below will be no-op during create
                     podSvcFlowRemExpr(uuid+":"+svcUuid);
@@ -3424,7 +3439,7 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
 
         for (const auto& epsvc_uuid: epsvc_uuids) {
             if (uuid_felist_map.find(epsvc_uuid) == uuid_felist_map.end()) {
-                LOG(DEBUG) << "podsvc: no flows created for epsvc_uuid: " << epsvc_uuid;
+                LOG(TRACE) << "podsvc: no flows created for epsvc_uuid: " << epsvc_uuid;
                 podSvcFlowRemExpr(epsvc_uuid);
             }
         }
@@ -3437,7 +3452,7 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
 
 void IntFlowManager::programServiceSnatDnatFlows (const string& uuid)
 {
-    LOG(DEBUG) << "Updating snat dnat flows for service " << uuid;
+    LOG(TRACE) << "Updating snat dnat flows for service " << uuid;
 
     ServiceManager& srvMgr = agent.getServiceManager();
     shared_ptr<const Service> asWrapper = srvMgr.getService(uuid);

@@ -41,6 +41,8 @@ void AgentLogHandler::handleMessage(const std::string& file,
     opflexagent::LogLevel agentLevel = opflexagent::INFO;
     switch (level) {
     case OFLogHandler::TRACE:
+        agentLevel = opflexagent::TRACE;
+        break;
     case OFLogHandler::DEBUG7:
     case OFLogHandler::DEBUG6:
     case OFLogHandler::DEBUG5:

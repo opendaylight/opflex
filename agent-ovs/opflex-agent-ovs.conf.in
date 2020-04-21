@@ -3,6 +3,7 @@
     // "log": {
     //     // Set the log level.
     //     // Possible values in descending order of verbosity:
+    //     // "trace" (least level verbose logs"),
     //     // "debug7"-"debug0", "debug" (synonym for "debug0"),
     //     // "info", "warning", "error", "fatal"
     //     // Default: "info"

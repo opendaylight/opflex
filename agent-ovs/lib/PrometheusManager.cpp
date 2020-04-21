@@ -1845,7 +1845,7 @@ mgauge_pair_t PrometheusManager::getDynamicGaugeSvcTarget (SVC_TARGET_METRICS me
     mgauge_pair_t mgauge = boost::none;
     auto itr = svc_target_gauge_map[metric].find(uuid);
     if (itr == svc_target_gauge_map[metric].end()) {
-        LOG(DEBUG) << "Dyn Gauge SvcTargetCounter not found"
+        LOG(TRACE) << "Dyn Gauge SvcTargetCounter not found"
                    << " metric: " << metric
                    << " uuid: " << uuid;
     } else {
@@ -1862,7 +1862,7 @@ mgauge_pair_t PrometheusManager::getDynamicGaugeSvc (SVC_METRICS metric,
     mgauge_pair_t mgauge = boost::none;
     auto itr = svc_gauge_map[metric].find(uuid);
     if (itr == svc_gauge_map[metric].end()) {
-        LOG(DEBUG) << "Dyn Gauge SvcCounter not found"
+        LOG(TRACE) << "Dyn Gauge SvcCounter not found"
                    << " metric: " << metric
                    << " uuid: " << uuid;
     } else {
@@ -1879,7 +1879,7 @@ mgauge_pair_t PrometheusManager::getDynamicGaugePodSvc (PODSVC_METRICS metric,
     mgauge_pair_t mgauge = boost::none;
     auto itr = podsvc_gauge_map[metric].find(uuid);
     if (itr == podsvc_gauge_map[metric].end()) {
-        LOG(DEBUG) << "Dyn Gauge PodSvcCounter not found"
+        LOG(TRACE) << "Dyn Gauge PodSvcCounter not found"
                    << " metric: " << metric
                    << " uuid: " << uuid;
     } else {
@@ -2213,7 +2213,7 @@ bool PrometheusManager::removeDynamicGaugePodSvc (PODSVC_METRICS metric,
         gauge_check.remove(mgauge.get().second);
         gauge_podsvc_family_ptr[metric]->Remove(mgauge.get().second);
     } else {
-        LOG(DEBUG) << "remove dynamic gauge podsvc not found uuid:" << uuid;
+        LOG(TRACE) << "remove dynamic gauge podsvc not found uuid:" << uuid;
         return false;
     }
     return true;
@@ -3208,23 +3208,30 @@ void PrometheusManager::removePodSvcCounter (bool isEpToSvc,
     RETURN_IF_DISABLED
     const lock_guard<mutex> lock(podsvc_counter_mutex);
 
-    LOG(DEBUG) << "remove podsvc counter"
-               << " isEpToSvc: " << isEpToSvc
-               << " uuid: " << uuid;
 
     if (isEpToSvc) {
         for (PODSVC_METRICS metric=PODSVC_EP2SVC_MIN;
                 metric <= PODSVC_EP2SVC_MAX;
                     metric = PODSVC_METRICS(metric+1)) {
-            if (!removeDynamicGaugePodSvc(metric, uuid))
+            if (!removeDynamicGaugePodSvc(metric, uuid)) {
                 break;
+            } else {
+                LOG(DEBUG) << "remove podsvc counter"
+                           << " eptosvc uuid: " << uuid
+                           << " metric: " << metric;
+            }
         }
     } else {
         for (PODSVC_METRICS metric=PODSVC_SVC2EP_MIN;
                 metric <= PODSVC_SVC2EP_MAX;
                     metric = PODSVC_METRICS(metric+1)) {
-            if (!removeDynamicGaugePodSvc(metric, uuid))
+            if (!removeDynamicGaugePodSvc(metric, uuid)) {
                 break;
+            } else {
+                LOG(DEBUG) << "remove podsvc counter"
+                           << " svctoep uuid: " << uuid
+                           << " metric: " << metric;
+            }
         }
     }
 }

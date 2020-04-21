@@ -23,7 +23,7 @@ namespace opflexagent {
 /**
  * Supported log levels
  */
-enum LogLevel { FATAL, ERROR, WARNING, INFO, DEBUG };
+enum LogLevel { FATAL, ERROR, WARNING, INFO, DEBUG, TRACE };
 
 extern LogLevel logLevel;
 
