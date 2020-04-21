@@ -103,6 +103,7 @@ public:
 #ifdef HAVE_PROMETHEUS_SUPPORT
     const string cmd = "curl --proxy \"\" --compressed --silent http://127.0.0.1:9612/metrics 2>&1;";
     void checkSvcTgtPromMetrics(uint64_t pkts, uint64_t bytes, const string& ip);
+    void checkPodSvcPromMetrics(uint64_t pkts, uint64_t bytes);
 #endif
 private:
     Service as;
@@ -807,15 +808,28 @@ void ServiceStatsManagerFixture::checkSvcTgtPromMetrics (uint64_t pkts,
     pos = output.find(s_tx_pkts);
     BOOST_CHECK_NE(pos, std::string::npos);
 
+    const string& ep_attr = "ep_name=\"coredns\",ep_namespace=\"default\",";
     const string& s_ann = "\",svc_name=\"coredns\",svc_namespace=\"kube-system\"" \
                           ",svc_scope=\"cluster\"} ";
-    const string& st_rx_bytes = "opflex_svc_target_rx_bytes{ip=\"" + ip + s_ann
+    string rx_bytes, rx_pkts, tx_bytes, tx_pkts;
+    if (ip == "10.20.44.2" || ip == "2001:db8::2") {
+        rx_bytes = "opflex_svc_target_rx_bytes{" + ep_attr + "ip=\"";
+        rx_pkts = "opflex_svc_target_rx_packets{" + ep_attr + "ip=\"";
+        tx_bytes = "opflex_svc_target_tx_bytes{" + ep_attr + "ip=\"";
+        tx_pkts = "opflex_svc_target_tx_packets{" + ep_attr + "ip=\"";
+    } else {
+        rx_bytes = "opflex_svc_target_rx_bytes{ip=\"";
+        rx_pkts = "opflex_svc_target_rx_packets{ip=\"";
+        tx_bytes = "opflex_svc_target_tx_bytes{ip=\"";
+        tx_pkts = "opflex_svc_target_tx_packets{ip=\"";
+    }
+    const string& st_rx_bytes = rx_bytes + ip + s_ann
                             + boost::lexical_cast<std::string>(bytes) + ".000000";
-    const string& st_rx_pkts = "opflex_svc_target_rx_packets{ip=\"" + ip + s_ann
+    const string& st_rx_pkts = rx_pkts + ip + s_ann
                             + boost::lexical_cast<std::string>(pkts) + ".000000";
-    const string& st_tx_bytes = "opflex_svc_target_tx_bytes{ip=\"" + ip + s_ann
+    const string& st_tx_bytes = tx_bytes + ip + s_ann
                             + boost::lexical_cast<std::string>(bytes) + ".000000";
-    const string& st_tx_pkts = "opflex_svc_target_tx_packets{ip=\"" + ip + s_ann
+    const string& st_tx_pkts = tx_pkts + ip + s_ann
                             + boost::lexical_cast<std::string>(pkts) + ".000000";
     pos = output.find(st_rx_bytes);
     BOOST_CHECK_NE(pos, std::string::npos);
@@ -825,6 +839,44 @@ void ServiceStatsManagerFixture::checkSvcTgtPromMetrics (uint64_t pkts,
     BOOST_CHECK_NE(pos, std::string::npos);
     pos = output.find(st_tx_pkts);
     BOOST_CHECK_NE(pos, std::string::npos);
+}
+
+// Check prom dyn gauge pod<-->service metrics along with stats
+void ServiceStatsManagerFixture::checkPodSvcPromMetrics (uint64_t pkts,
+                                                         uint64_t bytes)
+{
+    const string& output = BaseFixture::getOutputFromCommand(cmd);
+    const string& rx_bytes = "opflex_endpoint_to_svc_bytes{ep_name=\"coredns\"," \
+                             "ep_namespace=\"default\",svc_name=\"coredns\"," \
+                             "svc_namespace=\"kube-system\",svc_scope=\"cluster\"} " \
+                            + boost::lexical_cast<std::string>(bytes) + ".000000";
+    const string& rx_pkts = "opflex_endpoint_to_svc_packets{ep_name=\"coredns\"," \
+                             "ep_namespace=\"default\",svc_name=\"coredns\"," \
+                             "svc_namespace=\"kube-system\",svc_scope=\"cluster\"} " \
+                            + boost::lexical_cast<std::string>(pkts) + ".000000";
+    const string& tx_bytes = "opflex_svc_to_endpoint_bytes{ep_name=\"coredns\"," \
+                             "ep_namespace=\"default\",svc_name=\"coredns\"," \
+                             "svc_namespace=\"kube-system\",svc_scope=\"cluster\"} " \
+                            + boost::lexical_cast<std::string>(bytes) + ".000000";
+    const string& tx_pkts = "opflex_svc_to_endpoint_packets{ep_name=\"coredns\"," \
+                             "ep_namespace=\"default\",svc_name=\"coredns\"," \
+                             "svc_namespace=\"kube-system\",svc_scope=\"cluster\"} " \
+                            + boost::lexical_cast<std::string>(pkts) + ".000000";
+    size_t pos1 = output.find(rx_bytes);
+    size_t pos2 = output.find(rx_pkts);
+    size_t pos3 = output.find(tx_bytes);
+    size_t pos4 = output.find(tx_pkts);
+    if (!pkts) {
+        BOOST_CHECK_EQUAL(pos1, std::string::npos);
+        BOOST_CHECK_EQUAL(pos2, std::string::npos);
+        BOOST_CHECK_EQUAL(pos3, std::string::npos);
+        BOOST_CHECK_EQUAL(pos4, std::string::npos);
+    } else {
+        BOOST_CHECK_NE(pos1, std::string::npos);
+        BOOST_CHECK_NE(pos2, std::string::npos);
+        BOOST_CHECK_NE(pos3, std::string::npos);
+        BOOST_CHECK_NE(pos4, std::string::npos);
+    }
 }
 #endif
 
@@ -986,6 +1038,9 @@ ServiceStatsManagerFixture::checkPodSvcObjectStats (const std::string& epToSvcUu
     } else {
         LOG(ERROR) << "SvcToEpCounter obj not present";
     }
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    checkPodSvcPromMetrics(packet_count, byte_count);
+#endif
 }
 
 void ServiceStatsManagerFixture::checkSvcTgtObsObj (bool add)

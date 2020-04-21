@@ -179,10 +179,20 @@
     //    needs to be disabled during agent bootup, then set the below flag
     //    to false
     //    "enabled": "true",
+    //
     //    By default prometheus exposer will bind with all IPs. Set
     //    localhost-only to true if prometheus export should happen only
     //    on 127.0.0.1.
     //    "localhost-only": "true",
+    //
+    //    Stats metrics for flows between local Endpoints and East-West Services
+    //    can lead to potentially large number of metrics. There might be cases
+    //    where only few of these ep <--> service metrics will actually report
+    //    traffic counts. To not overwhelm prometheus with Nans, these metrics
+    //    by default are not created in prometheus unless there is a valid stats
+    //    value.
+    //    "expose-epsvc-nan": "false",
+    //
     //    EP annotation for metrics:
     //    vm-name and namespace will be displayed as "name" and "namespace"
     //    by default if they are available. In case, vm-name isnt available,

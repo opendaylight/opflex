@@ -200,6 +200,8 @@ protected:
         ep0->addAnycastReturnIP("10.20.44.2");
         ep0->addAnycastReturnIP("2001:db8::2");
         ep0->setEgURI(epg0->getURI());
+        ep0->addAttribute("vm-name", "coredns");
+        ep0->addAttribute("namespace", "default");
         epSrc.updateEndpoint(*ep0);
 
         ep1.reset(new Endpoint("0-0-0-1"));

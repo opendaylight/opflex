@@ -2256,9 +2256,7 @@ updateSvcStatsCounters (const uint64_t &cookie,
                                   statType == "eptosvc",
                                   str.get(),
                                   newPktCount,
-                                  newByteCount,
-                                  attr_map(),
-                                  attr_map());
+                                  newByteCount);
     } else if ((statType == "antosvc") || (statType == "svctoan")
                 || (statType == "extosvc") || (statType == "svctoex")) {
         updateSvcTgtStatsCounters(cookie,
@@ -2425,10 +2423,34 @@ updatePodSvcStatsCounters (const uint64_t &cookie,
                            const bool& isEpToSvc,
                            const string& idStr,
                            const uint64_t &newPktCount,
-                           const uint64_t &newByteCount,
-                           const attr_map &epAttr,
-                           const attr_map &svcAttr)
+                           const uint64_t &newByteCount)
 {
+    // The idgen strings for epToSvc and svcToEp will have below format
+    // eptosvc:ep-uuid:svc-uuid
+    // svctoep:ep-uuid:svc-uuid
+    size_t pos1 = idStr.find(":");
+    size_t pos2 = idStr.find(":", pos1+1);
+    const string& epUuid = idStr.substr(pos1+1, pos2-pos1-1);
+    const string& svcUuid = idStr.substr(pos2+1);
+
+    ServiceManager& svcMgr = agent.getServiceManager();
+    shared_ptr<const Service> asWrapper = svcMgr.getService(svcUuid);
+    if (!asWrapper) {
+        LOG(DEBUG) << "service not found for uuid: " << svcUuid;
+        return;
+    }
+    const Service& as = *asWrapper;
+    const attr_map &svcAttr = as.getAttributes();
+
+    EndpointManager& epMgr = agent.getEndpointManager();
+    shared_ptr<const Endpoint> epWrapper = epMgr.getEndpoint(epUuid);
+    if (!epWrapper) {
+        LOG(DEBUG) << "endpoint not found for uuid: " << epUuid;
+        return;
+    }
+    const Endpoint& endPoint = *epWrapper.get();
+    const attr_map &epAttr = endPoint.getAttributes();
+
     Mutator mutator(agent.getFramework(), "policyelement");
     optional<shared_ptr<SvcStatUniverse> > su =
         SvcStatUniverse::resolve(agent.getFramework());
@@ -2450,8 +2472,18 @@ updatePodSvcStatsCounters (const uint64_t &cookie,
             if (pEpToSvc) {
                 auto oldPktCount = pEpToSvc.get()->getPackets(0);
                 auto oldByteCount = pEpToSvc.get()->getBytes(0);
-                pEpToSvc.get()->setPackets(oldPktCount + newPktCount)
-                               .setBytes(oldByteCount + newByteCount);
+                auto updPktCount = oldPktCount + newPktCount;
+                auto updByteCount = oldByteCount + newByteCount;
+                pEpToSvc.get()->setPackets(updPktCount)
+                               .setBytes(updByteCount);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+                prometheusManager.addNUpdatePodSvcCounter(true,
+                                                          idStr,
+                                                          updByteCount,
+                                                          updPktCount,
+                                                          epAttr,
+                                                          svcAttr);
+#endif
             }
         } else {
             auto pSvcToEp = su.get()->resolveGbpeSvcToEpCounter(
@@ -2470,18 +2502,22 @@ updatePodSvcStatsCounters (const uint64_t &cookie,
             if (pSvcToEp) {
                 auto oldPktCount = pSvcToEp.get()->getPackets(0);
                 auto oldByteCount = pSvcToEp.get()->getBytes(0);
-                pSvcToEp.get()->setPackets(oldPktCount + newPktCount)
-                               .setBytes(oldByteCount + newByteCount);
+                auto updPktCount = oldPktCount + newPktCount;
+                auto updByteCount = oldByteCount + newByteCount;
+                pSvcToEp.get()->setPackets(updPktCount)
+                               .setBytes(updByteCount);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+                prometheusManager.addNUpdatePodSvcCounter(false,
+                                                          idStr,
+                                                          updByteCount,
+                                                          updPktCount,
+                                                          epAttr,
+                                                          svcAttr);
+#endif
             }
         }
     }
     mutator.commit();
-#ifdef HAVE_PROMETHEUS_SUPPORT
-    prometheusManager.addNUpdatePodSvcCounter(isEpToSvc,
-                                              idStr,
-                                              epAttr,
-                                              svcAttr);
-#endif
 }
 
 // Clear pod svc objects
@@ -3128,9 +3164,7 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
     auto podSvcFlowAddExpr =
         [this, &uuid_felist_map](const string &uuid,
                                  const string &epipStr,
-                                 const Service::ServiceMapping &sm,
-                                 const attr_map &epAttr,
-                                 const attr_map &svcAttr) -> void {
+                                 const Service::ServiceMapping &sm) -> void {
 
         boost::system::error_code ec;
 
@@ -3196,10 +3230,8 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
 
         // Note: the objects are created once. But we still call below counter
         // updates to take care of ep/svc attr changes
-        updatePodSvcStatsCounters(podSvcUuidCkMap[uuid].first, true, ingStr,
-                                  0, 0, epAttr, svcAttr);
-        updatePodSvcStatsCounters(podSvcUuidCkMap[uuid].second, false, egrStr,
-                                  0, 0, epAttr, svcAttr);
+        updatePodSvcStatsCounters(podSvcUuidCkMap[uuid].first, true, ingStr, 0, 0);
+        updatePodSvcStatsCounters(podSvcUuidCkMap[uuid].second, false, egrStr, 0, 0);
 
         FlowBuilder epToSvc; // to service stats
         FlowBuilder svcToEp; // from service stats
@@ -3302,10 +3334,7 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
                     // next hops of this service.
                     const auto& nhips = sm.getNextHopIPs();
                     if (nhips.find(cidr.first.to_string()) == nhips.end()) {
-                        podSvcFlowAddExpr(epUuid+":"+uuid,
-                                          cidr.first.to_string(), sm,
-                                          endPoint.getAttributes(),
-                                          as.getAttributes());
+                        podSvcFlowAddExpr(epUuid+":"+uuid, cidr.first.to_string(), sm);
                     } else {
                         epsvc_uuids.insert(epUuid+":"+uuid);
                     }
@@ -3385,10 +3414,7 @@ void IntFlowManager::updatePodSvcStatsFlows (const string &uuid,
                     // next hops of this service.
                     const auto& nhips = sm.getNextHopIPs();
                     if (nhips.find(cidr.first.to_string()) == nhips.end()) {
-                        podSvcFlowAddExpr(uuid+":"+svcUuid,
-                                          cidr.first.to_string(), sm,
-                                          endPoint.getAttributes(),
-                                          as.getAttributes());
+                        podSvcFlowAddExpr(uuid+":"+svcUuid, cidr.first.to_string(), sm);
                     } else {
                         epsvc_uuids.insert(uuid+":"+svcUuid);
                     }

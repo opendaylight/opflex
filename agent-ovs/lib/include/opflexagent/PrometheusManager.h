@@ -65,8 +65,10 @@ public:
      *
      * @param exposeLocalHostOnly     flag to indicate if the the exposer
      *                                should be bound with local host only.
+     * @param exposeEpSvcNan          flag to indicate if Nan ep<-->svc
+     *                                metrics need to be exposed.
      */
-    void start(bool exposeLocalHostOnly);
+    void start(bool exposeLocalHostOnly, bool exposeEpSvcNan);
     /**
      * Stop the prometheus manager
      */
@@ -170,11 +172,15 @@ public:
      *
      * @param isEpToSvc       true if EpToSvc reporting
      * @param uuid            uuid of POD+SVC
+     * @param bytes           new byte count
+     * @param pkts            new packet count
      * @param ep_attr_map     map of all ep attributes
      * @param svc_attr_map    map of all svc attributes
      */
     void addNUpdatePodSvcCounter(bool isEpToSvc,
                                  const string& uuid,
+                                 uint64_t bytes,
+                                 uint64_t pkts,
         const unordered_map<string, string>& ep_attr_map,
         const unordered_map<string, string>& svc_attr_map);
     /**
@@ -998,7 +1004,10 @@ private:
      * True if shutting down or not start()'ed
      */
     std::atomic<bool> disabled;
-
+    /**
+     * True if Nan ep<-->svc metrics can be exposed
+     */
+    std::atomic<bool> exposeEpSvcNan;
     /* TODO: Other Counter related apis and state */
 };
 

@@ -408,6 +408,7 @@ private:
     // Prometheus related parameters
     bool prometheusEnabled;
     bool prometheusExposeLocalHostOnly;
+    bool prometheusExposeEpSvcNan;
     std::unordered_set<std::string> prometheusEpAttributes;
 #endif
     LogParams logParams;
