@@ -35,7 +35,6 @@
 #include <opflexagent/Renderer.h>
 #include <opflexagent/SimStats.h>
 
-#include <unordered_map>
 #include <cstdlib>
 #include <mutex>
 #include <condition_variable>
@@ -465,8 +464,8 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
         if (prr_timer < 15) {
            prr_timer = 15;  /* min is 15 seconds */
         }
+        LOG(INFO) << "prr timer set to " << prr_timer << " secs";
     }
-    LOG(INFO) << "prr timer set to " << prr_timer << " secs";
 
     boost::optional<uint32_t> handshakeOpt = properties.get_optional<uint32_t>(OPFLEX_HANDSHAKE);
     if (handshakeOpt) {
