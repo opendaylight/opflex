@@ -91,7 +91,6 @@ public:
     virtual void secGroupUpdated(const opflex::modb::URI& uri);
 private:
     opflexagent::Agent& agent;
-    uint32_t timer_interval;
     std::mutex mutex;
     std::unordered_set<opflex::modb::URI> contracts;
     std::unordered_set<opflex::modb::URI> secGroups;

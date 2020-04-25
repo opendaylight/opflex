@@ -135,7 +135,6 @@ void FSPacketDropLogConfigSource::updated(const fs::path& filePath) {
                       << " from " << filePath;
         } else if (isPacketDropFlowConfig(filePath)) {
             using boost::asio::ip::address;
-            boost::system::error_code ec;
             string pathStr = filePath.string();
             read_json(pathStr, properties);
             LOG(INFO) << "TBD: Updated packet drop flow config "

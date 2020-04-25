@@ -1401,7 +1401,6 @@ void PolicyManager::updateRemoteRouteChildrenForPolicyPrefix(
             return;
         }
         shared_ptr<PolicyRoute> &route = route_iter->second;
-        boost::system::error_code ec;
         const boost::asio::ip::address& addr = route->getAddress();
         uint32_t prefixLen = route->getPrefixLen();
         if(addr.is_v4()  !=  targetAddr.is_v4()) {
@@ -1746,7 +1745,6 @@ void PolicyManager::getBestRemoteRoute(
             return;
         }
         shared_ptr<PolicyRoute> &route = route_iter->second;
-        boost::system::error_code ec;
         const boost::asio::ip::address& addr = route->getAddress();
         uint32_t prefixLen = route->getPrefixLen();
         if(addr.is_v4()  !=  targetAddr.is_v4()) {
