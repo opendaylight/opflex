@@ -107,13 +107,12 @@ bool OutboundMessage::Accept(yajr::rpc::SendHandler& handler) {
     }
 
     return true;
-
 }
 
 bool OutboundMessage::send() {
 
-    ::yajr::comms::internal::CommunicationPeer const * cP =
-        dynamic_cast< ::yajr::comms::internal::CommunicationPeer const * >
+    ::yajr::comms::internal::CommunicationPeer * cP =
+        dynamic_cast< ::yajr::comms::internal::CommunicationPeer * >
         (peer_);
 
     assert(cP &&
@@ -156,7 +155,7 @@ bool OutboundMessage::send() {
 }
 
 InboundResponse::InboundResponse(
-    yajr::Peer const & peer,             /**< [in] where we received from */
+    yajr::Peer& peer,             /**< [in] where we received from */
     rapidjson::Value const & response,/**< [in] the error/result received */
     rapidjson::Value const & id          /**< [in] the id of this message */
     )

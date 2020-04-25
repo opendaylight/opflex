@@ -23,15 +23,11 @@ namespace yajr {
 
 yajr::rpc::InboundError *
 MessageFactory::InboundError(
-        yajr::Peer const & peer,
+        yajr::Peer& peer,
         rapidjson::Value const & error,
         rapidjson::Value const & id) {
 
     char const * method = id[rapidjson::SizeType(0)].GetString();
-
-    VLOG(3)
-        << method
-    ;
 
 #undef  PERFECT_RET_VAL
 #define PERFECT_RET_VAL(method) \

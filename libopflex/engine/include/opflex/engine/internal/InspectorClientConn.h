@@ -34,11 +34,9 @@ public:
      *
      * @param handlerFactory a factory that can allocate a handler for
      * the connection
-     * @param client the client
      * @param name A path name for the unix socket
      */
     InspectorClientConn(HandlerFactory& handlerFactory,
-                        InspectorClientImpl* client,
                         const std::string& name);
     virtual ~InspectorClientConn();
 
@@ -56,7 +54,6 @@ public:
     virtual void messagesReady();
 
 private:
-    InspectorClientImpl* client;
     const std::string& name;
 
     yajr::Peer* peer;

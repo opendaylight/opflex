@@ -23,7 +23,7 @@ namespace yajr {
 
 yajr::rpc::InboundRequest *
 MessageFactory::InboundRequest(
-        yajr::Peer const & peer,
+        yajr::Peer& peer,
         rapidjson::Value const & params,
         char const * method,
         rapidjson::Value const & id) {

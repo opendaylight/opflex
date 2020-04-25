@@ -81,14 +81,14 @@ struct Cb< ZeroCopyOpenSSL >::StaticHelpers {
                      +---------+--------------+--------------+
  */
 
-    static ssize_t tryToDecrypt(CommunicationPeer const * peer);
+    static ssize_t tryToDecrypt(CommunicationPeer* peer);
     static ssize_t tryToEncrypt(CommunicationPeer const * peer);
     static int tryToSend(CommunicationPeer const * peer);
 
 };
 
 ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
-        CommunicationPeer const * peer) {
+        CommunicationPeer* peer) {
 
     /* we have to process the decrypted data, if any is available */
 
@@ -129,14 +129,14 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToDecrypt(
 ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
         CommunicationPeer const * peer) {
 
-    assert(!peer->pendingBytes_);
-    if (peer->pendingBytes_) {
+    assert(!peer->getPendingBytes());
+    if (peer->getPendingBytes()) {
         VLOG(3) << peer << " has already got pending bytes. Should have not tried!";
         return 0;
     }
 
     /* we have to encrypt the plaintext data, if any is available */
-    if (peer->s_.deque_.empty()) {
+    if (peer->getStringQueue().deque_.empty()) {
         VLOG(4) << peer << " has no data to send";
         return 0;
     }
@@ -149,8 +149,8 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
 
     std::vector<iovec> iovIn =
         ::yajr::comms::internal::get_iovec(
-                peer->s_.deque_.begin(),
-                peer->s_.deque_.end()
+                peer->getStringQueue().deque_.begin(),
+                peer->getStringQueue().deque_.end()
         );
 
     std::vector<iovec>::iterator iovInIt;
@@ -184,9 +184,9 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
         return 0;
     }
 
-    peer->s_.deque_.erase(
-            peer->s_.deque_.begin(),
-            peer->s_.deque_.begin() + totalWrite
+    peer->getStringQueue().deque_.erase(
+            peer->getStringQueue().deque_.begin(),
+            peer->getStringQueue().deque_.begin() + totalWrite
     );
 
     /* short-circuit a single non-positive nread */
@@ -196,8 +196,8 @@ ssize_t Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(
 int Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(
         CommunicationPeer const * peer) {
 
-    if (peer->pendingBytes_) {
-        LOG(WARNING) << peer << " has already " << peer->pendingBytes_ << " pending";
+    if (peer->getPendingBytes()) {
+        LOG(WARNING) << peer << " has already " << peer->getPendingBytes() << " pending";
         return 0;
     }
 
@@ -215,7 +215,8 @@ int Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(
         return 0;
     }
 
-    peer->pendingBytes_ = buf.iov_len = nread;
+    buf.iov_len = nread;
+    peer->setPendingBytes(buf.iov_len);
     e->lastOutBuf_ = static_cast<char *>(buf.iov_base);
 
     std::vector<iovec> iov(1, buf);
@@ -224,9 +225,9 @@ int Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(
 }
 
 template<>
-int Cb< ZeroCopyOpenSSL >::send_cb(CommunicationPeer const * peer) {
+int Cb< ZeroCopyOpenSSL >::send_cb(CommunicationPeer* peer) {
 
-    assert(!peer->pendingBytes_);
+    assert(!peer->getPendingBytes());
 
     (void) Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToEncrypt(peer);
     return Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(peer);
@@ -243,7 +244,7 @@ void Cb< ZeroCopyOpenSSL >::on_sent(CommunicationPeer const * peer) {
     ssize_t advancement = BIO_nread(
             e->bioExternal_,
             &whereTheReadShouldHaveStarted,
-            peer->pendingBytes_);
+            peer->getPendingBytes());
 
     bool giveUp = false;
 
@@ -261,12 +262,12 @@ void Cb< ZeroCopyOpenSSL >::on_sent(CommunicationPeer const * peer) {
         giveUp = true;
     }
 
-    if (advancement != static_cast<ssize_t>(peer->pendingBytes_)) {
+    if (advancement != static_cast<ssize_t>(peer->getPendingBytes())) {
 
         LOG(ERROR)
             << peer
-            << "unexpected discrepancy: peer->pendingBytes_ = "
-            << peer->pendingBytes_
+            << "unexpected discrepancy: peer->getPendingBytes() = "
+            << peer->getPendingBytes()
             << " advancement = "
             << advancement
             << " will disconnect"
@@ -276,7 +277,7 @@ void Cb< ZeroCopyOpenSSL >::on_sent(CommunicationPeer const * peer) {
     }
 
     assert(e->lastOutBuf_ == whereTheReadShouldHaveStarted);
-    assert(advancement == static_cast<ssize_t>(peer->pendingBytes_));
+    assert(advancement == static_cast<ssize_t>(peer->getPendingBytes()));
 
     if (giveUp) {
         const_cast<CommunicationPeer *>(peer)->onDisconnect();
@@ -392,11 +393,11 @@ void Cb< ZeroCopyOpenSSL >::on_read(
 
         if (decrypted <= 0) {
 
-            if (BIO_should_retry(e->bioSSL_) && !peer->pendingBytes_) {
+            if (BIO_should_retry(e->bioSSL_) && !peer->getPendingBytes()) {
                 (void) Cb< ZeroCopyOpenSSL >::StaticHelpers::tryToSend(peer);
 
-                if (peer->pendingBytes_) {
-                    VLOG(4) << peer << " Retried to send and emitted " << peer->pendingBytes_ << " bytes";
+                if (peer->getPendingBytes()) {
+                    VLOG(4) << peer << " Retried to send and emitted " << peer->getPendingBytes() << " bytes";
                     return;
                 }
 
@@ -410,7 +411,7 @@ void Cb< ZeroCopyOpenSSL >::on_read(
                         << peer
                         << " Found no handshake data,"
                            " but found actual payload and sent "
-                        << peer->pendingBytes_
+                        << peer->getPendingBytes()
                         << " bytes"
                     ;
                 }

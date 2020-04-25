@@ -274,7 +274,7 @@ void CommunicationPeer::readBufNoNull(char* buffer,
 void CommunicationPeer::readBuffer(
         char * buffer,
         size_t nread,
-        bool canWriteJustPastTheEnd) const {
+        bool canWriteJustPastTheEnd) {
 
     VLOG(6)
         << "nread "
@@ -312,7 +312,7 @@ void CommunicationPeer::readBuffer(
 
 }
 
-void CommunicationPeer::readBufferZ(char const * buffer, size_t nread) const {
+void CommunicationPeer::readBufferZ(char const * buffer, size_t nread) {
 
     size_t chunk_size;
 
@@ -352,14 +352,11 @@ void CommunicationPeer::readBufferZ(char const * buffer, size_t nread) const {
             );
 
         if (!msg) {
-            LOG(ERROR)
-                << "skipping inbound message"
-            ;
+            LOG(ERROR) << "skipping inbound message";
             continue;
         }
 
         msg->process();
-
     }
 }
 
@@ -413,15 +410,12 @@ void CommunicationPeer::onWrite() {
 
 }
 
-int CommunicationPeer::write() const {
-
+int CommunicationPeer::write() {
     if (pendingBytes_) {
         return 0;
     }
 
-    int retVal = transport_.callbacks_->sendCb_(this);
-
-    return retVal;
+    return transport_.callbacks_->sendCb_(this);
 }
 
 int CommunicationPeer::writeIOV(std::vector<iovec>& iov) const {
@@ -614,7 +608,7 @@ int comms::internal::CommunicationPeer::unchoke() const {
 
 }
 
-yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() const {
+yajr::rpc::InboundMessage * comms::internal::CommunicationPeer::parseFrame() {
 
     VLOG(6)
         << this

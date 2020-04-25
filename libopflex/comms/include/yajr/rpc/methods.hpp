@@ -50,7 +50,7 @@ namespace yajr {
 
             OutReq(
                     yajr::rpc::PayloadGenerator const & payloadGenerator,
-                    yajr::Peer const * peer
+                    yajr::Peer* peer
                 ) : OutboundRequest(
                         payloadGenerator,
                         M,
@@ -58,8 +58,7 @@ namespace yajr {
                          * throw, but at most crash with SIG11 (yet, this should
                          * never happen)
                          */
-                        dynamic_cast< yajr::comms::internal::CommunicationPeer
-                            const * >(peer)->nextId(),
+                        dynamic_cast< yajr::comms::internal::CommunicationPeer* >(peer)->nextId(),
                         peer)
                 {}
 
@@ -75,7 +74,7 @@ namespace yajr {
           public:
 
             InbReq(
-                    yajr::Peer const & peer,
+                    yajr::Peer& peer,
                     rapidjson::Value const & params,
                     rapidjson::Value const & id
                 )
@@ -96,7 +95,7 @@ namespace yajr {
           public:
 
             InbRes(
-                    yajr::Peer const & peer,
+                    yajr::Peer& peer,
                     rapidjson::Value const & params,
                     rapidjson::Value const & id
                 )
@@ -114,7 +113,7 @@ namespace yajr {
           public:
 
             InbErr(
-                    yajr::Peer const & peer,
+                    yajr::Peer& peer,
                     rapidjson::Value const & params,
                     rapidjson::Value const & id
                 )

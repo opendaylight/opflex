@@ -54,7 +54,7 @@ using internal::OpflexMessage;
 
 InspectorClientImpl::InspectorClientImpl(const std::string& name_,
                                          const modb::ModelMetadata& model)
-    : conn(*this, this, name_), db(threadManager),
+    : conn(*this, name_), db(threadManager),
       serializer(&db, this), pendingRequests(0),
       followRefs(false), recursive(false), unresolved(false) {
     db.init(model);
@@ -218,7 +218,7 @@ static std::string getRefSubj(const modb::ObjectStore& store,
             store.getClassInfo(ref.first);
         return ref_class.getName();
     } catch (const std::out_of_range& e) {
-        return "UNKNOWN:" + ref.first;
+        return "UNKNOWN: " + std::to_string(ref.first);
     }
 }
 

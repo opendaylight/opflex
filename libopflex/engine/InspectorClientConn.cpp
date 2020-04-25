@@ -25,12 +25,8 @@ namespace internal {
 using yajr::Peer;
 
 InspectorClientConn::InspectorClientConn(HandlerFactory& handlerFactory,
-                                         InspectorClientImpl* client_,
                                          const std::string& name_)
-    : OpflexConnection(handlerFactory), client(client_),
-      name(name_), peer(NULL) {
-
-}
+    : OpflexConnection(handlerFactory), name(name_), peer(NULL) {}
 
 InspectorClientConn::~InspectorClientConn() {
 

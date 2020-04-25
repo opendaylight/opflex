@@ -27,7 +27,7 @@ namespace rpc {
 
 yajr::rpc::InboundMessage *
 MessageFactory::InboundMessage(
-        yajr::Peer const & peer,
+        yajr::Peer& peer,
         rapidjson::Document const & doc) {
 
     /* IDs are tricky because they can be any JSON entity.
@@ -142,7 +142,7 @@ error:
 
 yajr::rpc::InboundMessage *
 MessageFactory::getInboundMessage(
-        yajr::Peer const & peer,
+        yajr::Peer& peer,
         rapidjson::Document const & doc
         ) {
 

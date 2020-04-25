@@ -508,7 +508,7 @@ static std::string getRefSubj(const modb::ObjectStore& store,
             store.getClassInfo(ref.first);
         return ref_class.getName();
     } catch (const std::out_of_range& e) {
-        return "UNKNOWN:" + ref.first;
+        return "UNKNOWN: " + std::to_string(ref.first);
     }
 }
 
@@ -517,7 +517,7 @@ static std::string getEnumVal(const modb::PropertyInfo& pinfo, uint64_t v) {
     try {
         return ei.getNameById(v);
     } catch (const std::out_of_range& e) {
-        return "UNKNOWN: " + v;
+        return "UNKNOWN: " + std::to_string(v);
     }
 }
 
