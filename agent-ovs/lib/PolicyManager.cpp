@@ -243,14 +243,6 @@ PolicyManager::getRDForGroup(const opflex::modb::URI& eg) {
     return it->second.routingDomain;
 }
 
-optional<shared_ptr<modelgbp::gbp::RoutingDomain> >
-PolicyManager::getRDForL3ExtNet(const opflex::modb::URI& l3n) {
-    lock_guard<mutex> guard(state_mutex);
-    l3n_map_t::const_iterator it = l3n_map.find(l3n);
-    if (it == l3n_map.end()) return boost::none;
-    return it->second.routingDomain;
-}
-
 optional<shared_ptr<modelgbp::gbp::BridgeDomain> >
 PolicyManager::getBDForGroup(const opflex::modb::URI& eg) {
     lock_guard<mutex> guard(state_mutex);
@@ -1401,7 +1393,6 @@ void PolicyManager::updateRemoteRouteChildrenForPolicyPrefix(
             return;
         }
         shared_ptr<PolicyRoute> &route = route_iter->second;
-        boost::system::error_code ec;
         const boost::asio::ip::address& addr = route->getAddress();
         uint32_t prefixLen = route->getPrefixLen();
         if(addr.is_v4()  !=  targetAddr.is_v4()) {
@@ -1746,7 +1737,6 @@ void PolicyManager::getBestRemoteRoute(
             return;
         }
         shared_ptr<PolicyRoute> &route = route_iter->second;
-        boost::system::error_code ec;
         const boost::asio::ip::address& addr = route->getAddress();
         uint32_t prefixLen = route->getPrefixLen();
         if(addr.is_v4()  !=  targetAddr.is_v4()) {

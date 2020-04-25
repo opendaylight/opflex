@@ -422,17 +422,6 @@ public:
     getRDForGroup(const opflex::modb::URI& eg);
 
     /**
-     * Get the routing domain for the specified l3 external network if
-     * it exists
-     *
-     * @param l3n the URI for the endpoint group
-     * @return the routing domain or boost::none if the group or the
-     * domain is not found
-     */
-    boost::optional<std::shared_ptr<modelgbp::gbp::RoutingDomain> >
-    getRDForL3ExtNet(const opflex::modb::URI& l3n);
-
-    /**
      * Get the bridge domain for the specified endpoint group if it
      * exists
      *
