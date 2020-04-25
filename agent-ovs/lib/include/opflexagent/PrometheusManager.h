@@ -121,6 +121,7 @@ public:
      * @param svc_attr_map    map of svc attributes
      * @param ep_attr_map     map of ep/pod attributes
      * @param updateLabels    update label annotations during cfg updates
+     * @param isNodePort      true if the metric is for nodePort svc
      */
     void addNUpdateSvcTargetCounter(const string& uuid,
                                     const string& nhip,
@@ -130,7 +131,8 @@ public:
                                     uint64_t tx_pkts,
         const unordered_map<string, string>& svc_attr_map,
         const unordered_map<string, string>& ep_attr_map,
-                                    bool updateLabels);
+                                    bool updateLabels,
+                                    bool isNodePort=false);
     /**
      * Remove SvcTargetCounter metrics given it's uuid
      *
@@ -151,13 +153,15 @@ public:
      * @param tx_bytes        egress bytes
      * @param tx_pkts         egress packets
      * @param svc_attr_map    map of all svc attributes
+     * @param isNodePort      true if the metric is for nodePort svc
      */
     void addNUpdateSvcCounter(const string& uuid,
                               uint64_t rx_bytes,
                               uint64_t rx_pkts,
                               uint64_t tx_bytes,
                               uint64_t tx_pkts,
-        const unordered_map<string, string>& svc_attr_map);
+        const unordered_map<string, string>& svc_attr_map,
+                              bool isNodePort=false);
     /**
      * Remove SvcCounter metrics given it's uuid
      *
@@ -509,7 +513,8 @@ private:
                                      const string& nhip,
         const unordered_map<string, string>& svc_attr_map,
         const unordered_map<string, string>& ep_attr_map,
-                                     bool updateLabels);
+                                     bool updateLabels,
+                                     bool isNodePort);
 
     // func to get label map and Gauge for SvcTargetCounter given metric type, uuid
     mgauge_pair_t getDynamicGaugeSvcTarget(SVC_TARGET_METRICS metric, const string& uuid);
@@ -531,7 +536,8 @@ private:
     static const map<string,string> createLabelMapFromSvcTargetAttr(
                                                           const string& nhip,
                            const unordered_map<string, string>&  svc_attr_map,
-                           const unordered_map<string, string>&  ep_attr_map);
+                           const unordered_map<string, string>&  ep_attr_map,
+                           bool isNodePort);
     /* End of SvcTargetCounter related apis and state */
 
 
@@ -595,7 +601,8 @@ private:
     // uuid of svc & attr map of svc
     void createDynamicGaugeSvc(SVC_METRICS metric,
                                const string& uuid,
-        const unordered_map<string, string>& svc_attr_map);
+        const unordered_map<string, string>& svc_attr_map,
+                               bool isNodePort);
 
     // func to get label map and Gauge for SvcCounter given metric type, uuid
     mgauge_pair_t getDynamicGaugeSvc(SVC_METRICS metric, const string& uuid);
@@ -615,7 +622,8 @@ private:
     //Utility apis
     // Create a label map that can be used for annotation, given the svc attr map
     static const map<string,string> createLabelMapFromSvcAttr(
-                           const unordered_map<string, string>&  svc_attr_map);
+                           const unordered_map<string, string>&  svc_attr_map,
+                           bool isNodePort);
     /* End of SvcCounter related apis and state */
 
 

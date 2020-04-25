@@ -1368,13 +1368,15 @@ void PrometheusManager::createDynamicGaugeSvcTarget (SVC_TARGET_METRICS metric,
                                                      const string& nhip,
                     const unordered_map<string, string>&    svc_attr_map,
                     const unordered_map<string, string>&    ep_attr_map,
-                                                     bool updateLabels)
+                                                     bool updateLabels,
+                                                     bool isNodePort)
 {
     // During counter update from stats manager, dont create new gauge metric
     if (!updateLabels)
         return;
 
-    auto const &label_map = createLabelMapFromSvcTargetAttr(nhip, svc_attr_map, ep_attr_map);
+    auto const &label_map = createLabelMapFromSvcTargetAttr(nhip, svc_attr_map,
+                                                            ep_attr_map, isNodePort);
     auto hash_new = hash_labels(label_map);
 
     // Retrieve the Gauge if its already created
@@ -1423,13 +1425,14 @@ void PrometheusManager::createDynamicGaugeSvcTarget (SVC_TARGET_METRICS metric,
 // Create SvcCounter gauge given metric type, svc uuid & attr_map
 void PrometheusManager::createDynamicGaugeSvc (SVC_METRICS metric,
                                                const string& uuid,
-                    const unordered_map<string, string>&    svc_attr_map)
+                    const unordered_map<string, string>&    svc_attr_map,
+                                               bool isNodePort)
 {
     // During counter update from stats manager, dont create new gauge metric
     if (svc_attr_map.size() == 0)
         return;
 
-    auto const &label_map = createLabelMapFromSvcAttr(svc_attr_map);
+    auto const &label_map = createLabelMapFromSvcAttr(svc_attr_map, isNodePort);
     auto hash_new = hash_labels(label_map);
 
     // Retrieve the Gauge if its already created
@@ -1602,7 +1605,8 @@ bool PrometheusManager::createDynamicGaugeEp (EP_METRICS metric,
 const map<string,string> PrometheusManager::createLabelMapFromSvcTargetAttr (
                                                            const string& nhip,
                             const unordered_map<string, string>&  svc_attr_map,
-                            const unordered_map<string, string>&  ep_attr_map)
+                            const unordered_map<string, string>&  ep_attr_map,
+                            bool isNodePort)
 {
     map<string,string>   label_map;
 
@@ -1624,7 +1628,10 @@ const map<string,string> PrometheusManager::createLabelMapFromSvcTargetAttr (
 
     auto svc_scope_itr = svc_attr_map.find("scope");
     if (svc_scope_itr != svc_attr_map.end()) {
-        label_map["svc_scope"] = svc_scope_itr->second;
+        if (isNodePort)
+            label_map["svc_scope"] = "nodePort";
+        else
+            label_map["svc_scope"] = svc_scope_itr->second;
     }
 
     auto ep_name_itr = ep_attr_map.find("vm-name");
@@ -1642,7 +1649,8 @@ const map<string,string> PrometheusManager::createLabelMapFromSvcTargetAttr (
 
 // Create a label map that can be used for annotation, given the svc attr_map
 const map<string,string> PrometheusManager::createLabelMapFromSvcAttr (
-                          const unordered_map<string, string>&  svc_attr_map)
+                          const unordered_map<string, string>&  svc_attr_map,
+                          bool isNodePort)
 {
     map<string,string>   label_map;
 
@@ -1662,7 +1670,10 @@ const map<string,string> PrometheusManager::createLabelMapFromSvcAttr (
 
     auto svc_scope_itr = svc_attr_map.find("scope");
     if (svc_scope_itr != svc_attr_map.end()) {
-        label_map["scope"] = svc_scope_itr->second;
+        if (isNodePort)
+            label_map["scope"] = "nodePort";
+        else
+            label_map["scope"] = svc_scope_itr->second;
     }
 
     return label_map;
@@ -2616,7 +2627,8 @@ void PrometheusManager::addNUpdateSvcTargetCounter (const string& uuid,
                                                     uint64_t tx_pkts,
                          const unordered_map<string, string>& svc_attr_map,
                          const unordered_map<string, string>& ep_attr_map,
-                                                    bool updateLabels)
+                                                    bool updateLabels,
+                                                    bool isNodePort)
 {
     RETURN_IF_DISABLED
     const lock_guard<mutex> lock(svc_target_counter_mutex);
@@ -2631,7 +2643,8 @@ void PrometheusManager::addNUpdateSvcTargetCounter (const string& uuid,
                                     nhip,
                                     svc_attr_map,
                                     ep_attr_map,
-                                    updateLabels);
+                                    updateLabels,
+                                    isNodePort);
     }
 
     // Update the metrics
@@ -2671,7 +2684,8 @@ void PrometheusManager::addNUpdateSvcCounter (const string& uuid,
                                               uint64_t rx_pkts,
                                               uint64_t tx_bytes,
                                               uint64_t tx_pkts,
-                  const unordered_map<string, string>& svc_attr_map)
+                  const unordered_map<string, string>& svc_attr_map,
+                                              bool isNodePort)
 {
     RETURN_IF_DISABLED
     const lock_guard<mutex> lock(svc_counter_mutex);
@@ -2682,7 +2696,8 @@ void PrometheusManager::addNUpdateSvcCounter (const string& uuid,
                 metric = SVC_METRICS(metric+1)) {
         createDynamicGaugeSvc(metric,
                               uuid,
-                              svc_attr_map);
+                              svc_attr_map,
+                              isNodePort);
     }
 
     // Update the metrics

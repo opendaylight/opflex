@@ -58,6 +58,14 @@ public:
         createObjects();
         switchManager.setMaxFlowTables(IntFlowManager::NUM_FLOW_TABLES);
         intFlowManager.start();
+
+        setLoggingLevel("trace");
+        // cloud nodeport tests need veth_host_ac
+        portmapper.setPort("veth_host_ac", 72);
+        portmapper.setPort(72, "veth_host_ac");
+        createVethHostAccessObjects();
+        intFlowManager.endpointUpdated(vethhostac->getUUID());
+
         LOG(DEBUG) << "############# SERVICE CREATE START ############";
         createServices();
         checkPodSvcObsObj(true);
@@ -85,14 +93,16 @@ public:
                              bool testAggregate=false);
     void testFlowStatsSvcTgt(MockConnection& portConn,
                              PolicyStatsManager *statsManager,
-                             const string& nhip);
+                             const string& nhip,
+                             bool isNodePort=false);
     void testFlowRemovedPodSvc(MockConnection& portConn,
                                PolicyStatsManager *statsManager,
                                uint32_t initPkts);
     void testFlowRemovedSvcTgt(MockConnection& portConn,
                                PolicyStatsManager *statsManager,
                                uint32_t initPkts,
-                               const string& nhip);
+                               const string& nhip,
+                               bool isNodePort=false);
     void checkPodSvcObsObj(bool);
     void checkSvcTgtObsObj(bool);
     void removeServiceObjects(void);
@@ -102,7 +112,7 @@ public:
 
 #ifdef HAVE_PROMETHEUS_SUPPORT
     const string cmd = "curl --proxy \"\" --compressed --silent http://127.0.0.1:9612/metrics 2>&1;";
-    void checkSvcTgtPromMetrics(uint64_t pkts, uint64_t bytes, const string& ip);
+    void checkSvcTgtPromMetrics(uint64_t pkts, uint64_t bytes, const string& ip, bool isNodePort=false);
     void checkPodSvcPromMetrics(uint64_t pkts, uint64_t bytes);
 #endif
 private:
@@ -114,10 +124,14 @@ private:
                                 const std::string& svcToEpUuid,
                                 uint32_t packet_count,
                                 uint32_t byte_count);
-    void checkSvcTgtObjectStats(const std::string& svcUuid,
-                                const std::string& nhip,
-                                uint32_t packet_count,
-                                uint32_t byte_count);
+    void checkAnySvcTgtObjectStats(const std::string& svcUuid,
+                                   const std::string& nhip,
+                                   uint32_t packet_count,
+                                   uint32_t byte_count);
+    void checkNodeSvcTgtObjectStats(const std::string& svcUuid,
+                                    const std::string& nhip,
+                                    uint32_t packet_count,
+                                    uint32_t byte_count);
     bool checkNewFlowMapSize(void);
 };
 
@@ -268,8 +282,8 @@ ServiceStatsManagerFixture::testFlowAge (PolicyStatsManager *statsManager,
     if (isOld && isFlowStateReAdd) {
         guard.lock();
         BOOST_CHECK_EQUAL(serviceStatsManager.statsState.oldFlowCounterMap.size(), 0);
-        // 15 flows based on config, -2 aged flows
-        BOOST_CHECK_EQUAL(serviceStatsManager.statsState.newFlowCounterMap.size(), 13);
+        // 17 flows based on config, -2 aged flows
+        BOOST_CHECK_EQUAL(serviceStatsManager.statsState.newFlowCounterMap.size(), 15);
         guard.unlock();
 
         boost::system::error_code ec;
@@ -279,13 +293,13 @@ ServiceStatsManagerFixture::testFlowAge (PolicyStatsManager *statsManager,
         // 2 flows get readded to new map
         guard.lock();
         BOOST_CHECK_EQUAL(serviceStatsManager.statsState.oldFlowCounterMap.size(), 0);
-        BOOST_CHECK_EQUAL(serviceStatsManager.statsState.newFlowCounterMap.size(), 15);
+        BOOST_CHECK_EQUAL(serviceStatsManager.statsState.newFlowCounterMap.size(), 17);
         guard.unlock();
     }
 
     if (!isOld && !isFlowStateReAdd) {
         guard.lock();
-        BOOST_CHECK_EQUAL(serviceStatsManager.statsState.newFlowCounterMap.size(), 15);
+        BOOST_CHECK_EQUAL(serviceStatsManager.statsState.newFlowCounterMap.size(), 17);
         guard.unlock();
 
         for (auto age = 0; age < PolicyStatsManager::MAX_AGE; age++) {
@@ -309,7 +323,7 @@ ServiceStatsManagerFixture::testFlowAge (PolicyStatsManager *statsManager,
         statsManager->on_timer(ec);
 
         guard.lock();
-        BOOST_CHECK_EQUAL(serviceStatsManager.statsState.newFlowCounterMap.size(), 15);
+        BOOST_CHECK_EQUAL(serviceStatsManager.statsState.newFlowCounterMap.size(), 17);
         guard.unlock();
     }
 
@@ -324,61 +338,84 @@ ServiceStatsManagerFixture::testFlowAge (PolicyStatsManager *statsManager,
 void
 ServiceStatsManagerFixture::testFlowStatsSvcTgt (MockConnection& portConn,
                                                 PolicyStatsManager *statsManager,
-                                                const string& nhip)
+                                                const string& nhip,
+                                                bool isNodePort)
 {
-    // create * to svc-tgt and svc-tgt to * flows
+    // create */node to svc-tgt and svc-tgt to */node flows
     const auto& svcUuid = as.getUUID();
-    const auto& anyToSvcKey = "antosvc:svc-tgt:"+svcUuid+":"+nhip;
-    auto svcToAnyKey = "svctoan:svc-tgt:"+svcUuid+":"+nhip;
-    uint32_t anytosvcCk =
+    const string& iPfx = isNodePort?"notosvc:svc-nod:":"antosvc:svc-tgt:";
+    const string& ePfx = isNodePort?"svctono:svc-nod:":"svctoan:svc-tgt:";
+    const auto& iKey = iPfx+svcUuid+":"+nhip;
+    const auto& eKey = ePfx+svcUuid+":"+nhip;
+    uint32_t iSvcCk =
         idGen.getId(IntFlowManager::getIdNamespace(SvcTargetCounter::CLASS_ID),
-                                                   anyToSvcKey);
-    uint32_t svctoanyCk =
+                                                   iKey);
+    uint32_t eSvcCk =
         idGen.getId(IntFlowManager::getIdNamespace(SvcTargetCounter::CLASS_ID),
-                                                   svcToAnyKey);
+                                                   eKey);
 
     FlowEntryList entryList;
     int table_id = IntFlowManager::STATS_TABLE_ID;
 
     auto createFlowExpr =
-        [&] (address nhAddr) -> void {
-        if (nhAddr.is_v4()) {
+        [&] (address nhAddr, bool isNodePort) -> void {
+        if (isNodePort) {
             FlowBuilder().proto(17).tpDst(5353)
-                     .priority(97).ethType(eth::type::IP)
-                     .ipDst(nhAddr).reg(12, 0, 1<<31)
+                     .priority(98).ethType(eth::type::IP)
+                     .ipSrc(address::from_string("1.100.201.11"))
+                     .ipDst(nhAddr)
                      .flags(OFPUTIL_FF_SEND_FLOW_REM)
-                     .cookie(ovs_htonll(uint64_t(anytosvcCk)))
+                     .cookie(ovs_htonll(uint64_t(iSvcCk)))
                      .action().go(IntFlowManager::OUT_TABLE_ID)
                      .parent().build(entryList);
 
             FlowBuilder().proto(17).tpSrc(5353)
-                     .priority(97).ethType(eth::type::IP)
-                     .ipSrc(nhAddr).reg(12, 0, 1<<31)
+                     .priority(98).ethType(eth::type::IP)
+                     .ipSrc(nhAddr)
+                     .ipDst(address::from_string("1.100.201.11"))
                      .flags(OFPUTIL_FF_SEND_FLOW_REM)
-                     .cookie(ovs_htonll(uint64_t(svctoanyCk)))
+                     .cookie(ovs_htonll(uint64_t(eSvcCk)))
                      .action().go(IntFlowManager::OUT_TABLE_ID)
                      .parent().build(entryList);
         } else {
-            FlowBuilder().proto(6).tpDst(80)
-                     .priority(97).ethType(eth::type::IPV6)
-                     .ipDst(nhAddr).reg(12, 0, 1<<31)
-                     .flags(OFPUTIL_FF_SEND_FLOW_REM)
-                     .cookie(ovs_htonll(uint64_t(anytosvcCk)))
-                     .action().go(IntFlowManager::OUT_TABLE_ID)
-                     .parent().build(entryList);
+            if (nhAddr.is_v4()) {
+                FlowBuilder().proto(17).tpDst(5353)
+                         .priority(97).ethType(eth::type::IP)
+                         .ipDst(nhAddr).reg(12, 0, 1<<31)
+                         .flags(OFPUTIL_FF_SEND_FLOW_REM)
+                         .cookie(ovs_htonll(uint64_t(iSvcCk)))
+                         .action().go(IntFlowManager::OUT_TABLE_ID)
+                         .parent().build(entryList);
 
-            FlowBuilder().proto(6).tpSrc(80)
-                     .priority(97).ethType(eth::type::IPV6)
-                     .ipSrc(nhAddr).reg(12, 0, 1<<31)
-                     .flags(OFPUTIL_FF_SEND_FLOW_REM)
-                     .cookie(ovs_htonll(uint64_t(svctoanyCk)))
-                     .action().go(IntFlowManager::OUT_TABLE_ID)
-                     .parent().build(entryList);
+                FlowBuilder().proto(17).tpSrc(5353)
+                         .priority(97).ethType(eth::type::IP)
+                         .ipSrc(nhAddr).reg(12, 0, 1<<31)
+                         .flags(OFPUTIL_FF_SEND_FLOW_REM)
+                         .cookie(ovs_htonll(uint64_t(eSvcCk)))
+                         .action().go(IntFlowManager::OUT_TABLE_ID)
+                         .parent().build(entryList);
+            } else {
+                FlowBuilder().proto(6).tpDst(80)
+                         .priority(97).ethType(eth::type::IPV6)
+                         .ipDst(nhAddr).reg(12, 0, 1<<31)
+                         .flags(OFPUTIL_FF_SEND_FLOW_REM)
+                         .cookie(ovs_htonll(uint64_t(iSvcCk)))
+                         .action().go(IntFlowManager::OUT_TABLE_ID)
+                         .parent().build(entryList);
+
+                FlowBuilder().proto(6).tpSrc(80)
+                         .priority(97).ethType(eth::type::IPV6)
+                         .ipSrc(nhAddr).reg(12, 0, 1<<31)
+                         .flags(OFPUTIL_FF_SEND_FLOW_REM)
+                         .cookie(ovs_htonll(uint64_t(eSvcCk)))
+                         .action().go(IntFlowManager::OUT_TABLE_ID)
+                         .parent().build(entryList);
+            }
         }
     };
 
     address nhAddr = address::from_string(nhip);
-    createFlowExpr(nhAddr);
+    createFlowExpr(nhAddr, isNodePort);
 
     boost::system::error_code ec;
     ec = make_error_code(boost::system::errc::success);
@@ -410,7 +447,10 @@ ServiceStatsManagerFixture::testFlowStatsSvcTgt (MockConnection& portConn,
     // that we should have in Genie object
     uint32_t expPkts = 0;
     uint32_t expBytes = 0;
-    checkSvcTgtObjectStats(svcUuid, nhip, expPkts, expBytes);
+    if (isNodePort)
+        checkNodeSvcTgtObjectStats(svcUuid, nhip, expPkts, expBytes);
+    else
+        checkAnySvcTgtObjectStats(svcUuid, nhip, expPkts, expBytes);
 
     // create second flow stats reply message
     res_msg = makeFlowStatReplyMessage_2(&portConn,
@@ -438,7 +478,10 @@ ServiceStatsManagerFixture::testFlowStatsSvcTgt (MockConnection& portConn,
     expBytes = expPkts * PACKET_SIZE;
 
     // Verify the expected packet and byte count
-    checkSvcTgtObjectStats(svcUuid, nhip, expPkts, expBytes);
+    if (isNodePort)
+        checkNodeSvcTgtObjectStats(svcUuid, nhip, expPkts, expBytes);
+    else
+        checkAnySvcTgtObjectStats(svcUuid, nhip, expPkts, expBytes);
     LOG(DEBUG) << "FlowStatsReplyMessage verification successful";
 }
 
@@ -585,46 +628,71 @@ void
 ServiceStatsManagerFixture::testFlowRemovedSvcTgt (MockConnection& portConn,
                                                   PolicyStatsManager *statsManager,
                                                   uint32_t  initPkts,
-                                                  const string& nhip)
+                                                  const string& nhip,
+                                                  bool isNodePort)
 {
-    // create * to svc-tgt and svc-tgt to * flows
+    // create */node to svc-tgt and svc-tgt to */node flows
     const auto& svcUuid = as.getUUID();
-    const auto& anyToSvcKey = "antosvc:svc-tgt:"+svcUuid+":"+nhip;
-    auto svcToAnyKey = "svctoan:svc-tgt:"+svcUuid+":"+nhip;
-    uint32_t anytosvcCk =
+    const string& iPfx = isNodePort?"notosvc:svc-nod:":"antosvc:svc-tgt:";
+    const string& ePfx = isNodePort?"svctono:svc-nod:":"svctoan:svc-tgt:";
+    const auto& iKey = iPfx+svcUuid+":"+nhip;
+    const auto& eKey = ePfx+svcUuid+":"+nhip;
+    uint32_t iSvcCk =
         idGen.getId(IntFlowManager::getIdNamespace(SvcTargetCounter::CLASS_ID),
-                                                   anyToSvcKey);
-    uint32_t svctoanyCk =
+                                                   iKey);
+    uint32_t eSvcCk =
         idGen.getId(IntFlowManager::getIdNamespace(SvcTargetCounter::CLASS_ID),
-                                                   svcToAnyKey);
+                                                   eKey);
 
     FlowEntryList entryList1, entryList2;
     int table_id = IntFlowManager::STATS_TABLE_ID;
     address nhAddr = address::from_string(nhip);
 
     auto createFlowExpr =
-        [&] (bool isAnyToSvc) -> void {
-        if (isAnyToSvc) {
-            FlowBuilder().proto(17).tpDst(5353)
-                     .priority(97).ethType(eth::type::IP)
-                     .ipDst(nhAddr).reg(12, 0, 1<<31)
-                     .flags(OFPUTIL_FF_SEND_FLOW_REM)
-                     .cookie(ovs_htonll(uint64_t(anytosvcCk)))
-                     .action().go(IntFlowManager::OUT_TABLE_ID)
-                     .parent().build(entryList1);
+        [&] (bool isIngress, bool isNodePort) -> void {
+        if (isNodePort) {
+            if (isIngress) {
+                FlowBuilder().proto(17).tpDst(5353)
+                         .priority(98).ethType(eth::type::IP)
+                         .ipSrc(address::from_string("1.100.201.11"))
+                         .ipDst(nhAddr)
+                         .flags(OFPUTIL_FF_SEND_FLOW_REM)
+                         .cookie(ovs_htonll(uint64_t(iSvcCk)))
+                         .action().go(IntFlowManager::OUT_TABLE_ID)
+                         .parent().build(entryList1);
+            } else {
+                FlowBuilder().proto(17).tpSrc(5353)
+                         .priority(98).ethType(eth::type::IP)
+                         .ipSrc(nhAddr)
+                         .ipDst(address::from_string("1.100.201.11"))
+                         .flags(OFPUTIL_FF_SEND_FLOW_REM)
+                         .cookie(ovs_htonll(uint64_t(eSvcCk)))
+                         .action().go(IntFlowManager::OUT_TABLE_ID)
+                         .parent().build(entryList2);
+            }
         } else {
-            FlowBuilder().proto(17).tpSrc(5353)
-                     .priority(97).ethType(eth::type::IP)
-                     .ipSrc(nhAddr).reg(12, 0, 1<<31)
-                     .flags(OFPUTIL_FF_SEND_FLOW_REM)
-                     .cookie(ovs_htonll(uint64_t(svctoanyCk)))
-                     .action().go(IntFlowManager::OUT_TABLE_ID)
-                     .parent().build(entryList2);
+            if (isIngress) {
+                FlowBuilder().proto(17).tpDst(5353)
+                         .priority(97).ethType(eth::type::IP)
+                         .ipDst(nhAddr).reg(12, 0, 1<<31)
+                         .flags(OFPUTIL_FF_SEND_FLOW_REM)
+                         .cookie(ovs_htonll(uint64_t(iSvcCk)))
+                         .action().go(IntFlowManager::OUT_TABLE_ID)
+                         .parent().build(entryList1);
+            } else {
+                FlowBuilder().proto(17).tpSrc(5353)
+                         .priority(97).ethType(eth::type::IP)
+                         .ipSrc(nhAddr).reg(12, 0, 1<<31)
+                         .flags(OFPUTIL_FF_SEND_FLOW_REM)
+                         .cookie(ovs_htonll(uint64_t(eSvcCk)))
+                         .action().go(IntFlowManager::OUT_TABLE_ID)
+                         .parent().build(entryList2);
+            }
         }
     };
 
-    createFlowExpr(true);
-    createFlowExpr(false);
+    createFlowExpr(true, isNodePort);
+    createFlowExpr(false, isNodePort);
 
     boost::system::error_code ec;
     ec = make_error_code(boost::system::errc::success);
@@ -674,7 +742,10 @@ ServiceStatsManagerFixture::testFlowRemovedSvcTgt (MockConnection& portConn,
     // that we should have in Genie object
     uint32_t expPkts = LAST_PACKET_COUNT - initPkts;
     uint32_t expBytes = expPkts * PACKET_SIZE;
-    checkSvcTgtObjectStats(svcUuid, nhip, expPkts, expBytes);
+    if (isNodePort)
+        checkNodeSvcTgtObjectStats(svcUuid, nhip, expPkts, expBytes);
+    else
+        checkAnySvcTgtObjectStats(svcUuid, nhip, expPkts, expBytes);
 }
 
 void
@@ -783,21 +854,23 @@ ServiceStatsManagerFixture::testFlowRemovedPodSvc (MockConnection& portConn,
 // Check prom dyn gauge service metrics along with stats
 void ServiceStatsManagerFixture::checkSvcTgtPromMetrics (uint64_t pkts,
                                                          uint64_t bytes,
-                                                         const string& ip)
+                                                         const string& ip,
+                                                         bool isNodePort)
 {
     const string& output = BaseFixture::getOutputFromCommand(cmd);
     size_t pos = std::string::npos;
+    const string& scope = isNodePort?"nodePort":"cluster";
     const string& s_rx_bytes = "opflex_svc_rx_bytes{name=\"coredns\"" \
-                               ",namespace=\"kube-system\",scope=\"cluster\"} "
+                               ",namespace=\"kube-system\",scope=\"" + scope + "\"} "
                             + boost::lexical_cast<std::string>(bytes) + ".000000";
     const string& s_rx_pkts = "opflex_svc_rx_packets{name=\"coredns\"" \
-                              ",namespace=\"kube-system\",scope=\"cluster\"} "
+                              ",namespace=\"kube-system\",scope=\"" + scope + "\"} "
                             + boost::lexical_cast<std::string>(pkts) + ".000000";
     const string& s_tx_bytes = "opflex_svc_tx_bytes{name=\"coredns\"" \
-                               ",namespace=\"kube-system\",scope=\"cluster\"} "
+                               ",namespace=\"kube-system\",scope=\"" + scope + "\"} "
                             + boost::lexical_cast<std::string>(bytes) + ".000000";
     const string& s_tx_pkts = "opflex_svc_tx_packets{name=\"coredns\"" \
-                              ",namespace=\"kube-system\",scope=\"cluster\"} "
+                              ",namespace=\"kube-system\",scope=\"" + scope + "\"} "
                             + boost::lexical_cast<std::string>(pkts) + ".000000";
     pos = output.find(s_rx_bytes);
     BOOST_CHECK_NE(pos, std::string::npos);
@@ -810,7 +883,7 @@ void ServiceStatsManagerFixture::checkSvcTgtPromMetrics (uint64_t pkts,
 
     const string& ep_attr = "ep_name=\"coredns\",ep_namespace=\"default\",";
     const string& s_ann = "\",svc_name=\"coredns\",svc_namespace=\"kube-system\"" \
-                          ",svc_scope=\"cluster\"} ";
+                          ",svc_scope=\"" + scope + "\"} ";
     string rx_bytes, rx_pkts, tx_bytes, tx_pkts;
     if (ip == "10.20.44.2" || ip == "2001:db8::2") {
         rx_bytes = "opflex_svc_target_rx_bytes{" + ep_attr + "ip=\"";
@@ -881,12 +954,104 @@ void ServiceStatsManagerFixture::checkPodSvcPromMetrics (uint64_t pkts,
 #endif
 
 void
-ServiceStatsManagerFixture::checkSvcTgtObjectStats (const std::string& svcUuid,
-                                                   const std::string& nhip,
-                                                   uint32_t packet_count,
-                                                   uint32_t byte_count)
+ServiceStatsManagerFixture::checkNodeSvcTgtObjectStats (const std::string& svcUuid,
+                                                        const std::string& nhip,
+                                                        uint32_t packet_count,
+                                                        uint32_t byte_count)
 {
+    optional<shared_ptr<SvcStatUniverse> > su =
+        SvcStatUniverse::resolve(agent.getFramework());
 
+    LOG(DEBUG) << "checkObj expected pkt count: " << packet_count;
+
+    // Note: the objects should always be present. But checking for
+    // presence of object, just for safety
+    optional<shared_ptr<SvcCounter> > opSvcCntr
+                        = su.get()->resolveGbpeSvcCounter(svcUuid);
+    BOOST_CHECK(opSvcCntr);
+    if (opSvcCntr) {
+        WAIT_FOR_DO_ONFAIL(
+           (opSvcCntr
+                && (opSvcCntr.get()->getNodePortRxpackets().get() == packet_count)),
+           500, // usleep(1000) * 500 = 500ms
+           (opSvcCntr = su.get()->resolveGbpeSvcCounter(svcUuid)),
+           if (opSvcCntr) {
+               BOOST_CHECK_EQUAL(opSvcCntr.get()->getNodePortRxpackets().get(), packet_count);
+           });
+        WAIT_FOR_DO_ONFAIL(
+           (opSvcCntr
+                && (opSvcCntr.get()->getNodePortRxbytes().get() == byte_count)),
+           500, // usleep(1000) * 500 = 500ms
+           (opSvcCntr = su.get()->resolveGbpeSvcCounter(svcUuid)),
+           if (opSvcCntr) {
+               BOOST_CHECK_EQUAL(opSvcCntr.get()->getNodePortRxbytes().get(), byte_count);
+           });
+        WAIT_FOR_DO_ONFAIL(
+           (opSvcCntr
+                && (opSvcCntr.get()->getNodePortTxpackets().get() == packet_count)),
+           500, // usleep(1000) * 500 = 500ms
+           (opSvcCntr = su.get()->resolveGbpeSvcCounter(svcUuid)),
+           if (opSvcCntr) {
+               BOOST_CHECK_EQUAL(opSvcCntr.get()->getNodePortTxpackets().get(), packet_count);
+           });
+        WAIT_FOR_DO_ONFAIL(
+           (opSvcCntr
+                && (opSvcCntr.get()->getNodePortTxbytes().get() == byte_count)),
+           500, // usleep(1000) * 500 = 500ms
+           (opSvcCntr = su.get()->resolveGbpeSvcCounter(svcUuid)),
+           if (opSvcCntr) {
+               BOOST_CHECK_EQUAL(opSvcCntr.get()->getNodePortTxbytes().get(), byte_count);
+           });
+
+        optional<shared_ptr<SvcTargetCounter> > opSvcTgtCntr
+                            = opSvcCntr.get()->resolveGbpeSvcTargetCounter(nhip);
+        BOOST_CHECK(opSvcTgtCntr);
+        if (opSvcTgtCntr) {
+            WAIT_FOR_DO_ONFAIL(
+               (opSvcTgtCntr
+                    && (opSvcTgtCntr.get()->getNodePortRxpackets().get() == packet_count)),
+               500, // usleep(1000) * 500 = 500ms
+               (opSvcTgtCntr = opSvcCntr.get()->resolveGbpeSvcTargetCounter(nhip)),
+               if (opSvcTgtCntr) {
+                   BOOST_CHECK_EQUAL(opSvcTgtCntr.get()->getNodePortRxpackets().get(), packet_count);
+               });
+            WAIT_FOR_DO_ONFAIL(
+               (opSvcTgtCntr
+                    && (opSvcTgtCntr.get()->getNodePortRxbytes().get() == byte_count)),
+               500, // usleep(1000) * 500 = 500ms
+               (opSvcTgtCntr = opSvcCntr.get()->resolveGbpeSvcTargetCounter(nhip)),
+               if (opSvcTgtCntr) {
+                   BOOST_CHECK_EQUAL(opSvcTgtCntr.get()->getNodePortRxbytes().get(), byte_count);
+               });
+            WAIT_FOR_DO_ONFAIL(
+               (opSvcTgtCntr
+                    && (opSvcTgtCntr.get()->getNodePortTxpackets().get() == packet_count)),
+               500, // usleep(1000) * 500 = 500ms
+               (opSvcTgtCntr = opSvcCntr.get()->resolveGbpeSvcTargetCounter(nhip)),
+               if (opSvcTgtCntr) {
+                   BOOST_CHECK_EQUAL(opSvcTgtCntr.get()->getNodePortTxpackets().get(), packet_count);
+               });
+            WAIT_FOR_DO_ONFAIL(
+               (opSvcTgtCntr
+                    && (opSvcTgtCntr.get()->getNodePortTxbytes().get() == byte_count)),
+               500, // usleep(1000) * 500 = 500ms
+               (opSvcTgtCntr = opSvcCntr.get()->resolveGbpeSvcTargetCounter(nhip)),
+               if (opSvcTgtCntr) {
+                   BOOST_CHECK_EQUAL(opSvcTgtCntr.get()->getNodePortTxbytes().get(), byte_count);
+               });
+        }
+#ifdef HAVE_PROMETHEUS_SUPPORT
+        checkSvcTgtPromMetrics(packet_count, byte_count, nhip, true);
+#endif
+    }
+}
+
+void
+ServiceStatsManagerFixture::checkAnySvcTgtObjectStats (const std::string& svcUuid,
+                                                       const std::string& nhip,
+                                                       uint32_t packet_count,
+                                                       uint32_t byte_count)
+{
     optional<shared_ptr<SvcStatUniverse> > su =
         SvcStatUniverse::resolve(agent.getFramework());
 
@@ -980,7 +1145,6 @@ ServiceStatsManagerFixture::checkPodSvcObjectStats (const std::string& epToSvcUu
                                                    uint32_t packet_count,
                                                    uint32_t byte_count)
 {
-
     optional<shared_ptr<SvcStatUniverse> > su =
         SvcStatUniverse::resolve(agent.getFramework());
 
@@ -1113,17 +1277,18 @@ void ServiceStatsManagerFixture::checkPodSvcObsObj (bool add)
 bool ServiceStatsManagerFixture::checkNewFlowMapSize (void)
 {
     std::lock_guard<std::mutex> lock(serviceStatsManager.pstatMtx);
-    // We have 4 eps with "5 ipv4" + "2 ipv6"...
+    // We have 4 local eps with "5 ipv4" + "2 ipv6".
+    // There is veth_host_ac as well with 1 ipv4
     // and 2 svc mappings with "1 ipv6" and "1 ipv4"
     // The service's next hops are part of ep0. Flows arent needed for these.
-    // => 4*1*2 + 2*1*1 = 10 flows
+    // => Total pod<-->svc flows: 4*1*2 + 2*1*1 = 10 flows
 
     // We have 2 NHs which are local EP IPs. So 4 flows get
-    // created for any <--> svc-tgt
+    // created for any <--> svc-tgt. 2 flows get created for nodeport stats.
 
     // Also there are 2 default entries but only 1 has send_flow_rem
-    // So totally we have 15 flows in STATS table for which we collect stats
-    if (serviceStatsManager.statsState.newFlowCounterMap.size() == 15)
+    // So totally we have 17 flows in STATS table for which we collect stats
+    if (serviceStatsManager.statsState.newFlowCounterMap.size() == 17)
         return true;
     return false;
 }
@@ -1207,25 +1372,36 @@ BOOST_FIXTURE_TEST_CASE(testFlowMatchStatsEpSvcAgg, ServiceStatsManagerFixture) 
     serviceStatsManager.stop();
 }
 
-BOOST_FIXTURE_TEST_CASE(testFlowMatchStatsSvcTgtV4, ServiceStatsManagerFixture) {
+BOOST_FIXTURE_TEST_CASE(testFlowMatchStatsNodeSvcTgt, ServiceStatsManagerFixture) {
     MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
     serviceStatsManager.registerConnection(&integrationPortConn);
     serviceStatsManager.start();
     checkNewFlowMapInitialized();
-    LOG(DEBUG) << "############# SVC-TGT Flow stat match v4 START ############";
-    testFlowStatsSvcTgt(integrationPortConn, &serviceStatsManager, "10.20.44.2");
-    LOG(DEBUG) << "############# SVC-TGT Flow stat match v4 END ############";
+    LOG(DEBUG) << "############# node <--> SVC-TGT Flow stat match START ############";
+    testFlowStatsSvcTgt(integrationPortConn, &serviceStatsManager, "10.20.44.2", true);
+    LOG(DEBUG) << "############# node <--> SVC-TGT Flow stat match END ############";
     serviceStatsManager.stop();
 }
 
-BOOST_FIXTURE_TEST_CASE(testFlowMatchStatsSvcTgtV6, ServiceStatsManagerFixture) {
+BOOST_FIXTURE_TEST_CASE(testFlowMatchStatsAnySvcTgtV4, ServiceStatsManagerFixture) {
     MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
     serviceStatsManager.registerConnection(&integrationPortConn);
     serviceStatsManager.start();
     checkNewFlowMapInitialized();
-    LOG(DEBUG) << "############# SVC-TGT Flow stat match v6 START ############";
+    LOG(DEBUG) << "############# any <--> SVC-TGT Flow stat match v4 START ############";
+    testFlowStatsSvcTgt(integrationPortConn, &serviceStatsManager, "10.20.44.2");
+    LOG(DEBUG) << "############# any <--> SVC-TGT Flow stat match v4 END ############";
+    serviceStatsManager.stop();
+}
+
+BOOST_FIXTURE_TEST_CASE(testFlowMatchStatsAnySvcTgtV6, ServiceStatsManagerFixture) {
+    MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
+    serviceStatsManager.registerConnection(&integrationPortConn);
+    serviceStatsManager.start();
+    checkNewFlowMapInitialized();
+    LOG(DEBUG) << "############# any <--> SVC-TGT Flow stat match v6 START ############";
     testFlowStatsSvcTgt(integrationPortConn, &serviceStatsManager, "2001:db8::2");
-    LOG(DEBUG) << "############# SVC-TGT Flow stat match v6 END ############";
+    LOG(DEBUG) << "############# any <--> SVC-TGT Flow stat match v6 END ############";
     serviceStatsManager.stop();
 }
 
@@ -1257,17 +1433,31 @@ BOOST_FIXTURE_TEST_CASE(testFlowAgePodSvcOld, ServiceStatsManagerFixture) {
 }
 
 // Verify aging of svc-tgt flows
-BOOST_FIXTURE_TEST_CASE(testFlowAgeSvcTgtOld, ServiceStatsManagerFixture) {
+BOOST_FIXTURE_TEST_CASE(testFlowAgeAnySvcTgtOld, ServiceStatsManagerFixture) {
     MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
     serviceStatsManager.registerConnection(&integrationPortConn);
     serviceStatsManager.start();
 
     checkNewFlowMapInitialized();
-    LOG(DEBUG) << "############# AGE OLD svc-tgt START ############";
+    LOG(DEBUG) << "############# AGE OLD any <--> svc-tgt START ############";
     testFlowStatsSvcTgt(integrationPortConn, &serviceStatsManager, "10.20.44.2");
     testFlowAge(&serviceStatsManager, true, false);
     testFlowAge(&serviceStatsManager, true, true);
-    LOG(DEBUG) << "############# AGE OLD svc-tgt END ############";
+    LOG(DEBUG) << "############# AGE OLD any <--> svc-tgt END ############";
+    serviceStatsManager.stop();
+}
+
+BOOST_FIXTURE_TEST_CASE(testFlowAgeNodeSvcTgtOld, ServiceStatsManagerFixture) {
+    MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
+    serviceStatsManager.registerConnection(&integrationPortConn);
+    serviceStatsManager.start();
+
+    checkNewFlowMapInitialized();
+    LOG(DEBUG) << "############# AGE OLD node <--> svc-tgt START ############";
+    testFlowStatsSvcTgt(integrationPortConn, &serviceStatsManager, "10.20.44.2", true);
+    testFlowAge(&serviceStatsManager, true, false);
+    testFlowAge(&serviceStatsManager, true, true);
+    LOG(DEBUG) << "############# AGE OLD node <--> svc-tgt END ############";
     serviceStatsManager.stop();
 }
 
@@ -1317,16 +1507,29 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemovedPodSvcNew, ServiceStatsManagerFixture) {
     serviceStatsManager.stop();
 }
 
-BOOST_FIXTURE_TEST_CASE(testFlowRemovedSvcTgtNew, ServiceStatsManagerFixture) {
+BOOST_FIXTURE_TEST_CASE(testFlowRemovedAnySvcTgtNew, ServiceStatsManagerFixture) {
     MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
     serviceStatsManager.registerConnection(&integrationPortConn);
     serviceStatsManager.start();
 
     checkNewFlowMapInitialized();
 
-    LOG(DEBUG) << "############# REMOVEDNEW svc-tgt START ############";
+    LOG(DEBUG) << "############# REMOVEDNEW any <--> svc-tgt START ############";
     testFlowRemovedSvcTgt(integrationPortConn, &serviceStatsManager, 0, "10.20.44.2");
-    LOG(DEBUG) << "############# REMOVEDNEW svc-tgt END ############";
+    LOG(DEBUG) << "############# REMOVEDNEW any <--> svc-tgt END ############";
+    serviceStatsManager.stop();
+}
+
+BOOST_FIXTURE_TEST_CASE(testFlowRemovedNodeSvcTgtNew, ServiceStatsManagerFixture) {
+    MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
+    serviceStatsManager.registerConnection(&integrationPortConn);
+    serviceStatsManager.start();
+
+    checkNewFlowMapInitialized();
+
+    LOG(DEBUG) << "############# REMOVEDNEW node <--> svc-tgt START ############";
+    testFlowRemovedSvcTgt(integrationPortConn, &serviceStatsManager, 0, "10.20.44.2", true);
+    LOG(DEBUG) << "############# REMOVEDNEW node <--> svc-tgt END ############";
     serviceStatsManager.stop();
 }
 
@@ -1357,18 +1560,33 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemovedPodSvcOld, ServiceStatsManagerFixture) {
     serviceStatsManager.stop();
 }
 
-BOOST_FIXTURE_TEST_CASE(testFlowRemovedSvcTgtOld, ServiceStatsManagerFixture) {
+BOOST_FIXTURE_TEST_CASE(testFlowRemovedAnySvcTgtOld, ServiceStatsManagerFixture) {
     MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
     serviceStatsManager.registerConnection(&integrationPortConn);
     serviceStatsManager.start();
 
     checkNewFlowMapInitialized();
 
-    LOG(DEBUG) << "############# REMOVEDOLD svc-tgt START ############";
+    LOG(DEBUG) << "############# REMOVEDOLD any <--> svc-tgt START ############";
     testFlowStatsSvcTgt(integrationPortConn, &serviceStatsManager, "10.20.44.2");
     testFlowRemovedSvcTgt(integrationPortConn, &serviceStatsManager,
                           INITIAL_PACKET_COUNT, "10.20.44.2");
-    LOG(DEBUG) << "############# REMOVEDOLD svc-tgt END ############";
+    LOG(DEBUG) << "############# REMOVEDOLD any <--> svc-tgt END ############";
+    serviceStatsManager.stop();
+}
+
+BOOST_FIXTURE_TEST_CASE(testFlowRemovedNodeSvcTgtOld, ServiceStatsManagerFixture) {
+    MockConnection integrationPortConn(TEST_CONN_TYPE_INT);
+    serviceStatsManager.registerConnection(&integrationPortConn);
+    serviceStatsManager.start();
+
+    checkNewFlowMapInitialized();
+
+    LOG(DEBUG) << "############# REMOVEDOLD node <--> svc-tgt START ############";
+    testFlowStatsSvcTgt(integrationPortConn, &serviceStatsManager, "10.20.44.2", true);
+    testFlowRemovedSvcTgt(integrationPortConn, &serviceStatsManager,
+                          INITIAL_PACKET_COUNT, "10.20.44.2", true);
+    LOG(DEBUG) << "############# REMOVEDOLD node <--> svc-tgt END ############";
     serviceStatsManager.stop();
 }
 

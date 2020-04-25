@@ -457,6 +457,18 @@ module[gbpe]
 
         # number of bytes sent from the service
         member[txbytes; type=scalar/UInt64]
+
+        # number of packets received by the nodePort service
+        member[nodePortRxpackets; type=scalar/UInt64]
+
+        # number of bytes received by the nodePort service
+        member[nodePortRxbytes; type=scalar/UInt64]
+
+        # number of packets sent from the nodePort service
+        member[nodePortTxpackets; type=scalar/UInt64]
+
+        # number of bytes sent from the nodePort service
+        member[nodePortTxbytes; type=scalar/UInt64]
     }
 
     # Counter for showing target Rx and Tx statistics per service. Traffic must
@@ -500,6 +512,18 @@ module[gbpe]
 
         # number of bytes sent from the service target
         member[txbytes; type=scalar/UInt64]
+
+        # number of packets received by the nodePort service target
+        member[nodePortRxpackets; type=scalar/UInt64]
+
+        # number of bytes received by the nodePort service target
+        member[nodePortRxbytes; type=scalar/UInt64]
+
+        # number of packets sent from the nodePort service target
+        member[nodePortTxpackets; type=scalar/UInt64]
+
+        # number of bytes sent from the nodePort service target
+        member[nodePortTxbytes; type=scalar/UInt64]
     }
 
     class[SecGrpClassifierCounter;

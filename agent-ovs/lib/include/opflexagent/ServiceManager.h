@@ -146,14 +146,17 @@ private:
     /**
      * Update service target observer in modb
      *
-     * @param service  the state of service
-     * @param add      indicates if service is added or removed
+     * @param service   the state of service
+     * @param add       indicates if service is added or removed
+     * @param pService  SvcCounter pointer
      */
-    void updateSvcTargetObserverMoDB(const Service& service, bool add,
+    void updateSvcTargetObserverMoDB(const Service& service,
+                                     bool add,
                  std::shared_ptr<modelgbp::gbpe::SvcCounter> pService);
 
     // Remove the stats of SvcTarget from SvcCounter
-    void clearSvcCounterStats(std::shared_ptr<SvcCounter> pSvc,
+    void clearSvcCounterStats(const Service& service,
+                              std::shared_ptr<SvcCounter> pSvc,
                               std::shared_ptr<SvcTargetCounter> pSvcTgt);
 
     // reference to opflex agent

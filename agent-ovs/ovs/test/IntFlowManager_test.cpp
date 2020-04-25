@@ -171,6 +171,16 @@ public:
                                 uint16_t nh_port = 0);
 
     /**
+     * Initialize flows in stats table for node to svc
+     * and vice versa */
+    void initExpNodeSvcStats(const string& node_ip,
+                             const string& nh_ip,
+                             uint16_t nh_port,
+                             const string& uuid,
+                             uint64_t rxCookie,
+                             uint64_t txCookie);
+
+    /**
      * Initialize flows in stats table for * to svc
      * and vice versa */
     void initExpAnySvcStats(const string& nh_ip,
@@ -1438,8 +1448,17 @@ BOOST_FIXTURE_TEST_CASE(loadBalancedService_vlan, VlanIntFlowManagerFixture) {
 
 void BaseIntFlowManagerFixture::loadBalancedServiceTest() {
     setConnected();
+    setLoggingLevel("trace");
+    LOG(DEBUG) << "#### Starting LB Service Test ####";
+
     intFlowManager.egDomainUpdated(epg0->getURI());
     intFlowManager.domainUpdated(RoutingDomain::CLASS_ID, rd0->getURI());
+
+    // cloud nodeport tests need veth_host_ac
+    portmapper.setPort("veth_host_ac", 72);
+    portmapper.setPort(72, "veth_host_ac");
+    createVethHostAccessObjects();
+    intFlowManager.endpointUpdated(vethhostac->getUUID());
 
     Service as1;
     as1.setUUID("ed84daef-1696-4b98-8c80-6b22d85f4dc2");
@@ -1496,6 +1515,7 @@ void BaseIntFlowManagerFixture::loadBalancedServiceTest() {
     initExpRd();
     initExpEp(ep0, epg0);
     initExpEp(ep2, epg0);
+    initExpEp(vethhostac, epg0);
     initExpLBService(as1, as2);
     WAIT_FOR_TABLES("create", 500);
 
@@ -1518,6 +1538,7 @@ void BaseIntFlowManagerFixture::loadBalancedServiceTest() {
     initExpRd();
     initExpEp(ep0, epg0);
     initExpEp(ep2, epg0);
+    initExpEp(vethhostac, epg0);
     initExpLBService(as1, as2, true);
     WAIT_FOR_TABLES("conntrack", 500);
 
@@ -1561,6 +1582,7 @@ void BaseIntFlowManagerFixture::loadBalancedServiceTest() {
     initExpRd();
     initExpEp(ep0, epg0);
     initExpEp(ep2, epg0);
+    initExpEp(vethhostac, epg0);
     initExpLBService(as1, as2, false, true);
     WAIT_FOR_TABLES("exposed", 500);
 
@@ -1583,6 +1605,7 @@ void BaseIntFlowManagerFixture::loadBalancedServiceTest() {
     initExpRd();
     initExpEp(ep0, epg0);
     initExpEp(ep2, epg0);
+    initExpEp(vethhostac, epg0);
     initExpLBService(as1, as2, true, true);
     WAIT_FOR_TABLES("exposed conntrack", 500);
 
@@ -1599,6 +1622,7 @@ void BaseIntFlowManagerFixture::loadBalancedServiceTest() {
     initExpRd();
     initExpEp(ep0, epg0);
     initExpEp(ep2, epg0);
+    initExpEp(vethhostac, epg0);
     WAIT_FOR_TABLES("delete", 500);
 }
 
@@ -2005,6 +2029,7 @@ void BaseIntFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
     if (acastIps->size() == 0) acastIps = &ips;
     uint32_t vnid = policyMgr.getVnidForGroup(epg->getURI()).get();
     uint32_t tunPort = intFlowManager.getTunnelPort();
+    bool isHostAccess = ep->getUUID().find("veth_host_ac") != std::string::npos;
 
     string bmac("ff:ff:ff:ff:ff:ff");
     uint8_t rmacArr[6];
@@ -2018,12 +2043,28 @@ void BaseIntFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
              .actions().go(SRC).done());
 
         for (const string& ip : ips) {
+                    LOG(DEBUG) << "IP is " << ip;
             address ipa = address::from_string(ip);
             if (ipa.is_v4()) {
                 ADDF(Bldr().table(SEC).priority(30).ip().in(port)
                      .isEthSrc(mac).isIpSrc(ip).actions().go(SRC).done());
                 ADDF(Bldr().table(SEC).priority(40).arp().in(port)
                      .isEthSrc(mac).isSpa(ip).actions().go(SRC).done());
+                if (isHostAccess) {
+                    ADDF(Bldr().table(SEC).priority(41).arp().in(port)
+                         .isEthSrc(mac).isEthDst("ff:ff:ff:ff:ff:ff")
+                         .isSpa(ip).isArpOp(1)
+                         .actions()
+                         .move(ETHSRC, ETHDST)
+                         .load64(ETHSRC, 0xaabbccddeeff).load(ARPOP, 2)
+                         .move(ARPSHA, ARPTHA).load64(ARPSHA, 0xaabbccddeeff)
+                         .move(ARPTPA, ARPSPA)
+                         .load(ARPTPA, ipa.to_v4().to_ulong())
+                         .inport().done());
+                    ADDF(Bldr().table(SRC).priority(140).ip().in(port)
+                         .isEthSrc(mac).isIpSrc(ip).actions().load(SEPG, vnid).load(BD, bdId)
+                         .load(FD, fdId).load(RD, rdId).go(SVR).done());
+                }
             } else {
                 ADDF(Bldr().table(SEC).priority(30).ipv6().in(port)
                      .isEthSrc(mac).isIpv6Src(ip).actions().go(SRC).done());
@@ -2033,9 +2074,17 @@ void BaseIntFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
             }
         }
 
-        ADDF(Bldr().table(SRC).priority(140).in(port)
-             .isEthSrc(mac).actions().load(SEPG, vnid).load(BD, bdId)
-             .load(FD, fdId).load(RD, rdId).go(SVR).done());
+        if (isHostAccess) {
+            ADDF(Bldr().table(SEC).priority(26).ip().in(port)
+                 .isEthSrc(mac).actions().go(SRC).done());
+            ADDF(Bldr().table(SRC).priority(140).arp().in(port)
+                 .isEthSrc(mac).actions().load(SEPG, vnid).load(BD, bdId)
+                 .load(FD, fdId).load(RD, rdId).go(SVR).done());
+        } else {
+            ADDF(Bldr().table(SRC).priority(140).in(port)
+                 .isEthSrc(mac).actions().load(SEPG, vnid).load(BD, bdId)
+                 .load(FD, fdId).load(RD, rdId).go(SVR).done());
+        }
     }
 
     // dest rules
@@ -2205,6 +2254,13 @@ void BaseIntFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep,
         ADDF(Bldr().table(OUT).priority(2)
              .reg(OUTPORT, port).isMd("0x403/0x4ff").in(port)
              .actions().inport().done());
+        if (isHostAccess) {
+            ADDF(Bldr().table(OUT).priority(15).ip()
+                .isToHostAccess().actions()
+                .ethSrc(rmac).ethDst(mac).decTtl()
+                .ct("commit,zone=1")
+                .outPort(port).done());
+        }
     }
 }
 
@@ -2910,6 +2966,34 @@ void BaseIntFlowManagerFixture::initExpAnySvcStats (const string& nh_ip,
     }
 }
 
+void BaseIntFlowManagerFixture::initExpNodeSvcStats (const string& node_ip,
+                                                     const string& nh_ip,
+                                                     uint16_t nh_port,
+                                                     const string& uuid,
+                                                     uint64_t rxCookie,
+                                                     uint64_t txCookie)
+{
+    address ipa = address::from_string(nh_ip);
+    if (ipa.is_v4()) {
+        // to svc
+        ADDF(Bldr(SEND_FLOW_REM).table(STAT)
+             .cookie(rxCookie)
+             .priority(98).udp()
+             .isIpSrc(node_ip)
+             .isIpDst(nh_ip)
+             .isTpDst(nh_port)
+             .actions().go(OUT).done());
+        // from svc
+        ADDF(Bldr(SEND_FLOW_REM).table(STAT)
+             .cookie(txCookie)
+             .priority(98).udp()
+             .isIpSrc(nh_ip)
+             .isIpDst(node_ip)
+             .isTpSrc(nh_port)
+             .actions().go(OUT).done());
+    }
+}
+
 void BaseIntFlowManagerFixture::initExpLBService(Service &as1,
                                                  Service &as2,
                                                  bool conntrack,
@@ -2956,6 +3040,21 @@ void BaseIntFlowManagerFixture::initExpLBService(Service &as1,
 
         initExpAnySvcStats("10.20.44.2", 5353, as1.getUUID(), rxCookie1, txCookie1);
         initExpAnySvcStats("2001:db8::2", 80, as2.getUUID(), rxCookie2, txCookie2);
+
+        const string& nodeToSvcKey = "notosvc:svc-nod:"+as1.getUUID()+":10.20.44.2";
+        const string& svcToNodeKey = "svctono:svc-nod:"+as1.getUUID()+":10.20.44.2";
+        WAIT_FOR_DO_ONFAIL((idGen.getIdNoAlloc("svcstats", nodeToSvcKey) != (uint32_t)-1),
+                            500,,
+                            LOG(ERROR) << "cookie not yet alloc'd for: " << nodeToSvcKey;);
+        WAIT_FOR_DO_ONFAIL((idGen.getIdNoAlloc("svcstats", svcToNodeKey) != (uint32_t)-1),
+                            500,,
+                            LOG(ERROR) << "cookie not yet alloc'd for: " << svcToNodeKey;);
+
+        auto rxCookie = idGen.getIdNoAlloc("svcstats", nodeToSvcKey);
+        auto txCookie = idGen.getIdNoAlloc("svcstats", svcToNodeKey);
+
+        initExpNodeSvcStats("1.100.201.11", "10.20.44.2", 5353,
+                            as1.getUUID(), rxCookie, txCookie);
     } else {
         const string& extToSvcKey1 = "extosvc:svc-ext:"+as1.getUUID()+":10.20.44.2";
         const string& svcToExtKey1 = "svctoex:svc-ext:"+as1.getUUID()+":10.20.44.2";
@@ -3062,9 +3161,9 @@ void BaseIntFlowManagerFixture::initExpLBService(Service &as1,
          .go(SVH).done());
 
     if (conntrack) {
-        string commit1 = string("commit,zone=1,exec(load:") +
+        string commit1 = string("commit,zone=2,exec(load:") +
             (exposed ? "0x80000001" : "0x1") + "->NXM_NX_CT_MARK[])";
-        string commit2 = string("commit,zone=1,exec(load:") +
+        string commit2 = string("commit,zone=2,exec(load:") +
             (exposed ? "0x80000002" : "0x2") + "->NXM_NX_CT_MARK[])";
 
         ADDF(Bldr(SEND_FLOW_REM).table(SVH)
@@ -3177,39 +3276,39 @@ void BaseIntFlowManagerFixture::initExpLBService(Service &as1,
                  .isCtState("-trk").udp().reg(RD, 1).in(tunPort)
                  .isIpSrc("10.20.44.2").isTpSrc(5353)
                  .actions().pushVlan().move(SEPG12, VLAN)
-                 .ct("table=2,zone=1").done());
+                 .ct("table=2,zone=2").done());
             ADDF(Bldr().table(SVR).priority(101)
                  .isCtState("-trk").udp().reg(RD, 1).in(tunPort)
                  .isIpSrc("169.254.169.2").isTpSrc(5353)
                  .actions().pushVlan().move(SEPG12, VLAN)
-                 .ct("table=2,zone=1").done());
+                 .ct("table=2,zone=2").done());
             ADDF(Bldr().table(SVR).priority(101)
                  .isCtState("-trk").tcp6().reg(RD, 1).in(tunPort)
                  .isIpv6Src("2001:db8::2").isTpSrc(80)
                  .actions().pushVlan().move(SEPG12, VLAN)
-                 .ct("table=2,zone=1").done());
+                 .ct("table=2,zone=2").done());
             ADDF(Bldr().table(SVR).priority(101)
                  .isCtState("-trk").tcp6().reg(RD, 1).in(tunPort)
                  .isIpv6Src("fe80::a9:fe:a9:2").isTpSrc(80)
                  .actions().pushVlan().move(SEPG12, VLAN)
-                 .ct("table=2,zone=1").done());
+                 .ct("table=2,zone=2").done());
         }
         ADDF(Bldr().table(SVR).priority(100)
              .isCtState("-trk").udp().reg(RD, 1)
              .isIpSrc("10.20.44.2").isTpSrc(5353)
-             .actions().ct("table=2,zone=1").done());
+             .actions().ct("table=2,zone=2").done());
         ADDF(Bldr().table(SVR).priority(100)
              .isCtState("-trk").udp().reg(RD, 1)
              .isIpSrc("169.254.169.2").isTpSrc(5353)
-             .actions().ct("table=2,zone=1").done());
+             .actions().ct("table=2,zone=2").done());
         ADDF(Bldr().table(SVR).priority(100)
              .isCtState("-trk").tcp6().reg(RD, 1)
              .isIpv6Src("2001:db8::2").isTpSrc(80)
-             .actions().ct("table=2,zone=1").done());
+             .actions().ct("table=2,zone=2").done());
         ADDF(Bldr().table(SVR).priority(100)
              .isCtState("-trk").tcp6().reg(RD, 1)
              .isIpv6Src("fe80::a9:fe:a9:2").isTpSrc(80)
-             .actions().ct("table=2,zone=1").done());
+             .actions().ct("table=2,zone=2").done());
 
         if (exposed) {
             ADDF(Bldr(SEND_FLOW_REM).table(SVR)

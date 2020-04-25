@@ -67,7 +67,7 @@ public:
     std::shared_ptr<modelgbp::policy::Universe> universe;
     std::shared_ptr<modelgbp::policy::Space> space;
     std::shared_ptr<modelgbp::platform::Config> config;
-    std::shared_ptr<Endpoint> ep0, ep1, ep2, ep3, ep4, ep5;
+    std::shared_ptr<Endpoint> ep0, ep1, ep2, ep3, ep4, ep5, vethhostac;
     std::shared_ptr<modelgbp::gbp::EpGroup> epg0, epg1, epg2, epg3, epg4;
     std::shared_ptr<modelgbp::gbp::FloodDomain> fd0, fd1;
     std::shared_ptr<modelgbp::gbpe::FloodContext> fd0ctx;
@@ -240,7 +240,20 @@ protected:
         ep5->setExternal();
         ep5->setExtEncap(1000);
         epSrc.updateEndpoint(*ep5);
+    }
 
+    // Add vethhostac for nodeport tests
+    void createVethHostAccessObjects () {
+        vethhostac.reset(new Endpoint("veth_host_ac"));
+        vethhostac->setInterfaceName("veth_host_ac");
+        vethhostac->setAccessInterface("veth_host_ac");
+        vethhostac->setDisableAdv(true);
+        vethhostac->setMAC(opflex::modb::MAC("00:00:00:00:00:11"));
+        vethhostac->addIP("1.100.201.11");
+        vethhostac->setEgURI(epg0->getURI());
+        vethhostac->addAttribute("vm-name", "host-access");
+        vethhostac->addAttribute("namespace", "default");
+        epSrc.updateEndpoint(*vethhostac);
     }
 
     void createPolicyObjects() {

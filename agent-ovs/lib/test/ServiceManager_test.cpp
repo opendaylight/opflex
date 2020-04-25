@@ -290,13 +290,15 @@ void ServiceManagerFixture::checkServicePromMetrics (bool isAdd, bool isExternal
     } else
         scope = "cluster";
 
-    string str;
-    if (isUpdate)
+    string str, str2;
+    if (isUpdate) {
         str = "name=\"nginx\",scope=\"" + scope + "\"";
-    else
+        str2 = "name=\"nginx\",scope=\"nodePort\"";
+    } else {
         str = "name=\"coredns\",namespace=\"kube-system\",scope=\"" + scope + "\"";
+        str2 = "name=\"coredns\",namespace=\"kube-system\",scope=\"nodePort\"";
+    }
 
-    LOG(DEBUG) << "str is " << str;
     pos = output.find("opflex_svc_rx_bytes{" + str + "} 0.000000");
     expPosition(isAdd, pos);
     pos = output.find("opflex_svc_rx_packets{" + str + "} 0.000000");
@@ -305,6 +307,26 @@ void ServiceManagerFixture::checkServicePromMetrics (bool isAdd, bool isExternal
     expPosition(isAdd, pos);
     pos = output.find("opflex_svc_tx_packets{" + str + "} 0.000000");
     expPosition(isAdd, pos);
+
+    if (isExternal) {
+        pos = output.find("opflex_svc_rx_bytes{" + str2 + "} 0.000000");
+        expPosition(false, pos);
+        pos = output.find("opflex_svc_rx_packets{" + str2 + "} 0.000000");
+        expPosition(false, pos);
+        pos = output.find("opflex_svc_tx_bytes{" + str2 + "} 0.000000");
+        expPosition(false, pos);
+        pos = output.find("opflex_svc_tx_packets{" + str2 + "} 0.000000");
+        expPosition(false, pos);
+    } else {
+        pos = output.find("opflex_svc_rx_bytes{" + str2 + "} 0.000000");
+        expPosition(isAdd, pos);
+        pos = output.find("opflex_svc_rx_packets{" + str2 + "} 0.000000");
+        expPosition(isAdd, pos);
+        pos = output.find("opflex_svc_tx_bytes{" + str2 + "} 0.000000");
+        expPosition(isAdd, pos);
+        pos = output.find("opflex_svc_tx_packets{" + str2 + "} 0.000000");
+        expPosition(isAdd, pos);
+    }
 }
 // Check prom dyn gauge service target metrics
 void ServiceManagerFixture::checkServiceTargetPromMetrics (bool isAdd,
@@ -321,11 +343,15 @@ void ServiceManagerFixture::checkServiceTargetPromMetrics (bool isAdd,
     else
         scope = "cluster";
 
-    string str;
-    if (isUpdate)
+    string str, str2;
+    if (isUpdate) {
         str = "\",svc_name=\"nginx\",svc_scope=\"" + scope + "\"} 0.000000";
-    else
+        str2 = "\",svc_name=\"nginx\",svc_scope=\"nodePort\"} 0.000000";
+    } else {
         str = "\",svc_name=\"coredns\",svc_namespace=\"kube-system\",svc_scope=\"" + scope + "\"} 0.000000";
+        str2 = "\",svc_name=\"coredns\",svc_namespace=\"kube-system\",svc_scope=\"nodePort\"} 0.000000";
+    }
+
     pos = output.find("opflex_svc_target_rx_bytes{ip=\""+ip+str);
     expPosition(isAdd, pos);
     pos = output.find("opflex_svc_target_rx_packets{ip=\""+ip+str);
@@ -334,6 +360,26 @@ void ServiceManagerFixture::checkServiceTargetPromMetrics (bool isAdd,
     expPosition(isAdd, pos);
     pos = output.find("opflex_svc_target_tx_packets{ip=\""+ip+str);
     expPosition(isAdd, pos);
+
+    if (isExternal) {
+        pos = output.find("opflex_svc_target_rx_bytes{ip=\""+ip+str2);
+        expPosition(false, pos);
+        pos = output.find("opflex_svc_target_rx_packets{ip=\""+ip+str2);
+        expPosition(false, pos);
+        pos = output.find("opflex_svc_target_tx_bytes{ip=\""+ip+str2);
+        expPosition(false, pos);
+        pos = output.find("opflex_svc_target_tx_packets{ip=\""+ip+str2);
+        expPosition(false, pos);
+    } else {
+        pos = output.find("opflex_svc_target_rx_bytes{ip=\""+ip+str2);
+        expPosition(isAdd, pos);
+        pos = output.find("opflex_svc_target_rx_packets{ip=\""+ip+str2);
+        expPosition(isAdd, pos);
+        pos = output.find("opflex_svc_target_tx_bytes{ip=\""+ip+str2);
+        expPosition(isAdd, pos);
+        pos = output.find("opflex_svc_target_tx_packets{ip=\""+ip+str2);
+        expPosition(isAdd, pos);
+    }
 }
 #endif
 
