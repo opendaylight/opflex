@@ -923,6 +923,10 @@ bool ZeroCopyOpenSSL::attachTransport(
 
     CommunicationPeer * peer = dynamic_cast<CommunicationPeer *>(p);
 
+    if (!peer) {
+        return false;
+    }
+
     ZeroCopyOpenSSL * const e = new (std::nothrow)
         ZeroCopyOpenSSL(ctx, peer->passive_ ^ inverted_roles);
 
