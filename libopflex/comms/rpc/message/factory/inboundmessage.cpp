@@ -42,10 +42,7 @@ MessageFactory::InboundMessage(
      */
 
     if (!doc.IsObject()) {
-        LOG(ERROR)
-            << &peer
-            << " Received frame that is not a JSON object."
-        ;
+        LOG(ERROR) << &peer << " Received frame that is not a JSON object.";
         goto error;
     }
 
@@ -75,11 +72,7 @@ MessageFactory::InboundMessage(
             const rapidjson::Value& methodValue = doc["method"];
 
             if (!methodValue.IsString()) {
-                LOG(ERROR)
-                    << &peer
-                    << " Received request with non-string method. Dropping"
-                ;
-
+                LOG(ERROR) << &peer << " Received request with non-string method. Dropping";
                 goto error;
             }
 
@@ -90,7 +83,6 @@ MessageFactory::InboundMessage(
              * unacceptable to have no parameters for the invoked method.
              */
             const rapidjson::Value& params = doc[Message::kPayloadKey.params];
-
             return MessageFactory::InboundRequest(peer, params, method, id);
         }
 
@@ -98,17 +90,12 @@ MessageFactory::InboundMessage(
         assert(id.IsArray());
         assert(id[rapidjson::SizeType(0)].IsString());
         if (!id.IsArray() || !id[rapidjson::SizeType(0)].IsString()) {
-            LOG(ERROR)
-                << &peer
-                << " Received frame with an id that is not an array of strings."
-            ;
-
+            LOG(ERROR) << &peer << " Received frame with an id that is not an array of strings.";
             goto error;
         }
 
         if (doc.HasMember(Message::kPayloadKey.result)) {
             const rapidjson::Value & result = doc[Message::kPayloadKey.result];
-
             return MessageFactory::InboundResult(peer, result, id);
         }
 
@@ -116,10 +103,7 @@ MessageFactory::InboundMessage(
             const rapidjson::Value & error = doc["error"];
 
             if (!error.IsObject()) {
-                LOG(ERROR)
-                    << &peer
-                    << " Received error frame with an error that is not an object."
-                ;
+                LOG(ERROR) << &peer << " Received error frame with an error that is not an object.";
                 goto error;
             }
 
@@ -127,14 +111,16 @@ MessageFactory::InboundMessage(
         }
     }
 error:
-    LOG(ERROR)
-        << &peer
-        << " Dropping client because of protocol error."
-    ;
+    LOG(ERROR) << &peer << " Dropping client because of protocol error.";
 
-    dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer)
-        ->onError(UV_EPROTO);
-    const_cast<::yajr::comms::internal::CommunicationPeer *>(dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer))
+    auto commPeer = dynamic_cast< ::yajr::comms::internal::CommunicationPeer const *>(&peer);
+    if (!commPeer) {
+        LOG(ERROR) << "Unable to convert to CommunicationPeer";
+        assert(false);
+        return NULL;
+    }
+    commPeer->onError(UV_EPROTO);
+    const_cast<::yajr::comms::internal::CommunicationPeer *>(commPeer)
         ->onDisconnect();
 
     return NULL;
