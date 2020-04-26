@@ -55,7 +55,7 @@ public:
      * delete span pointed to by the pointer
      * @param[in] sesSt shared pointer to a Session object
      */
-    virtual void spanDeleted(shared_ptr<SessionState>& sesSt);
+    virtual void spanDeleted(const shared_ptr<SessionState>& sesSt);
 
     /**
      * create mirror

@@ -45,7 +45,7 @@ public:
     UdpServer(PacketLogHandler &logHandler,
             boost::asio::io_service& io_service_,
                boost::asio::ip::address &addr, uint16_t port)
-    : pktLogger(logHandler), server_io(io_service_), serverSocket(io_service_),
+    : pktLogger(logHandler), serverSocket(io_service_),
             localEndpoint(addr, port), stopped(false) {
     }
     /**
@@ -95,7 +95,6 @@ private:
     void handleReceive(const boost::system::error_code& error,
       std::size_t bytes_transferred);
     PacketLogHandler &pktLogger;
-    boost::asio::io_service &server_io;
     boost::asio::ip::udp::socket serverSocket;
     boost::asio::ip::udp::endpoint localEndpoint;
     boost::asio::ip::udp::endpoint remoteEndpoint;

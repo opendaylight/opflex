@@ -35,7 +35,7 @@ namespace opflexagent {
         handleSpanUpdate(spanURI);
     }
 
-    void SpanRenderer::spanDeleted(shared_ptr<SessionState>& seSt) {
+    void SpanRenderer::spanDeleted(const shared_ptr<SessionState>& seSt) {
         unique_lock<mutex> lock(handlerMutex);
         if (!connect()) {
             LOG(DEBUG) << "failed to connect, retry in " << CONNECTION_RETRY << " seconds";

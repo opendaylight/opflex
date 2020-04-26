@@ -316,11 +316,11 @@ void AccessFlowManagerFixture::initExpStatic() {
     ADDF(Bldr().table(OUT).priority(1).isMdAct(0)
          .actions().out(OUTPORT).done());
     ADDF(Bldr().table(OUT).priority(1)
-         .isMdAct(flow::meta::access_out::PUSH_VLAN)
+         .isMdAct(opflexagent::flow::meta::access_out::PUSH_VLAN)
          .actions().out(OUTPORT).pushVlan()
          .move(FD12, VLAN).out(OUTPORT).done());
     ADDF(Bldr().table(OUT).priority(1)
-         .isMdAct(flow::meta::access_out::POP_VLAN)
+         .isMdAct(opflexagent::flow::meta::access_out::POP_VLAN)
          .isVlanTci("0x1000/0x1000")
          .actions().popVlan().out(OUTPORT).done());
 
@@ -332,7 +332,7 @@ void AccessFlowManagerFixture::initExpStatic() {
             .actions().go(GRP).done());
     for(int i=GRP; i<=OUT; i++) {
         ADDF(Bldr().table(i).priority(0)
-        .cookie(ovs_ntohll(flow::cookie::TABLE_DROP_FLOW))
+        .cookie(ovs_ntohll(opflexagent::flow::cookie::TABLE_DROP_FLOW))
         .flags(OFPUTIL_FF_SEND_FLOW_REM).priority(0)
         .actions().dropLog(i).go(EXP_DROP).done());
     }
@@ -352,7 +352,7 @@ void AccessFlowManagerFixture::initExpDhcpEp(shared_ptr<Endpoint>& ep) {
              .isTpSrc(68).isTpDst(67)
              .actions()
              .load(OUTPORT, uplink)
-             .mdAct(flow::meta::access_out::POP_VLAN)
+             .mdAct(opflexagent::flow::meta::access_out::POP_VLAN)
              .go(OUT).done());
         if (ep->getAccessIfaceVlan()) {
             ADDF(Bldr()
@@ -371,7 +371,7 @@ void AccessFlowManagerFixture::initExpDhcpEp(shared_ptr<Endpoint>& ep) {
              .isTpSrc(546).isTpDst(547)
              .actions()
              .load(OUTPORT, uplink)
-             .mdAct(flow::meta::access_out::POP_VLAN)
+             .mdAct(opflexagent::flow::meta::access_out::POP_VLAN)
              .go(OUT).done());
         if (ep->getAccessIfaceVlan()) {
             ADDF(Bldr()
@@ -398,7 +398,7 @@ void AccessFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep) {
              .actions()
              .load(RD, zoneId).load(SEPG, 1)
              .load(OUTPORT, uplink)
-             .mdAct(flow::meta::access_out::POP_VLAN)
+             .mdAct(opflexagent::flow::meta::access_out::POP_VLAN)
              .go(OUT_POL).done());
         ADDF(Bldr().table(GRP).priority(99).in(access)
              .isVlanTci("0x0000/0x1fff")
@@ -409,7 +409,7 @@ void AccessFlowManagerFixture::initExpEp(shared_ptr<Endpoint>& ep) {
         ADDF(Bldr().table(GRP).priority(100).in(uplink)
              .actions().load(RD, zoneId).load(SEPG, 1).load(OUTPORT, access)
              .load(FD, ep->getAccessIfaceVlan().get())
-             .mdAct(flow::meta::access_out::PUSH_VLAN)
+             .mdAct(opflexagent::flow::meta::access_out::PUSH_VLAN)
              .go(IN_POL).done());
     } else {
         ADDF(Bldr().table(GRP).priority(100).in(access)

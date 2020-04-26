@@ -358,7 +358,7 @@ int main(int argc, char** argv) {
     sigaddset(&waitset, SIGTERM);
     sigprocmask(SIG_BLOCK, &waitset, NULL);
 
-    std::thread signal_thread([&agents, &waitset]() {
+    std::thread signal_thread([&waitset]() {
             int sig;
             int result = sigwait(&waitset, &sig);
             if (result == 0) {

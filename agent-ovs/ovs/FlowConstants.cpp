@@ -50,14 +50,6 @@ const uint64_t HOST_ACCESS = 0x8;
 
 } // namespace out
 
-namespace access {
-
-const uint64_t MASK = 0xff;
-const uint64_t POP_VLAN = 0x1;
-const uint64_t PUSH_VLAN = 0x1;
-
-} // namespace access
-
 } // namespace meta
 
 } // namespace flow

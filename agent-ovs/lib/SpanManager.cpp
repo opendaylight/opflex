@@ -129,9 +129,9 @@ namespace opflexagent {
             });
         }
         spanmanager.notifyUpdate.clear();
-        for (const shared_ptr<SessionState>& seSt : spanmanager.notifyDelete) {
-            spanmanager.taskQueue.dispatch(seSt->getName(), [=]() {
-                spanmanager.notifyListeners(seSt);
+        for (const shared_ptr<SessionState>& session : spanmanager.notifyDelete) {
+            spanmanager.taskQueue.dispatch(session->getName(), [=]() {
+                spanmanager.notifyListeners(session);
             });
         }
         spanmanager.notifyDelete.clear();
