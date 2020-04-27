@@ -41,8 +41,9 @@ void LocalClient::run() {
             try {
                 clientSocket.connect(remoteEndpoint);
                 connected = true;
+                LOG(INFO) << "Connected to packet event exporter socket";
             } catch (std::exception &e) {
-                LOG(ERROR) << "Failed to connect to packet event exporter socket:"
+                LOG(TRACE) << "Failed to connect to packet event exporter socket:"
                         << e.what();
                 std::this_thread::sleep_for(std::chrono::seconds(2));
                 continue;
