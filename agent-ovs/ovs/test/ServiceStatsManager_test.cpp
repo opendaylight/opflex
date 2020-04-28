@@ -161,6 +161,7 @@ void ServiceStatsManagerFixture::createServices (void)
     sm1.addNextHopIP("169.254.169.2");
     sm1.setServicePort(53);
     sm1.setNextHopPort(5353);
+    sm1.setNodePort(32000);
     as.addServiceMapping(sm1);
 
     sm2.setServiceIP("fe80::a9:fe:a9:fe");
@@ -168,6 +169,7 @@ void ServiceStatsManagerFixture::createServices (void)
     sm2.addNextHopIP("2001:db8::2");
     sm2.addNextHopIP("fe80::a9:fe:a9:2");
     sm2.setServicePort(80);
+    sm1.setNodePort(32001);
     as.addServiceMapping(sm2);
 
     as.addAttribute("name", "coredns");

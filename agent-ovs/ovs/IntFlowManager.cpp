@@ -2467,7 +2467,7 @@ updateSvcTgtStatsCounters (const uint64_t &cookie,
                                                      opSvcTgt.get()->getNodePortTxpackets(0),
                                                      svcAttr,
                                                      epAttr,
-                                                     epAttr.size()!=0?true:false, true);
+                                                     false, epAttr.size()!=0?true:false, true);
             } else {
                 prometheusManager.addNUpdateSvcTargetCounter(svcUuid,
                                                      nhipStr,
@@ -2477,7 +2477,7 @@ updateSvcTgtStatsCounters (const uint64_t &cookie,
                                                      opSvcTgt.get()->getTxpackets(0),
                                                      svcAttr,
                                                      epAttr,
-                                                     epAttr.size()!=0?true:false);
+                                                     false, epAttr.size()!=0?true:false);
             }
         } else {
             if (isNodePort) {
@@ -2489,7 +2489,7 @@ updateSvcTgtStatsCounters (const uint64_t &cookie,
                                                      updPktCount,
                                                      svcAttr,
                                                      epAttr,
-                                                     epAttr.size()!=0?true:false, true);
+                                                     false, epAttr.size()!=0?true:false, true);
             } else {
                 prometheusManager.addNUpdateSvcTargetCounter(svcUuid,
                                                      nhipStr,
@@ -2499,7 +2499,7 @@ updateSvcTgtStatsCounters (const uint64_t &cookie,
                                                      updPktCount,
                                                      svcAttr,
                                                      epAttr,
-                                                     epAttr.size()!=0?true:false);
+                                                     false, epAttr.size()!=0?true:false);
             }
         }
 #endif
@@ -2689,14 +2689,14 @@ void IntFlowManager::clearSvcTgtStatsCounters (const std::string& svcUuid,
                                                      0, 0, 0, 0,
                                                      svcAttr,
                                                      attr_map(),
-                                                     true, true);
+                                                     false, true, true);
         } else {
             prometheusManager.addNUpdateSvcTargetCounter(svcUuid,
                                                      nhipStr,
                                                      0, 0, 0, 0,
                                                      svcAttr,
                                                      attr_map(),
-                                                     true);
+                                                     false, true);
         }
 #endif
     }
@@ -2750,14 +2750,14 @@ void IntFlowManager::clearSvcStatsCounters (const std::string& uuid,
                                                              0, 0, 0, 0,
                                                              svcAttr,
                                                              attr_map(),
-                                                             true, true);
+                                                             false, true, true);
                 } else {
                     prometheusManager.addNUpdateSvcTargetCounter(uuid,
                                                              nhip.get(),
                                                              0, 0, 0, 0,
                                                              svcAttr,
                                                              attr_map(),
-                                                             true);
+                                                             false, true);
                 }
             }
 #endif
@@ -3104,6 +3104,11 @@ void IntFlowManager::updateSvcNodeStatsFlows (const string &uuid,
                                          const Service::ServiceMapping &sm,
                                          const attr_map &svcAttr,
                                          const attr_map &epAttr) -> void {
+
+        if (!sm.getNodePort()) {
+            LOG(TRACE) << "nodeport not valid for svc uuid: " << svc_uuid;
+            return;
+        }
 
         boost::system::error_code ec;
         address nhAddr = address::from_string(nhipStr, ec);

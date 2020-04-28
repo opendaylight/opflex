@@ -18,6 +18,10 @@ module[svc]
         # mode of service - can be LB or anycast
         member[mode; type=svc/ServiceMode]
 
+        # Type of service set by host agent
+        # can be ClusterIP, NodePort, LoadBalancer, externalName (future)
+        member[type; type=ascii/String]
+
         # service domain's URI
         member[dom; type=reference/URI]
 

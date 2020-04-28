@@ -1477,6 +1477,7 @@ void BaseIntFlowManagerFixture::loadBalancedServiceTest() {
     sm1.addNextHopIP("169.254.169.2");
     sm1.setServicePort(53);
     sm1.setNextHopPort(5353);
+    sm1.setNodePort(33000);
     as1.addServiceMapping(sm1);
 
     Service::ServiceMapping sm2;
@@ -1485,6 +1486,7 @@ void BaseIntFlowManagerFixture::loadBalancedServiceTest() {
     sm2.addNextHopIP("2001:db8::2");
     sm2.addNextHopIP("fe80::a9:fe:a9:2");
     sm2.setServicePort(80);
+    sm1.setNodePort(33001);
     as1.addServiceMapping(sm2);
 
     as1.clearServiceMappings();
@@ -1564,11 +1566,13 @@ void BaseIntFlowManagerFixture::loadBalancedServiceTest() {
     as1.addAttribute("name", "coredns");
     as1.addAttribute("scope", "ext");
     as1.addAttribute("namespace", "default");
+    as1.setServiceType("loadBalancer");
 
     as2.clearAttributes();
     as2.addAttribute("name", "redis-master");
     as2.addAttribute("scope", "ext");
     as2.addAttribute("namespace", "kube-system");
+    as2.setServiceType("loadBalancer");
 
     servSrc.updateService(as1);
     servSrc.updateService(as2);
