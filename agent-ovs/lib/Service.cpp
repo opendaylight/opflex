@@ -26,6 +26,16 @@ std::ostream & operator<<(std::ostream &os, const Service& s) {
     } else if (s.getServiceMode() == Service::LOADBALANCER) {
         os << ",loadbalancer";
     }
+
+    if (s.getServiceType() == Service::CLUSTER_IP)
+        os << ",clusterIp";
+    else if (s.getServiceType() == Service::NODE_PORT)
+        os << ",nodePort";
+    else if (s.getServiceType() == Service::LOAD_BALANCER)
+        os << ",loadBalancer";
+    else
+        os << ",unknown";
+
     if (s.getDomainURI())
         os << ",domain=" << s.getDomainURI().get();
 
@@ -55,6 +65,9 @@ std::ostream & operator<<(std::ostream &os, const Service& s) {
 
             if (sm.getServicePort())
                 os << ":" << sm.getServicePort().get();
+
+            if (sm.getNodePort())
+                os << ":" << sm.getNodePort().get();
 
             if (!sm.getNextHopIPs().empty()) {
                 os << "->[" << join(sm.getNextHopIPs(), ",") << "]";

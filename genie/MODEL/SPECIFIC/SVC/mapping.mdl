@@ -29,6 +29,9 @@ module[svc]
         # Nexthop's L4 port
         member[nexthopPort; type=l4/Port]
 
+        # NodePort value
+        member[nodePort; type=l4/Port]
+
         contained
         {
             parent[class=svc/Service]

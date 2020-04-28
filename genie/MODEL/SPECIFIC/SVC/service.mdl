@@ -7,6 +7,14 @@ module[svc]
         const[name=anycast; value=2]
     }
 
+    type[ServiceType; super=scalar/Enum8]
+    {
+        const[name=unknown; value=0]
+        const[name=clusterIp; value=1]
+        const[name=nodePort; value=2]
+        const[name=loadBalancer; value=3]
+    }
+
     # class to represent services present in the svc universe.
     class[Service;
           concrete;
@@ -17,6 +25,10 @@ module[svc]
 
         # mode of service - can be LB or anycast
         member[mode; type=svc/ServiceMode]
+
+        # Type of service set by host agent
+        # can be ClusterIP, NodePort, LoadBalancer, externalName (future)
+        member[type; type=svc/ServiceType]
 
         # service domain's URI
         member[dom; type=reference/URI]

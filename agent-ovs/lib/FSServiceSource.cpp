@@ -58,6 +58,7 @@ void FSServiceSource::updated(const fs::path& filePath) {
     static const std::string INTERFACE_VLAN("interface-vlan");
     static const std::string INTERFACE_IP("interface-ip");
     static const std::string SERVICE_MODE("service-mode");
+    static const std::string SERVICE_TYPE("service-type");
     static const std::string SERVICE_DOMAIN("domain");
     static const std::string DOMAIN_POLICY_SPACE("domain-policy-space");
     static const std::string DOMAIN_NAME("domain-name");
@@ -70,6 +71,7 @@ void FSServiceSource::updated(const fs::path& filePath) {
     static const std::string SM_NEXT_HOP_IP("next-hop-ip");
     static const std::string SM_NEXT_HOP_IPS("next-hop-ips");
     static const std::string SM_NEXT_HOP_PORT("next-hop-port");
+    static const std::string SM_NODE_PORT("node-port");
     static const std::string SM_CONNTRACK("conntrack-enabled");
     static const std::string SVC_ATTRIBUTES("attributes");
     try {
@@ -89,6 +91,17 @@ void FSServiceSource::updated(const fs::path& filePath) {
             newserv.setServiceMode(Service::LOADBALANCER);
         } else {
             newserv.setServiceMode(Service::LOCAL_ANYCAST);
+        }
+
+        std::string serviceTypeStr =
+            properties.get<std::string>(SERVICE_TYPE,
+                                        "clusterIp");
+        if (serviceTypeStr == "clusterIp") {
+            newserv.setServiceType(Service::CLUSTER_IP);
+        } else if (serviceTypeStr == "nodePort") {
+            newserv.setServiceType(Service::NODE_PORT);
+        } else if (serviceTypeStr == "loadBalancer") {
+            newserv.setServiceType(Service::LOAD_BALANCER);
         }
 
         optional<string> serviceMac =
@@ -148,18 +161,25 @@ void FSServiceSource::updated(const fs::path& filePath) {
                 newserv.addAttribute("name", ifaceName.get());
         }
 
-        // Today service metrics in prometheus are created with service attribute's
-        // "name" and "namespace". There are cases where internal and external
-        // service will have same set of attributes but different service mapping IPs,
-        // which leads to same metric pointer allocated by prometheus. Due to this, stats
-        // will be incorrect and memory corruption can happen when one of the service
-        // files get removed/modified.To avoid this, check UUID of service to see if
-        // its internal vs external service for now. And annotate prometheus with
-        // "scope: cluster or ext". In future, hostagent will be setting an attribute
-        // named "scope" with either "cluster" or "ext" or "nodeport" or something else.
-        const auto& uuid = newserv.getUUID();
-        if ((uuid.size() > sizeof("-external"))
-                && boost::algorithm::ends_with(uuid, "-external")) {
+        // When a LB service is configured in k8s, external ip, cluster ip and
+        // nodeport gets allocated. This will also lead to creation of 2 service
+        // files - 1 external and 1 non-external (nodeport+cluster). Both will
+        // have nodeport set by host-agent.
+        // A nodePort service will have a cluster IP allocated as well, so we
+        // need to support E-W stats for nodePort services as well.
+        // A cluster service will have just cluster IP allocated; nodeport wont be set.
+        // Since both cluster and nodeport stats flows are created for the same
+        // service file, both the stats are housed under svc-target and svc counter mos.
+        // Since the non-external service file service-pods (next hops) are a super-set
+        // of the external service file's service-pods (only local to the node), node port
+        // flows get created only for "non-external" services. Also it will cover pure
+        // node-port services in k8s.
+        // Note:
+        // - The counter mos will have only 2 types of scope: cluster and ext (based on LB type).
+        // - However, the service metrics in prometheus are annotated with "name", "namespace"
+        // and "scope", with scope being "cluster" or "nodePort" or "ext" to keep the metrics
+        // unique.
+        if (newserv.getServiceType() == Service::LOAD_BALANCER) {
             newserv.addAttribute("scope", "ext");
         } else {
             newserv.addAttribute("scope", "cluster");
@@ -208,6 +228,11 @@ void FSServiceSource::updated(const fs::path& filePath) {
                     v.second.get_optional<uint16_t>(SM_NEXT_HOP_PORT);
                 if (nextHopPort)
                     sm.setNextHopPort(nextHopPort.get());
+
+                optional<uint16_t> nodePort =
+                    v.second.get_optional<uint16_t>(SM_NODE_PORT);
+                if (nodePort)
+                    sm.setNodePort(nodePort.get());
 
                 optional<bool> conntrack =
                     v.second.get_optional<bool>(SM_CONNTRACK);
