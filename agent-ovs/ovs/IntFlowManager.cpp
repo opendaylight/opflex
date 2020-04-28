@@ -142,11 +142,9 @@ IntFlowManager::IntFlowManager(Agent& agent_,
                                SwitchManager& switchManager_,
                                IdGenerator& idGen_,
                                CtZoneManager& ctZoneManager_,
-                               PacketInHandler& pktInHandler_,
                                TunnelEpManager& tunnelEpManager_) :
     agent(agent_), switchManager(switchManager_), idGen(idGen_),
-    ctZoneManager(ctZoneManager_), pktInHandler(pktInHandler_),
-    tunnelEpManager(tunnelEpManager_),
+    ctZoneManager(ctZoneManager_), tunnelEpManager(tunnelEpManager_),
 #ifdef HAVE_PROMETHEUS_SUPPORT
     prometheusManager(agent.getPrometheusManager()),
 #endif

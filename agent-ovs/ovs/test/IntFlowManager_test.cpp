@@ -67,8 +67,7 @@ public:
     BaseIntFlowManagerFixture()
         : FlowManagerFixture(),
           intFlowManager(agent, switchManager, idGen,
-                         ctZoneManager, pktInHandler,
-                         tunnelEpManager),
+                         ctZoneManager, tunnelEpManager),
           pktInHandler(agent, intFlowManager),
           policyMgr(agent.getPolicyManager()),
           ep2_port(11), ep4_port(22) {

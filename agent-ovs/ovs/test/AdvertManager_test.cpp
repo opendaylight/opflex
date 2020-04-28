@@ -47,7 +47,7 @@ public:
         : ModbFixture(), ctZoneManager(idGen),
           switchManager(agent, flowExecutor, flowReader, portMapper),
           intFlowManager(agent, switchManager, idGen,
-                         ctZoneManager, pktInHandler, tunnelEpManager),
+                         ctZoneManager, tunnelEpManager),
           advertManager(agent, intFlowManager),
           pktInHandler(agent, intFlowManager) {
         createObjects();
