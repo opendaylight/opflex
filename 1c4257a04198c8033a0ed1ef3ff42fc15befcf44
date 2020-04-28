@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f5f82da3_b390d3d3",
+        "filename": "agent-ovs/lib/include/opflexagent/Service.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-04-28T21:41:26Z",
+      "side": 1,
+      "message": "Should \"clusterIp\" be a constant somewhere to avoid the chance of typos",
+      "revId": "1c4257a04198c8033a0ed1ef3ff42fc15befcf44",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ec2bd723_ec8b92fd",
+        "filename": "agent-ovs/ovs/IntFlowManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 2470,
+      "author": {
+        "id": 7943
+      },
+      "writtenOn": "2020-04-28T21:41:26Z",
+      "side": 1,
+      "message": "why not just !epAttr.empty() instead of epAttr.size()!\u003d0?true:false",
+      "revId": "1c4257a04198c8033a0ed1ef3ff42fc15befcf44",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
