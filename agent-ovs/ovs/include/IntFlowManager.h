@@ -65,14 +65,12 @@ public:
      * @param switchManager the switch manager
      * @param idGen the flow ID generator
      * @param ctZoneManager the conntrack zone manager
-     * @param pktInHandler the packet-in handler
      * @param tnlEpManager tunnelEpManager instance
      */
     IntFlowManager(Agent& agent,
                    SwitchManager& switchManager,
                    IdGenerator& idGen,
                    CtZoneManager& ctZoneManager,
-                   PacketInHandler& pktInHandler,
                    TunnelEpManager& tnlEpManager);
     ~IntFlowManager() {}
 
@@ -839,7 +837,6 @@ private:
     SwitchManager& switchManager;
     IdGenerator& idGen;
     CtZoneManager& ctZoneManager;
-    PacketInHandler& pktInHandler;
     TunnelEpManager& tunnelEpManager;
 #ifdef HAVE_PROMETHEUS_SUPPORT
     PrometheusManager& prometheusManager;

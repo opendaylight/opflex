@@ -39,7 +39,7 @@ public:
         : ModbFixture(), ctZoneManager(idGen),
           switchManager(agent, flowExecutor, flowReader, intPortMapper),
           intFlowManager(agent, switchManager, idGen,
-                         ctZoneManager, pktInHandler, tunnelEpManager),
+                         ctZoneManager, tunnelEpManager),
           pktInHandler(agent, intFlowManager),
           proto(ofputil_protocol_from_ofp_version
                 ((ofp_version)intConn.GetProtocolVersion())) {

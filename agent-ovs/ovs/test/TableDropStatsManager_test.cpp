@@ -21,7 +21,6 @@
 #include "TableDropStatsManager.h"
 #include "TableState.h"
 #include "ActionBuilder.h"
-#include "RangeMask.h"
 #include "FlowConstants.h"
 #include "PolicyStatsManagerFixture.h"
 #include "eth.h"
@@ -52,8 +51,7 @@ public:
                                   accBr(agent, exec, reader,
                                         accPortMapper),
                                   intFlowManager(agent, switchManager, idGen,
-                                                 ctZoneManager, pktInHandler,
-                                                 tunnelEpManager),
+                                                 ctZoneManager, tunnelEpManager),
                                   accFlowManager(agent, accBr, idGen,
                                                  ctZoneManager),
                                   pktInHandler(agent, intFlowManager),

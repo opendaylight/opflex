@@ -55,7 +55,7 @@ OVSRenderer::OVSRenderer(Agent& agent_)
                        intPortMapper),
       tunnelEpManager(&agent_),
       intFlowManager(agent_, intSwitchManager, idGen,
-                     ctZoneManager, pktInHandler, tunnelEpManager),
+                     ctZoneManager, tunnelEpManager),
       accessSwitchManager(agent_, accessFlowExecutor,
                           accessFlowReader, accessPortMapper),
       accessFlowManager(agent_, accessSwitchManager, idGen, ctZoneManager),

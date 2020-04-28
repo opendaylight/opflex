@@ -49,8 +49,7 @@ class ServiceStatsManagerFixture : public PolicyStatsManagerFixture {
 public:
     ServiceStatsManagerFixture() : PolicyStatsManagerFixture(),
                                     intFlowManager(agent, switchManager, idGen,
-                                                   ctZoneManager, pktInHandler,
-                                                   tunnelEpManager),
+                                                   ctZoneManager, tunnelEpManager),
                                     pktInHandler(agent, intFlowManager),
                                     serviceStatsManager(&agent, idGen,
                                                        switchManager,
