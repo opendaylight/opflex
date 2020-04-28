@@ -16,6 +16,7 @@
 #include <opflex/modb/Mutator.h>
 #include <modelgbp/svc/ServiceUniverse.hpp>
 #include <modelgbp/svc/ServiceModeEnumT.hpp>
+#include <modelgbp/svc/ServiceTypeEnumT.hpp>
 #include <modelgbp/svc/ConnTrackEnumT.hpp>
 #include <modelgbp/gbpe/EncapTypeEnumT.hpp>
 
@@ -134,7 +135,7 @@ void ServiceManager::clearSvcCounterStats (const Service& service,
                                    pSvc->getTxbytes(0),
                                    pSvc->getTxpackets(0),
                                    attr_map_t());
-    if (!service.isExternal()) {
+    if (!service.isExternal() && service.isNodePort()) {
         prometheusManager.addNUpdateSvcCounter("nodeport-"+service.getUUID(),
                                        pSvc->getNodePortRxbytes(0),
                                        pSvc->getNodePortRxpackets(0),
@@ -181,14 +182,14 @@ ServiceManager::updateSvcTargetObserverMoDB (const opflexagent::Service& service
                                                                  0, 0, 0, 0,
                                                                  service.getAttributes(),
                                                                  attr_map_t(),
-                                                                 true);
-                    if (!service.isExternal()) {
+                                                                 true, true);
+                    if (!service.isExternal() && sm.getNodePort()) {
                         prometheusManager.addNUpdateSvcTargetCounter("nodeport-"+service.getUUID(),
                                                              ip,
                                                              0, 0, 0, 0,
                                                              service.getAttributes(),
                                                              attr_map_t(),
-                                                             true, true);
+                                                             true, true, true);
                     }
 #endif
                 } else {
@@ -207,8 +208,8 @@ ServiceManager::updateSvcTargetObserverMoDB (const opflexagent::Service& service
                                                                  pSvcTarget->getTxpackets(0),
                                                                  service.getAttributes(),
                                                                  attr_map_t(),
-                                                                 true);
-                    if (!service.isExternal()) {
+                                                                 true, true);
+                    if (!service.isExternal() && sm.getNodePort()) {
                         prometheusManager.addNUpdateSvcTargetCounter("nodeport-"+service.getUUID(),
                                                              ip,
                                                              pSvcTarget->getNodePortRxbytes(0),
@@ -217,7 +218,7 @@ ServiceManager::updateSvcTargetObserverMoDB (const opflexagent::Service& service
                                                              pSvcTarget->getNodePortTxpackets(0),
                                                              service.getAttributes(),
                                                              attr_map_t(),
-                                                             true, true);
+                                                             true, true, true);
                     } else {
                         prometheusManager.removeSvcTargetCounter("nodeport-"+service.getUUID(), ip);
                     }
@@ -232,7 +233,7 @@ ServiceManager::updateSvcTargetObserverMoDB (const opflexagent::Service& service
                     clearSvcCounterStats(service, pSvcCounter, opSvcTarget.get());
 #ifdef HAVE_PROMETHEUS_SUPPORT
                     prometheusManager.removeSvcTargetCounter(service.getUUID(), ip);
-                    if (!service.isExternal())
+                    if (!service.isExternal() && service.isNodePort())
                         prometheusManager.removeSvcTargetCounter("nodeport-"+service.getUUID(), ip);
 #endif
                     opSvcTarget.get()->remove();
@@ -248,7 +249,7 @@ ServiceManager::updateSvcTargetObserverMoDB (const opflexagent::Service& service
         auto nhip = pSvcTarget->getIp();
         if (nhip) {
             prometheusManager.removeSvcTargetCounter(service.getUUID(), nhip.get());
-            if (!service.isExternal())
+            if (!service.isExternal() && service.isNodePort())
                 prometheusManager.removeSvcTargetCounter("nodeport-"+service.getUUID(), nhip.get());
         }
 #endif
@@ -323,7 +324,7 @@ ServiceManager::updateSvcObserverMoDB (const opflexagent::Service& service, bool
                                                pService->getTxbytes(0),
                                                pService->getTxpackets(0),
                                                svcAttr);
-        if (!service.isExternal()) {
+        if (!service.isExternal() && service.isNodePort()) {
             prometheusManager.addNUpdateSvcCounter("nodeport-"+service.getUUID(),
                                                pService->getNodePortRxbytes(0),
                                                pService->getNodePortRxpackets(0),
@@ -345,7 +346,7 @@ ServiceManager::updateSvcObserverMoDB (const opflexagent::Service& service, bool
 #ifdef HAVE_PROMETHEUS_SUPPORT
             prometheusManager.decSvcCounter();
             prometheusManager.removeSvcCounter(service.getUUID());
-            if (!service.isExternal())
+            if (!service.isExternal() && service.isNodePort())
                 prometheusManager.removeSvcCounter("nodeport-"+service.getUUID());
 #endif
         }
@@ -411,6 +412,16 @@ ServiceManager::updateConfigMoDB (const opflexagent::Service& service, bool add)
         else
             pService->unsetMode();
 
+        Service::ServiceType type = service.getServiceType();
+        if (type == Service::ServiceType::CLUSTER_IP)
+            pService->setType(ServiceTypeEnumT::CONST_CLUSTERIP);
+        else if (type == Service::ServiceType::NODE_PORT)
+            pService->setType(ServiceTypeEnumT::CONST_NODEPORT);
+        else if (type == Service::ServiceType::LOAD_BALANCER)
+            pService->setType(ServiceTypeEnumT::CONST_LOADBALANCER);
+        else
+            pService->setType(ServiceTypeEnumT::CONST_UNKNOWN);
+
         const optional<uint16_t>& ifaceVlan = service.getIfaceVlan();
         if (ifaceVlan) {
             pService->setInterfaceEncapType(EncapTypeEnumT::CONST_VLAN);
@@ -447,6 +458,12 @@ ServiceManager::updateConfigMoDB (const opflexagent::Service& service, bool add)
                     pSM->setNexthopPort(nhPort.get());
                 else
                     pSM->unsetNexthopPort();
+
+                const auto& nodePort = sm.getNodePort();
+                if (nodePort)
+                    pSM->setNodePort(nodePort.get());
+                else
+                    pSM->unsetNodePort();
 
                 const auto& gwIP = sm.getGatewayIP();
                 if (gwIP)

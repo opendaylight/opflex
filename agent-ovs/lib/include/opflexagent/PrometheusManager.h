@@ -120,6 +120,7 @@ public:
      * @param tx_pkts         egress packets
      * @param svc_attr_map    map of svc attributes
      * @param ep_attr_map     map of ep/pod attributes
+     * @param createIfNotPresent  Create new metrics only if this flag is set
      * @param updateLabels    update label annotations during cfg updates
      * @param isNodePort      true if the metric is for nodePort svc
      */
@@ -131,6 +132,7 @@ public:
                                     uint64_t tx_pkts,
         const unordered_map<string, string>& svc_attr_map,
         const unordered_map<string, string>& ep_attr_map,
+                                    bool createIfNotPresent,
                                     bool updateLabels,
                                     bool isNodePort=false);
     /**
@@ -513,6 +515,7 @@ private:
                                      const string& nhip,
         const unordered_map<string, string>& svc_attr_map,
         const unordered_map<string, string>& ep_attr_map,
+                                     bool createIfNotPresent,
                                      bool updateLabels,
                                      bool isNodePort);
 

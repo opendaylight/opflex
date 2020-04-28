@@ -1368,9 +1368,19 @@ void PrometheusManager::createDynamicGaugeSvcTarget (SVC_TARGET_METRICS metric,
                                                      const string& nhip,
                     const unordered_map<string, string>&    svc_attr_map,
                     const unordered_map<string, string>&    ep_attr_map,
+                                                     bool createIfNotPresent,
                                                      bool updateLabels,
                                                      bool isNodePort)
 {
+    // Retrieve the Gauge if its already created
+    auto const &mgauge = getDynamicGaugeSvcTarget(metric, uuid);
+
+    // Creation and deletion of this metric is controlled by ServiceManager based on
+    // config events. Allow IntFlowManager to update pod specific attributes only
+    // if the metric is already present.
+    if (!mgauge && !createIfNotPresent)
+        return;
+
     // During counter update from stats manager, dont create new gauge metric
     if (!updateLabels)
         return;
@@ -1379,8 +1389,6 @@ void PrometheusManager::createDynamicGaugeSvcTarget (SVC_TARGET_METRICS metric,
                                                             ep_attr_map, isNodePort);
     auto hash_new = hash_labels(label_map);
 
-    // Retrieve the Gauge if its already created
-    auto const &mgauge = getDynamicGaugeSvcTarget(metric, uuid);
     if (mgauge) {
         /**
          * Detect attribute change by comparing hashes of cached label map
@@ -2627,6 +2635,7 @@ void PrometheusManager::addNUpdateSvcTargetCounter (const string& uuid,
                                                     uint64_t tx_pkts,
                          const unordered_map<string, string>& svc_attr_map,
                          const unordered_map<string, string>& ep_attr_map,
+                                                    bool createIfNotPresent,
                                                     bool updateLabels,
                                                     bool isNodePort)
 {
@@ -2643,6 +2652,7 @@ void PrometheusManager::addNUpdateSvcTargetCounter (const string& uuid,
                                     nhip,
                                     svc_attr_map,
                                     ep_attr_map,
+                                    createIfNotPresent,
                                     updateLabels,
                                     isNodePort);
     }
