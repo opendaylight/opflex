@@ -1302,7 +1302,7 @@ static void flowsEndpointSource(FlowEntryList& elSrc,
 
         for (const string& ipStr : endPoint.getIPs()) {
             network::cidr_t cidr;
-            if (!network::cidr_from_string(ipStr, cidr), false) {
+            if (!network::cidr_from_string(ipStr, cidr, false)) {
                 LOG(WARNING) << "Invalid endpoint IP: "
                              << ipStr;
                 continue;
