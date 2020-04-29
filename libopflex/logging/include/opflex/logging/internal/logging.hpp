@@ -102,16 +102,6 @@ private:
 #define DEBUG5 opflex::logging::OFLogHandler::DEBUG5
 
 /**
- * Convenience macro for debug log level 6
- */
-#define DEBUG6 opflex::logging::OFLogHandler::DEBUG6
-
-/**
- * Convenience macro for debug log level 7
- */
-#define DEBUG7 opflex::logging::OFLogHandler::DEBUG7
-
-/**
  * Convenience macro for info log level
  */
 #define INFO opflex::logging::OFLogHandler::INFO

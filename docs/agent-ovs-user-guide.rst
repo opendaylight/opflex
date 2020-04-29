@@ -27,7 +27,7 @@ options:
         // "log": {
         //     // Set the log level.
         //     // Possible values in descending order of verbosity:
-        //     // "debug7"-"debug0", "debug" (synonym for "debug0"),
+        //     // "debug5"-"debug0", "debug" (synonym for "debug0"),
         //     // "info", "warning", "error", "fatal"
         //     // Default: "info"
         //     "level": "info"
