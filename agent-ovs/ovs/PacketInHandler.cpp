@@ -251,9 +251,9 @@ static void handleNDPktIn(Agent& agent,
     bool router = true;
     // Use the MAC address from the metadata if available
     uint64_t metadata = ovs_ntohll(pi.flow_metadata.flow.metadata);
-    if ((1 & ((uint8_t*)&metadata)[7]) == 1) {
+    if ((1u & ((uint8_t*)&metadata)[7]) == 1) {
         mac = (uint8_t*)&metadata;
-        router = (2 & mac[7]) == 1;
+        router = false;
     }
 
     if (icmp->icmp6_type == ND_NEIGHBOR_SOLICIT) {

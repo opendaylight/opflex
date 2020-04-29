@@ -651,7 +651,7 @@ static void verify_icmpv4_err(const OfpBuf& msg) {
 BOOST_FIXTURE_TEST_CASE(dhcpv4_noconfig, PacketInHandlerFixture) {
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv4_discover, sizeof(pkt_dhcpv4_discover),
-                   flow::cookie::DHCP_V4, IntFlowManager::SEC_TABLE_ID,
+                   opflexagent::flow::cookie::DHCP_V4, IntFlowManager::SEC_TABLE_ID,
                    80);
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
@@ -667,7 +667,7 @@ void PacketInHandlerFixture::testDhcpv4Discover(MockSwitchConnection& tconn) {
 
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv4_discover, sizeof(pkt_dhcpv4_discover),
-                   flow::cookie::DHCP_V4, IntFlowManager::SEC_TABLE_ID,
+                   opflexagent::flow::cookie::DHCP_V4, IntFlowManager::SEC_TABLE_ID,
                    80);
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
@@ -697,7 +697,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_request, PacketInHandlerFixture) {
 
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv4_request, sizeof(pkt_dhcpv4_request),
-                   flow::cookie::DHCP_V4, IntFlowManager::SEC_TABLE_ID,
+                   opflexagent::flow::cookie::DHCP_V4, IntFlowManager::SEC_TABLE_ID,
                    80);
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
@@ -721,7 +721,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_request_inv, PacketInHandlerFixture) {
 
     ofputil_packet_in_private pin;
     init_packet_in(pin, buf, sizeof(pkt_dhcpv4_request),
-                   flow::cookie::DHCP_V4, IntFlowManager::SEC_TABLE_ID,
+                   opflexagent::flow::cookie::DHCP_V4, IntFlowManager::SEC_TABLE_ID,
                    80);
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
@@ -738,7 +738,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv4_request_inv, PacketInHandlerFixture) {
 BOOST_FIXTURE_TEST_CASE(dhcpv6_noconfig, PacketInHandlerFixture) {
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv6_solicit, sizeof(pkt_dhcpv6_solicit),
-                   flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
+                   opflexagent::flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
                    80);
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
@@ -754,7 +754,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_solicit, PacketInHandlerFixture) {
 
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv6_solicit, sizeof(pkt_dhcpv6_solicit),
-                   flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
+                   opflexagent::flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
                    80);
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
@@ -773,7 +773,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_solicit_rapid, PacketInHandlerFixture) {
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv6_solicit_rapid,
                    sizeof(pkt_dhcpv6_solicit_rapid),
-                   flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
+                   opflexagent::flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
                    80);
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
@@ -792,7 +792,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_request, PacketInHandlerFixture) {
 
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv6_request, sizeof(pkt_dhcpv6_request),
-                   flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
+                   opflexagent::flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
                    80);
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
@@ -810,7 +810,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_request_tmp, PacketInHandlerFixture) {
 
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv6_request_tmp, sizeof(pkt_dhcpv6_request_tmp),
-                   flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
+                   opflexagent::flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
                    80);
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
@@ -829,7 +829,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_confirm, PacketInHandlerFixture) {
 
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv6_confirm, sizeof(pkt_dhcpv6_confirm),
-                   flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
+                   opflexagent::flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
                    80);
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
@@ -847,7 +847,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_renew, PacketInHandlerFixture) {
 
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv6_renew, sizeof(pkt_dhcpv6_renew),
-                   flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
+                   opflexagent::flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
                    80);
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
@@ -865,7 +865,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_info_req, PacketInHandlerFixture) {
 
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_dhcpv6_info_req, sizeof(pkt_dhcpv6_info_req),
-                   flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
+                   opflexagent::flow::cookie::DHCP_V6, IntFlowManager::SEC_TABLE_ID,
                    80);
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
@@ -882,7 +882,7 @@ BOOST_FIXTURE_TEST_CASE(dhcpv6_info_req, PacketInHandlerFixture) {
 void PacketInHandlerFixture::testIcmpv4Error(MockSwitchConnection& tconn) {
     ofputil_packet_in_private pin;
     init_packet_in(pin, &pkt_icmp4_ttl_exc, sizeof(pkt_icmp4_ttl_exc),
-                   flow::cookie::ICMP_ERROR_V4,
+                   opflexagent::flow::cookie::ICMP_ERROR_V4,
                    IntFlowManager::OUT_TABLE_ID, 5, 80);
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
@@ -914,7 +914,7 @@ void PacketInHandlerFixture::testIcmpEcho(bool v4) {
     auto rep = v4 ? pkt_icmp4_echo_rep : pkt_icmp6_echo_rep;
     auto rsize = v4 ? sizeof(pkt_icmp4_echo_req) : sizeof(pkt_icmp6_echo_req);
     init_packet_in(pin, req, rsize,
-                   v4 ? flow::cookie::ICMP_ECHO_V4 : flow::cookie::ICMP_ECHO_V6,
+                   v4 ? opflexagent::flow::cookie::ICMP_ECHO_V4 : opflexagent::flow::cookie::ICMP_ECHO_V6,
                    IntFlowManager::ROUTE_TABLE_ID, 5, 101, 0x100);
 
     OfpBuf b(ofputil_encode_packet_in_private(&pin,
