@@ -179,8 +179,19 @@ void FSServiceSource::updated(const fs::path& filePath) {
         // - However, the service metrics in prometheus are annotated with "name", "namespace"
         // and "scope", with scope being "cluster" or "nodePort" or "ext" to keep the metrics
         // unique.
+        // - For external LB service, the internal and external service file created
+        // by host-agent both have type=loadBalancer. This will lead to duplicate metrics in
+        // prometheus. If the file doesnt end with "-external", then keep the type as clusterIp
+        // which is the actual purpose of that service file.
         if (newserv.getServiceType() == Service::LOAD_BALANCER) {
-            newserv.addAttribute("scope", "ext");
+            const auto& uuid = newserv.getUUID();
+            if ((uuid.size() > sizeof("-external"))
+                    && boost::algorithm::ends_with(uuid, "-external")) {
+                newserv.addAttribute("scope", "ext");
+            } else {
+                newserv.setServiceType(Service::CLUSTER_IP);
+                newserv.addAttribute("scope", "cluster");
+            }
         } else {
             newserv.addAttribute("scope", "cluster");
         }

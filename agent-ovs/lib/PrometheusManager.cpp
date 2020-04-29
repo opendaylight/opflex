@@ -2681,7 +2681,7 @@ void PrometheusManager::addNUpdateSvcTargetCounter (const string& uuid,
         }
         if (mgauge)
             mgauge.get().second->Set(static_cast<double>(metric_val));
-        if (!mgauge) {
+        if (!mgauge && createIfNotPresent) {
             LOG(ERROR) << "svc-target stats invalid update for uuid: " << key;
             break;
         }
@@ -2734,7 +2734,7 @@ void PrometheusManager::addNUpdateSvcCounter (const string& uuid,
         }
         if (mgauge)
             mgauge.get().second->Set(static_cast<double>(metric_val));
-        if (!mgauge) {
+        if (!mgauge && !svc_attr_map.empty()) {
             LOG(ERROR) << "svc stats invalid update for uuid: " << uuid;
             break;
         }
