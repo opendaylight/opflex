@@ -171,19 +171,14 @@ static bool checkSrcEps(boost::optional<shared_ptr<SessionState>> pSess,
     return false;
 }
 
-static bool checkDst(boost::optional<shared_ptr<SessionState>> pSess, shared_ptr<span::DstSummary> dstSumm1) {
+static bool checkDst(boost::optional<shared_ptr<SessionState>> pSess, const shared_ptr<span::DstSummary>& dstSumm1) {
     if (!pSess) {
         return false;
     }
-    unordered_map<URI, address> dstMap;
-    pSess.get()->getDstEndpointMap(dstMap);
-    auto it = dstMap.find(dstSumm1->getURI());
-    if (it == dstMap.end())
-        return false;
-    return !(it->second.to_string() != dstSumm1->getDest().get());
+    return !(pSess.get()->getDestination().to_string() != dstSumm1->getDest().get());
 }
 
-static bool testGetSession(shared_ptr<LocalEp> le, optional<URI> uri) {
+static bool testGetSession(shared_ptr<LocalEp>& le, optional<URI>& uri) {
     if (!(uri && SpanManager::getSession(le)))
         return true;
     if (uri && !SpanManager::getSession(le))

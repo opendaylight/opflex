@@ -66,8 +66,7 @@ namespace opflexagent {
         spanUpdated(spanURI);
     }
 
-    void SpanRenderer::delConnectPtrCb(const boost::system::error_code& ec,
-            shared_ptr<SessionState> pSt) {
+    void SpanRenderer::delConnectPtrCb(const boost::system::error_code& ec, const shared_ptr<SessionState>& pSt) {
         if (ec) {
             connection_timer.reset();
             return;
@@ -115,7 +114,7 @@ namespace opflexagent {
         // There should be at least one source and one destination.
         // Admin state should be ON.
         if (seSt.get()->hasSrcEndpoints() ||
-            seSt.get()->hasDstEndpoints() ||
+            !seSt.get()->getDestination().is_unspecified() ||
             seSt.get()->getAdminState() == 0) {
             if (isMirProv) {
                 LOG(DEBUG) << "deleting mirror";
@@ -181,25 +180,14 @@ namespace opflexagent {
             return;
         }
 
-        // check out port config
-        // get the destination IPs
-        unordered_map<URI, address> dstMap;
-        seSt.get()->getDstEndpointMap(dstMap);
-        set<address> dstIp;
-        for (auto& dst : dstMap) {
-            dstIp.emplace(dst.second);
-        }
-        // get the first element of the set as only one
-        // destination is allowed in OVS 2.10
-        string ipAddr = (*(dstIp.begin())).to_string();
         // get ERSPAN interface params if configured
         JsonRpc::erspan_ifc params;
-        if (!jRpc->getErspanIfcParams(params)) {
+        if (!jRpc->getCurrentErspanParams(ERSPAN_PORT_NAME, params)) {
             LOG(DEBUG) << "Unable to get ERSPAN parameters";
             return;
         }
         // check for change in config, push it if there is a change.
-        if (params.remote_ip == ipAddr ||
+        if (params.remote_ip == seSt.get()->getDestination().to_string() ||
             params.erspan_ver != seSt.get()->getVersion()) {
             updateMirrorConfig(seSt.get());
             return;
@@ -224,17 +212,7 @@ namespace opflexagent {
             }
         }
 
-        // get the destination IPs
-        unordered_map<URI, address> dstIpMap;
-        seSt->getDstEndpointMap(dstIpMap);
-        set<address> dstIp;
-        for (auto& dst : dstIpMap) {
-            dstIp.emplace(dst.second);
-        }
-        // get the first element of the set as only one
-        // destination is allowed in OVS 2.10
-        string ipAddr = (*(dstIp.begin())).to_string();
-        addErspanPort(switchName, ipAddr, seSt->getVersion());
+        addErspanPort(switchName, ERSPAN_PORT_NAME, seSt->getDestination().to_string(), seSt->getVersion());
         LOG(DEBUG) << "creating mirror";
         createMirror(seSt->getName(), srcPort, dstPort);
     }
@@ -248,7 +226,7 @@ namespace opflexagent {
         return true;
     }
 
-    bool SpanRenderer::addErspanPort(const string &brName, const string &ipAddr, const uint8_t version) {
+    bool SpanRenderer::addErspanPort(const string& brName, const string& portName, const string &ipAddr, const uint8_t version) {
         LOG(DEBUG) << "adding erspan port IP " << ipAddr << " and version " << version;
         JsonRpc::erspan_ifc ep;
         if (version == 1) {
@@ -268,7 +246,7 @@ namespace opflexagent {
         } else {
             return false;
         }
-        ep.name = ERSPAN_PORT_NAME;
+        ep.name = portName;
         ep.remote_ip = ipAddr;
         // current OVS implementation supports only one ERPSAN port and mirror.
         // choose 1 as the key.
@@ -282,21 +260,20 @@ namespace opflexagent {
 
     bool SpanRenderer::deleteErspanPort(const string& name) {
         string erspanUuid;
-        jRpc->getPortUuid(ERSPAN_PORT_NAME, erspanUuid);
+        jRpc->getPortUuid(name, erspanUuid);
         if (erspanUuid.empty()) {
-            LOG(WARNING) << "Can't find port named " << ERSPAN_PORT_NAME;
+            LOG(WARNING) << "Can't find port named " << name;
             return false;
         }
 
-        LOG(DEBUG) << ERSPAN_PORT_NAME << " uuid: " << erspanUuid;
+        LOG(DEBUG) << name << " uuid: " << erspanUuid;
         JsonRpc::BrPortResult res;
         if (!jRpc->getBridgePortList(switchName, res)) {
             LOG(DEBUG) << "Unable to retrieve port list on " << switchName;
             return false;
         }
 
-        tuple<string, set<string>> ports = make_tuple(res.brUuid, res.portUuids);
-        jRpc->updateBridgePorts(ports, erspanUuid, false);
+        jRpc->updateBridgePorts(res.brUuid, res.portUuids, erspanUuid, false);
         return true;
     }
     bool SpanRenderer::createMirror(const string& sess, const set<string>& srcPorts,

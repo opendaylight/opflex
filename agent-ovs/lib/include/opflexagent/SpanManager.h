@@ -26,17 +26,14 @@
 #include <opflexagent/TaskQueue.h>
 #include <opflex/modb/URI.h>
 #include <modelgbp/epr/L2Ep.hpp>
-#include <modelgbp/gbp/DirectionEnumT.hpp>
 
 #include <boost/asio.hpp>
 #include <boost/optional.hpp>
-#include <thread>
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
 
-using boost::asio::deadline_timer;
 using namespace std;
 using namespace opflex::modb;
 
@@ -46,6 +43,7 @@ namespace opflexagent {
     namespace span = modelgbp::span;
     using namespace span;
     using namespace modelgbp::gbp;
+    using boost::optional;
 
 /**
  * class to represent information on span
@@ -53,19 +51,6 @@ namespace opflexagent {
 class SpanManager {
 
 public:
-    /**
-     * data holder for source member information
-     */
-        typedef struct {
-            /**
-             * URI pointing to source member
-             */
-            URI uri;
-            /**
-             * direction of traffic flow
-             */
-            unsigned char dir;
-        } srcMemInfo;
 
     /**
      * Instantiate a new span manager
@@ -93,8 +78,7 @@ public:
       * @param[in] uri URI pointing to the Session object.
       * @return shared pointer to SessionState or none.
       */
-      boost::optional<shared_ptr<SessionState>>
-          getSessionState(const URI& uri);
+     optional<shared_ptr<SessionState>> getSessionState(const URI& uri);
 
     /**
      * Register a listener for span change events
@@ -166,37 +150,43 @@ public:
         /**
          * process destination group update
          * @param[in] dstGrp  shared pointer to a destination group object
-         * @param[in] sess a reference to a Session object
+         * @param[in] sessUri URI of the associated Session object
          */
-        void processDstGrp(DstGrp& dstGrp, Session& sess);
+        void processDstGrp(const shared_ptr<DstGrp>& dstGrp, const URI& sessUri);
+
         /**
-        * process LocalEp update
-        * @param[in] vUri a vector of uris pointing to the LocalEp objects in  MODB.
-        */
-        void processLocalEp(const srcMemInfo& s);
+         * process LocalEp update
+         * @param[in] vUri a vector of uris pointing to the LocalEp objects in  MODB.
+         */
+        void processLocalEp(const URI& uri, unsigned char dir);
 
         /**
          * process L2EP update
          * @param[in] l2Ep shared pointer to L2EP object
          */
-         void processL2Ep(shared_ptr<L2Ep> l2Ep);
+        void processL2Ep(shared_ptr<L2Ep> l2Ep);
 
-         /**
-          * add an end point to session state object
-          * @param[in] lEp shared pointer to LocalEp object
-          * @param[in] l2Ep shared pointer to L2EP object
-          * @param[in] s struct for source member info params
-          */
-          void addEndPoint(const shared_ptr<LocalEp>& lEp, const shared_ptr<L2Ep>& l2Ep, const srcMemInfo& i);
+        /**
+         * add an end point to session state object
+         * @param[in] lEp shared pointer to LocalEp object
+         * @param[in] l2Ep shared pointer to L2EP object
+         * @param[in] srcMemberUri src member URI
+         * @param[in] dir direction
+         */
+        void addEndpoint(
+            const shared_ptr<LocalEp>& lEp,
+            const shared_ptr<L2Ep>& l2Ep,
+            const URI& srcMemberUri,
+            const char dir);
 
-          /**
-           * process EP group
-           * @param[in] uri uri pointing to EpGroup
-           */
-          void processEpGroup(const srcMemInfo& s);
+        /**
+         * process EP group
+         * @param[in] uri uri pointing to src member
+         * @param[in] dir direction
+         */
+        void processEpGroup(const URI& uri, unsigned char dir);
 
         SpanManager& spanmanager;
-
     };
 
     /**
@@ -209,7 +199,7 @@ public:
      * @param lEp shared pointer to a LocalEpp object
      * @return optional URI reference
      */
-    static const boost::optional<URI> getSession(shared_ptr<LocalEp> lEp);
+    static const optional<URI> getSession(const shared_ptr<LocalEp>& localEp);
 
     /**
      * mutex for guarding span manager data structures.
@@ -217,7 +207,7 @@ public:
     static recursive_mutex updates;
 private:
 
-    boost::optional<shared_ptr<SrcMember>> findSrcMem(const URI& sessUri, const URI& uri);
+    optional<shared_ptr<SrcMember>> findSrcMem(const URI& sessUri, const URI& uri);
     void getSrcEpGroups(vector <shared_ptr<EpGroup>>& epGrpVec);
 
     opflex::ofcore::OFFramework& framework;
@@ -228,13 +218,11 @@ private:
     mutex listener_mutex;
 
     TaskQueue taskQueue;
-    unordered_map<opflex::modb::URI, shared_ptr<SessionState>>
-            sess_map;
+    unordered_map<opflex::modb::URI, shared_ptr<SessionState>> sess_map;
     unordered_map<URI, shared_ptr<LocalEp>> l2EpUri;
     // list of URIs to send to listeners
     unordered_set<URI> notifyUpdate;
     unordered_set<shared_ptr<SessionState>> notifyDelete;
-
 };
 }
 
