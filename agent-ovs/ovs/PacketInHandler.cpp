@@ -187,7 +187,8 @@ static void send_packet_out(Agent& agent,
 
                 if (ep->getAccessIfaceVlan()) {
                     outActionsSkipVlan = outActions;
-                    send_untagged = true;
+                    if (ep->isAccessAllowUntagged())
+                        send_untagged = true;
                     outActions = [&ep](ActionBuilder& ab) {
                         ab.pushVlan();
                         ab.setVlanVid(ep->getAccessIfaceVlan().get());

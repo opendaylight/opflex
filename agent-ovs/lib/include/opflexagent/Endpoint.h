@@ -38,7 +38,8 @@ public:
      * Default constructor for containers
      */
     Endpoint() : promiscuousMode(false), discoveryProxyMode(false), natMode(false),
-                 external(false), aapModeAA(false), disableAdv(false), extEncap(0) {}
+                 external(false), aapModeAA(false), disableAdv(false),
+                 accessAllowUntagged(false), extEncap(0) {}
 
     /**
      * Construct a new Endpoint with the given uuid.  Note that
@@ -49,7 +50,8 @@ public:
      */
     explicit Endpoint(const std::string& uuid_)
         : uuid(uuid_), promiscuousMode(false), discoveryProxyMode(false), natMode(false),
-          external(false), aapModeAA(false), disableAdv(false), extEncap(0) {
+          external(false), aapModeAA(false), disableAdv(false),
+          accessAllowUntagged(false), extEncap(0) {
 #ifdef HAVE_PROMETHEUS_SUPPORT
         attr_hash = 0;
 #endif
@@ -499,6 +501,28 @@ public:
     */
     bool isDisableAdv() const {
         return disableAdv;
+    }
+
+    /**
+      * Set if access vlan should also allow untagged
+      * traffic like Openshift bootstrap use case
+      *
+      * @param accessAllowUntagged the new value of
+      * accessAllowUntagged flag
+      */
+    void setAccessAllowUntagged(bool accessAllowUntagged) {
+        this->accessAllowUntagged = accessAllowUntagged;
+    }
+
+    /**
+      * Get the current value of accessAllowUntagged flag
+      * for this endpoint
+      *
+      * @return true if untagged traffic should also be allowed
+      * else return false
+      */
+    bool isAccessAllowUntagged() const {
+        return accessAllowUntagged;
     }
 
     /**
@@ -1301,6 +1325,7 @@ private:
     bool external;
     bool aapModeAA;
     bool disableAdv;
+    bool accessAllowUntagged;
     attr_map_t attributes;
 #ifdef HAVE_PROMETHEUS_SUPPORT
     /**
