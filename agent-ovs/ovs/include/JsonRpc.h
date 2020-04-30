@@ -179,13 +179,13 @@ public:
 
     /**
      * update the port list for the bridge
-     * @param[in] ports a tuple of bridge name a port UUIDs
+     * @param[in] brUuid bridge UUID
+     * @param[in] brPorts set of bridge port UUIDs
      * @param[in] port port UUID to be added or removed.
      * @param[in] action true: add port, false: remove port.
      * @return bool true if update succeeded, false otherwise.
      */
-    bool updateBridgePorts(tuple<string,set<string>> ports,
-                const string& port, bool action);
+    bool updateBridgePorts(const string& brUuid, set<string>& brPorts, const string& port, bool action);
 
     /**
      * sends request to get port list of the bridge
@@ -343,10 +343,11 @@ public:
 
     /**
      * get ERSPAN interface parameters from OVSDB
+     * @param[in] portName ERSPAN port name
      * @param[out] params erspan interface struct
      * @return true if success, false otherwise
      */
-    bool getErspanIfcParams(erspan_ifc& params);
+    bool getCurrentErspanParams(const string& portName, erspan_ifc& params);
 
     /**
      * check if connection has been established

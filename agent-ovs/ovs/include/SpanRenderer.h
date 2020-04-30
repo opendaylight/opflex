@@ -77,11 +77,12 @@ public:
     /**
      * add port used for erspan
      * @param brName bridge to create port on
+     * @param portName erspan port name
      * @param ipAddr remote destination
      * @param version erspan version
      * @return true if success, false otherwise.
      */
-    bool addErspanPort(const string& brName, const string& ipAddr, const uint8_t version);
+    bool addErspanPort(const string& brName, const string& portName, const string& ipAddr, const uint8_t version);
 
     /**
      * delete port used for erspan
@@ -100,7 +101,7 @@ private:
     virtual void sessionDeleted(const string &sessionName);
     void updateMirrorConfig(const shared_ptr<SessionState>& seSt);
     void updateConnectCb(const boost::system::error_code& ec, const opflex::modb::URI& uri);
-    void delConnectPtrCb(const boost::system::error_code& ec, shared_ptr<SessionState> pSt);
+    void delConnectPtrCb(const boost::system::error_code& ec, const shared_ptr<SessionState>& pSt);
 };
 }
 #endif //OPFLEX_SPANRENDERER_H

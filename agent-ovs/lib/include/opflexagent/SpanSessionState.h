@@ -19,25 +19,6 @@
 #include <modelgbp/span/ErspanVersionEnumT.hpp>
 #include <boost/asio.hpp>
 
-namespace  std {
-
-    /**
-     * template for hash function for address::ip.
-     */
-    template<>
-    struct hash<boost::asio::ip::address> {
-        /**
-         * hash ip::address
-         * @param i ip::address
-         * @return hash
-         */
-        size_t operator()(const boost::asio::ip::address &i) const {
-            return hash<string>()(i.to_string());
-        }
-    };
-
-
-}
 
 namespace opflexagent {
 
@@ -146,13 +127,6 @@ class SessionState {
         const URI& getUri() const { return uri;};
 
         /**
-         * add a destination end point to the internal map
-         * @param uri uri pointing to the DstSummary object
-         * @param dst dst IP
-         */
-        void addDstEndpoint(const URI& uri, const address& dst);
-
-        /**
          * add a source end point to the internal map
          * @param srcEp shared pointer to a SourceEndpoint object.
          */
@@ -171,16 +145,18 @@ class SessionState {
         void getSrcEndpointSet(srcEpSet& ep);
 
         /**
-         * are there any destination endpoints
-         * @return has dest endpoints
+         * get the destination of the ERSPAN session
+         * @return dst IP
          */
-        bool hasDstEndpoints();
+        const address& getDestination() { return destination; }
 
         /**
-         * get a copy of destination end point map
-         * @param dMap a reference to a map of URI, dst IP
+         * set the destination of the ERSPAN session
+         * @param destination_ dst IP
          */
-        void getDstEndpointMap(unordered_map<URI, address>& dMap);
+        void setDestination(const address& destination_) {
+            destination = destination_;
+        }
 
         /**
          * gets the name string for this object
@@ -218,7 +194,7 @@ class SessionState {
 
         srcEpSet srcEndpoints;
         // mapping DstSummary to dst IP
-        unordered_map<URI, address> dstEndpoints;
+        address destination;
 };
 }
 

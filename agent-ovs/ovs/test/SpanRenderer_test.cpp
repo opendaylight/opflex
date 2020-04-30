@@ -55,8 +55,7 @@ static bool verifyCreateDestroy(const shared_ptr<SpanRenderer>& spr) {
     if (!spr->jRpc->getBridgePortList("br-int", res)) {
         return false;
     }
-    tuple<string, set<string>> ports = make_tuple(res.brUuid, res.portUuids);
-    if (!spr->jRpc->updateBridgePorts(ports, erspanUuid, false)) {
+    if (!spr->jRpc->updateBridgePorts(res.brUuid, res.portUuids, erspanUuid, false)) {
         return false;
     }
 
@@ -87,8 +86,8 @@ BOOST_FIXTURE_TEST_CASE( verify_getport, SpanRendererFixture ) {
 BOOST_FIXTURE_TEST_CASE( verify_add_remote_port, SpanRendererFixture ) {
     spr->setNextId(1013);
 
-    BOOST_CHECK_EQUAL(true, spr->addErspanPort("br-int", "3.3.3.3", 2));
-    BOOST_CHECK_EQUAL(true, spr->deleteErspanPort("erspan"));
+    BOOST_CHECK_EQUAL(true, spr->addErspanPort("br-int", ERSPAN_PORT_NAME, "3.3.3.3", 2));
+    BOOST_CHECK_EQUAL(true, spr->deleteErspanPort(ERSPAN_PORT_NAME));
 }
 
 BOOST_FIXTURE_TEST_CASE( verify_get_erspan_params, SpanRendererFixture ) {
@@ -98,7 +97,7 @@ BOOST_FIXTURE_TEST_CASE( verify_get_erspan_params, SpanRendererFixture ) {
     params.remote_ip = "2.2.2.1";
     params.name = "abc";
     // TODO - fix this test...proper mock responses needed
-    BOOST_CHECK_EQUAL(false, spr->jRpc->getErspanIfcParams(params));
+    BOOST_CHECK_EQUAL(false, spr->jRpc->getCurrentErspanParams(ERSPAN_PORT_NAME, params));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

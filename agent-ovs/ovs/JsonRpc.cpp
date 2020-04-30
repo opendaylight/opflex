@@ -152,16 +152,12 @@ bool JsonRpc::deleteIpfix(const string& brName) {
 bool JsonRpc::handleGetPortUuidResp(uint64_t reqId,
         const Document& payload, string& uuid) {
     if (payload.IsArray()) {
-        try {
-            list<string> ids = { "0","rows","0","_uuid","1" };
-            Value val;
-            opflexagent::getValue(payload, ids, val);
-            if (!val.IsNull()) {
-                uuid = val.GetString();
-                return true;
-            }
-        } catch(const std::exception &e) {
-            LOG(WARNING) << "caught exception " << e.what();
+        list<string> ids = { "0","rows","0","_uuid","1" };
+        Value val;
+        opflexagent::getValue(payload, ids, val);
+        if (!val.IsNull()) {
+            uuid = val.GetString();
+            return true;
         }
     } else {
         LOG(WARNING) << "payload is not an array";
@@ -169,13 +165,8 @@ bool JsonRpc::handleGetPortUuidResp(uint64_t reqId,
     return false;
 }
 
-bool JsonRpc::updateBridgePorts(tuple<string,set<string>> ports,
-        const string& port, bool action) {
-    string brPortUuid = get<0>(ports);
-    set<string> brPorts = get<1>(ports);
-    for (auto itr = brPorts.begin();
-    itr != brPorts.end(); ++itr) {
-    }
+bool JsonRpc::updateBridgePorts(
+    const string& brUuid, set<string>& brPorts, const string& port, bool action) {
     if (action) {
         // add port to list
         brPorts.emplace(port);
@@ -184,9 +175,8 @@ bool JsonRpc::updateBridgePorts(tuple<string,set<string>> ports,
         brPorts.erase(port);
     }
     JsonRpcTransactMessage msg1(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
-    tuple<string, string, string> cond1("_uuid", "==", brPortUuid);
     set<tuple<string, string, string>> condSet;
-    condSet.emplace(cond1);
+    condSet.emplace("_uuid", "==", brUuid);
     msg1.conditions = condSet;
     vector<TupleData> tuples;
     for (auto& elem : brPorts) {
@@ -203,20 +193,18 @@ bool JsonRpc::updateBridgePorts(tuple<string,set<string>> ports,
     return true;
 }
 
-bool JsonRpc::handleGetBridgePortList(uint64_t reqId,
-    const Document& payload, BrPortResult& result) {
+bool JsonRpc::handleGetBridgePortList(uint64_t reqId, const Document& payload, BrPortResult& result) {
     set<string> brPortSet;
     list<string> ids = {"0","rows","0","ports","0"};
     Value val;
     opflexagent::getValue(payload, ids, val);
     if (!val.IsNull() && val.IsString()) {
-        string valStr(val.GetString());
+        const string valStr(val.GetString());
         ids = {"0", "rows", "0", "ports", "1"};
         val.SetObject();
         opflexagent::getValue(payload, ids, val);
         if (valStr == "uuid") {
-            string uuidString(val.GetString());
-            brPortSet.emplace(uuidString);
+            brPortSet.emplace(val.GetString());
         }
     } else {
         LOG(WARNING) << "Error getting port uuid";
@@ -318,7 +306,7 @@ bool JsonRpc::getOvsdbMirrorConfig(mirror& mir) {
     return true;
 }
 
-bool JsonRpc::getErspanIfcParams(erspan_ifc& pIfc) {
+bool JsonRpc::getCurrentErspanParams(const string& portName, erspan_ifc& params) {
     // for ERSPAN port get IP address
     JsonRpcTransactMessage msg1(OvsdbOperation::SELECT, OvsdbTable::INTERFACE);
     tuple<string, string, string> cond1("name", "==", ERSPAN_PORT_NAME);
@@ -332,7 +320,7 @@ bool JsonRpc::getErspanIfcParams(erspan_ifc& pIfc) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
-    if (!getErspanOptions(pResp->reqId, pResp->payload, pIfc)) {
+    if (!getErspanOptions(pResp->reqId, pResp->payload, params)) {
         LOG(DEBUG) << "failed to get ERSPAN options";
         return false;
     }
@@ -378,30 +366,30 @@ bool JsonRpc::handleMirrorConfig(uint64_t reqId, const Document& payload, mirror
 
 bool JsonRpc::getPortList(const uint64_t reqId, const Document& payload, unordered_map<string, string>& portMap) {
     if (payload.IsArray()) {
-        try {
-            list<string> ids = { "0","rows"};
-            Value arr;
-            opflexagent::getValue(payload, ids, arr);
-            if (arr.IsNull() || !arr.IsArray()) {
-                LOG(DEBUG) << "expected array";
-                return false;
-            }
-            for (Value::ConstValueIterator itr1 = arr.Begin();
-                 itr1 != arr.End(); itr1++) {
+        list<string> ids = { "0","rows"};
+        Value arr;
+        opflexagent::getValue(payload, ids, arr);
+        if (arr.IsNull() || !arr.IsArray()) {
+            LOG(DEBUG) << "expected array";
+            return false;
+        }
+        for (Value::ConstValueIterator itr1 = arr.Begin();
+             itr1 != arr.End(); itr1++) {
+            if (itr1->HasMember("name") && itr1->HasMember("_uuid")) {
                 LOG(DEBUG) << (*itr1)["name"].GetString() << ":"
                            << (*itr1)["_uuid"][1].GetString();
                 portMap.emplace((*itr1)["_uuid"][1].GetString(),
-                                (*itr1)["name"].GetString());
+                             (*itr1)["name"].GetString());
+            } else {
+                LOG(WARNING) << "Result missing name/uuid";
+                return false;
             }
-        } catch(const std::exception &e) {
-            LOG(DEBUG) << "caught exception " << e.what();
-            return false;
         }
+        return true;
     } else {
         LOG(DEBUG) << "payload is not an array";
         return false;
     }
-    return true;
 }
 
 bool JsonRpc::getErspanOptions(const uint64_t reqId, const Document& payload, erspan_ifc& pIfc) {
@@ -409,43 +397,40 @@ bool JsonRpc::getErspanOptions(const uint64_t reqId, const Document& payload, er
         LOG(DEBUG) << "payload is not an array";
         return false;
     }
-    try {
-        list<string> ids = {"0","rows","0","options","1"};
-        Value arr;
-        opflexagent::getValue(payload, ids, arr);
-        if (arr.IsNull() || !arr.IsArray()) {
-            LOG(DEBUG) << "expected array";
-            return false;
-        }
-        map<string, string>options;
-        for (Value::ConstValueIterator itr1 = arr.Begin();
-             itr1 != arr.End(); itr1++) {
-            LOG(DEBUG) << (*itr1)[0].GetString() << ":"
-                       << (*itr1)[1].GetString();
-            string val((*itr1)[1].GetString());
-            string index((*itr1)[0].GetString());
-            options.emplace(index, val);
-        }
-        auto ver = options.find("erspan_ver");
-        if (ver != options.end()) {
-            if (ver->second == "1") {
-                erspan_ifc_v1 params = erspan_ifc_v1();
-                if (options.find("erspan_idx") != options.end()) {
-                    params.erspan_idx = stoi(options["erspan_idx"]);
-                }
-                pIfc = params;
-            } else if (ver->second == "2") {
-                erspan_ifc_v2 params = erspan_ifc_v2();
-                if (options.find("erspan_hwid") != options.end()) {
-                    params.erspan_hw_id = stoi(options["erspan_hwid"]);
-                }
-                if (options.find("erspan_dir") != options.end()) {
-                    params.erspan_dir = stoi(options["erspan_dir"]);
-                }
-                pIfc = params;
-            } else {
-                return false;
+    list<string> ids = {"0","rows","0","options","1"};
+    Value arr;
+    opflexagent::getValue(payload, ids, arr);
+    if (arr.IsNull() || !arr.IsArray()) {
+        LOG(DEBUG) << "expected array";
+        return false;
+    }
+    map<string, string> options;
+    for (Value::ConstValueIterator itr1 = arr.Begin(); itr1 != arr.End(); itr1++) {
+        LOG(DEBUG) << (*itr1)[0].GetString() << ":"
+                   << (*itr1)[1].GetString();
+        string val((*itr1)[1].GetString());
+        string index((*itr1)[0].GetString());
+        options.emplace(index, val);
+    }
+    auto ver = options.find("erspan_ver");
+    if (ver != options.end()) {
+        if (ver->second == "1") {
+            erspan_ifc_v1 params = erspan_ifc_v1();
+            if (options.find("erspan_idx") != options.end()) {
+                params.erspan_idx = stoi(options["erspan_idx"]);
             }
+            pIfc = params;
+        } else if (ver->second == "2") {
+            erspan_ifc_v2 params = erspan_ifc_v2();
+            if (options.find("erspan_hwid") != options.end()) {
+                params.erspan_hw_id = stoi(options["erspan_hwid"]);
+            }
+            if (options.find("erspan_dir") != options.end()) {
+                params.erspan_dir = stoi(options["erspan_dir"]);
+            }
+            pIfc = params;
+        } else {
+            return false;
         }
         if (options.find("key") != options.end()) {
             pIfc.key = stoi(options["key"]);
@@ -454,11 +439,10 @@ bool JsonRpc::getErspanOptions(const uint64_t reqId, const Document& payload, er
         if (options.find("remote_ip") != options.end()) {
             pIfc.remote_ip = options["remote_ip"];
         }
-    } catch(const std::exception &e) {
-        LOG(DEBUG) << "caught exception " << e.what();
+        return true;
+    } else {
         return false;
     }
-    return true;
 }
 
 void JsonRpc::getPortUuid(const string& name, string& uuid) {
@@ -713,7 +697,7 @@ bool JsonRpc::deleteMirror(const string& brName) {
     return true;
 }
 
-    void JsonRpc::connect() {
+void JsonRpc::connect() {
     conn->connect();
 }
 
