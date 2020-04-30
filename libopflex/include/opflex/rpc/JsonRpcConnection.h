@@ -38,7 +38,7 @@ class RpcConnection : private boost::noncopyable {
      * @param[in] reqId request ID of the request for this response.
      * @param[in] payload rapidjson::Value reference of the response body.
      */
-    virtual void handleTransaction(uint64_t reqId, const rapidjson::Document& payload) = 0;
+    virtual void handleTransaction(uint64_t reqId, const rapidjson::Document& payload) {};
 
     /**
      * destructor

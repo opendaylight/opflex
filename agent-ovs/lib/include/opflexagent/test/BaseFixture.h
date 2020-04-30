@@ -51,6 +51,7 @@ typedef opflex::ofcore::OFConstants::OpflexElementMode opflex_elem_t;
             proxyAddress = boost::asio::ip::address_v4::from_string("55.55.55.55",ec);
             framework.setMacProxy(proxyAddress);
         }
+        agent.setUplinkMac("11:22:33:44:55:66");
         // set feature flags to true
         agent.clearFeatureFlags();
         agent.start();

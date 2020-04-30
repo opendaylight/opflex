@@ -146,10 +146,6 @@ void OpflexConnection::sendMessage(OpflexMessage* message, bool sync) {
     messagesReady();
 }
 
-void OpflexConnection::handleTransaction(uint64_t reqId, const rapidjson::Document& payload) {
-    // no-op for OpFlex
-}
-
 } /* namespace internal */
 } /* namespace engine */
 } /* namespace opflex */

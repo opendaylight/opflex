@@ -79,9 +79,6 @@ public:
 
         mutator.commit();
 
-        shared_ptr<L2Universe> l2u =
-                    L2Universe::resolve(framework).get();
-
         Endpoint ep1("e82e883b-851d-4cc6-bedb-fb5e27530043");
         ep1.setMAC(MAC("00:00:00:00:00:01"));
         ep1.addIP("10.1.1.2");
@@ -99,6 +96,7 @@ public:
         epSource.updateEndpoint(ep2);
 
         Mutator mutatorElem(framework, "policyelement");
+        shared_ptr<L2Universe> l2u = L2Universe::resolve(framework).get();
         l2E1 = l2u->addEprL2Ep(bd->getURI().toString(),
                 ep1.getMAC().get());
         l2E1->setUuid(ep1.getUUID());
@@ -115,9 +113,7 @@ public:
 
         Mutator mutator2(framework, "policyreg");
         lEp1->addSpanLocalEpToEpRSrc()->setTargetL2Ep(l2E1->getURI());
-
         mutator2.commit();
-
     }
 
     virtual ~SpanFixture() {}
@@ -201,6 +197,13 @@ BOOST_FIXTURE_TEST_CASE( verify_artifacts, SpanFixture ) {
     BOOST_CHECK(testGetSession(lEp1, uri));
     const auto& state = agent.getSpanManager().getSessionState(sess->getURI());
     BOOST_CHECK_EQUAL(sess->getName().get(), state.get()->getName());
+
+    Mutator mutator(framework, "policyreg");
+    const URI& sessionUri = sess->getURI();
+    sess->remove();
+    mutator.commit();
+
+    WAIT_FOR(!span::Session::resolve(framework, sessionUri), 500);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
