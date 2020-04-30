@@ -115,6 +115,7 @@ void FSEndpointSource::updated(const fs::path& filePath) {
     static const std::string SNAT_UUIDS("snat-uuids");
     static const std::string ACTIVE_ACTIVE_AAP("active-active-aap");
     static const std::string EP_DISABLE_ADV("disable-adv");
+    static const std::string EP_ACCESS_ALLOW_UNTAGGED("access-allow-untagged");
 
     try {
         using boost::property_tree::ptree;
@@ -447,6 +448,11 @@ void FSEndpointSource::updated(const fs::path& filePath) {
             properties.get_optional<bool>(EP_DISABLE_ADV);
         if (disableAdv)
             newep.setDisableAdv(disableAdv.get());
+
+        optional<bool> accessAllowUntagged =
+            properties.get_optional<bool>(EP_ACCESS_ALLOW_UNTAGGED);
+        if (accessAllowUntagged)
+            newep.setAccessAllowUntagged(accessAllowUntagged.get());
 
         optional<bool> provider_vlan =
                 properties.get_optional<bool>(EP_PROVIDER_VLAN_FLAG);

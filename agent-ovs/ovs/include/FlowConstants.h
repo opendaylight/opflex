@@ -169,6 +169,11 @@ const uint64_t POP_VLAN = 0x1;
  */
 const uint64_t PUSH_VLAN = 0x2;
 
+/**
+ * Replicate the packet both untagged followed by tagged
+ */
+const uint64_t UNTAGGED_AND_PUSH_VLAN = 0x3;
+
 } // namespace access
 
 } // namespace meta

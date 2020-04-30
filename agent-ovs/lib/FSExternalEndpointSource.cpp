@@ -90,6 +90,7 @@ void FSExternalEndpointSource::updated(const fs::path& filePath) {
     static const std::string DHCP_T2("t2");
     static const std::string DHCP_PREFERRED_LIFETIME("preferred-lifetime");
     static const std::string DHCP_VALID_LIFETIME("valid-lifetime");
+    static const std::string EP_ACCESS_ALLOW_UNTAGGED("access-allow-untagged");
 
     try {
         using boost::property_tree::ptree;
@@ -301,6 +302,11 @@ void FSExternalEndpointSource::updated(const fs::path& filePath) {
 
             newep.setDHCPv6Config(c);
         }
+
+        optional<bool> accessAllowUntagged =
+            properties.get_optional<bool>(EP_ACCESS_ALLOW_UNTAGGED);
+        if (accessAllowUntagged)
+            newep.setAccessAllowUntagged(accessAllowUntagged.get());
 
         ep_map_t::const_iterator it = knownEps.find(pathstr);
         if (it != knownEps.end()) {
