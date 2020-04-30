@@ -47,8 +47,6 @@ mkdir _build && cd _build
 cmake .. -DBUILD_SHARED_LIBS=ON &> /dev/null
 make $make_args
 sudo make install
-ls -l /usr/local/lib64
-sudo mv /usr/local/lib64/libprometheus-cpp-* /usr/local/lib/
 popd
 
 pushd agent-ovs
