@@ -154,7 +154,9 @@ void ContractStatsManager::handleDropStats(struct ofputil_flow_stats* fentry) {
                                       diffCounters);
 #ifdef HAVE_PROMETHEUS_SUPPORT
         prometheusManager.addNUpdateRDDropCounter(idStr.get(),
-                                                  false);
+                                                  false,
+                                                  diffCounters.byte_count.get(),
+                                                  diffCounters.packet_count.get());
 #endif
     }
 }
@@ -177,13 +179,15 @@ updatePolicyStatsCounters(const std::string& srcEpg,
             ->setPackets(newVals.packet_count.get())
             .setBytes(newVals.byte_count.get());
         counterObjectKeys_[nextId] = counter_key_t(l24Classifier,srcEpg,dstEpg);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+        prometheusManager.addNUpdateContractClassifierCounter(srcEpg,
+                                                              dstEpg,
+                                                              l24Classifier,
+                                                              newVals.byte_count.get(),
+                                                              newVals.packet_count.get());
+#endif
     }
     mutator.commit();
-#ifdef HAVE_PROMETHEUS_SUPPORT
-    prometheusManager.addNUpdateContractClassifierCounter(srcEpg,
-                                                          dstEpg,
-                                                          l24Classifier);
-#endif
 }
 
 void ContractStatsManager::clearCounterObject(const std::string& key,

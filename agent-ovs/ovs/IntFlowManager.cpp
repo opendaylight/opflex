@@ -5283,7 +5283,7 @@ void IntFlowManager::handleRoutingDomainUpdate(const URI& rdURI) {
     LOG(DEBUG) << "Updating routing domain " << rdURI;
 #ifdef HAVE_PROMETHEUS_SUPPORT
     prometheusManager.addNUpdateRDDropCounter(rdURI.toString(),
-                                              true);
+                                              true, 0, 0);
 #endif
 
     FlowEntryList rdRouteFlows;

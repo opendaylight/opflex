@@ -237,9 +237,6 @@ PrometheusManager::PrometheusManager(Agent &agent_,
                                      framework(fwk_),
                                      gauge_ep_total{0},
                                      gauge_svc_total{0},
-                                     rddrop_last_genId{0},
-                                     sgclassifier_last_genId{0},
-                                     contract_last_genId{0},
                                      disabled{true},
                                      exposeEpSvcNan{false}
 {
@@ -2744,140 +2741,102 @@ void PrometheusManager::addNUpdateSvcCounter (const string& uuid,
 /* Function called from ContractStatsManager to add/update ContractClassifierCounter */
 void PrometheusManager::addNUpdateContractClassifierCounter (const string& srcEpg,
                                                              const string& dstEpg,
-                                                             const string& classifier)
+                                                             const string& classifier,
+                                                             uint64_t bytes,
+                                                             uint64_t pkts)
 {
     RETURN_IF_DISABLED
-    using namespace modelgbp::gbpe;
-    using namespace modelgbp::observer;
 
     const lock_guard<mutex> lock(contract_stats_mutex);
 
-    Mutator mutator(framework, "policyelement");
-    optional<shared_ptr<PolicyStatUniverse> > su =
-                    PolicyStatUniverse::resolve(agent.getFramework());
-    if (su) {
-        vector<OF_SHARED_PTR<L24ClassifierCounter> > out;
-        su.get()->resolveGbpeL24ClassifierCounter(out);
-        for (const auto& counter : out) {
-            if (!counter)
-                continue;
-            if (srcEpg.compare(counter.get()->getSrcEpg("")))
-                continue;
-            if (dstEpg.compare(counter.get()->getDstEpg("")))
-                continue;
-            if (classifier.compare(counter.get()->getClassifier("")))
-                continue;
-            if (counter.get()->getGenId(0) != (contract_last_genId+1))
-                continue;
-            contract_last_genId++;
+    for (CONTRACT_METRICS metric=CONTRACT_METRICS_MIN;
+            metric <= CONTRACT_METRICS_MAX;
+                metric = CONTRACT_METRICS(metric+1))
+        if (!createDynamicGaugeContractClassifier(metric,
+                                                  srcEpg,
+                                                  dstEpg,
+                                                  classifier))
+            break;
 
-            for (CONTRACT_METRICS metric=CONTRACT_METRICS_MIN;
-                    metric <= CONTRACT_METRICS_MAX;
-                        metric = CONTRACT_METRICS(metric+1))
-                if (!createDynamicGaugeContractClassifier(metric,
+    // Update the metrics
+    for (CONTRACT_METRICS metric=CONTRACT_METRICS_MIN;
+            metric <= CONTRACT_METRICS_MAX;
+                metric = CONTRACT_METRICS(metric+1)) {
+        Gauge *pgauge = getDynamicGaugeContractClassifier(metric,
                                                           srcEpg,
                                                           dstEpg,
-                                                          classifier))
-                    break;
-
-            // Update the metrics
-            for (CONTRACT_METRICS metric=CONTRACT_METRICS_MIN;
-                    metric <= CONTRACT_METRICS_MAX;
-                        metric = CONTRACT_METRICS(metric+1)) {
-                Gauge *pgauge = getDynamicGaugeContractClassifier(metric,
-                                                                  srcEpg,
-                                                                  dstEpg,
-                                                                  classifier);
-                optional<uint64_t>   metric_opt;
-                switch (metric) {
-                case CONTRACT_BYTES:
-                    metric_opt = counter.get()->getBytes();
-                    break;
-                case CONTRACT_PACKETS:
-                    metric_opt = counter.get()->getPackets();
-                    break;
-                default:
-                    LOG(ERROR) << "Unhandled contract metric: " << metric;
-                }
-                if (metric_opt && pgauge)
-                    pgauge->Set(pgauge->Value() \
-                                + static_cast<double>(metric_opt.get()));
-                if (!pgauge) {
-                    LOG(ERROR) << "Invalid sgclassifier update"
-                               << " srcEpg: " << srcEpg
-                               << " dstEpg: " << dstEpg
-                               << " classifier: " << classifier;
-                    break;
-                }
-            }
+                                                          classifier);
+        optional<uint64_t>   metric_opt;
+        switch (metric) {
+        case CONTRACT_BYTES:
+            metric_opt = bytes;
+            break;
+        case CONTRACT_PACKETS:
+            metric_opt = pkts;
+            break;
+        default:
+            LOG(ERROR) << "Unhandled contract metric: " << metric;
         }
-        out.clear();
+        if (metric_opt && pgauge)
+            pgauge->Set(pgauge->Value() \
+                        + static_cast<double>(metric_opt.get()));
+        if (!pgauge) {
+            LOG(ERROR) << "Invalid sgclassifier update"
+                       << " srcEpg: " << srcEpg
+                       << " dstEpg: " << dstEpg
+                       << " classifier: " << classifier;
+            break;
+        }
     }
 }
 
 /* Function called from SecGrpStatsManager to add/update SGClassifierCounter */
-void PrometheusManager::addNUpdateSGClassifierCounter (const string& classifier)
+void PrometheusManager::addNUpdateSGClassifierCounter (const string& classifier,
+                                                       uint64_t rx_bytes,
+                                                       uint64_t rx_pkts,
+                                                       uint64_t tx_bytes,
+                                                       uint64_t tx_pkts)
 {
     RETURN_IF_DISABLED
-    using namespace modelgbp::gbpe;
-    using namespace modelgbp::observer;
 
     const lock_guard<mutex> lock(sgclassifier_stats_mutex);
 
-    Mutator mutator(framework, "policyelement");
-    optional<shared_ptr<PolicyStatUniverse> > su =
-                    PolicyStatUniverse::resolve(agent.getFramework());
-    if (su) {
-        vector<OF_SHARED_PTR<SecGrpClassifierCounter> > out;
-        su.get()->resolveGbpeSecGrpClassifierCounter(out);
-        for (const auto& counter : out) {
-            if (!counter)
-                continue;
-            if (classifier.compare(counter.get()->getClassifier("")))
-                continue;
-            if (counter.get()->getGenId(0) != (sgclassifier_last_genId+1))
-                continue;
-            sgclassifier_last_genId++;
+    for (SGCLASSIFIER_METRICS metric=SGCLASSIFIER_METRICS_MIN;
+            metric <= SGCLASSIFIER_METRICS_MAX;
+                metric = SGCLASSIFIER_METRICS(metric+1))
+        if (!createDynamicGaugeSGClassifier(metric, classifier))
+            break;
 
-            for (SGCLASSIFIER_METRICS metric=SGCLASSIFIER_METRICS_MIN;
-                    metric <= SGCLASSIFIER_METRICS_MAX;
-                        metric = SGCLASSIFIER_METRICS(metric+1))
-                if (!createDynamicGaugeSGClassifier(metric, classifier))
-                    break;
-
-            // Update the metrics
-            for (SGCLASSIFIER_METRICS metric=SGCLASSIFIER_METRICS_MIN;
-                    metric <= SGCLASSIFIER_METRICS_MAX;
-                        metric = SGCLASSIFIER_METRICS(metric+1)) {
-                Gauge *pgauge = getDynamicGaugeSGClassifier(metric,
-                                                            classifier);
-                optional<uint64_t>   metric_opt;
-                switch (metric) {
-                case SGCLASSIFIER_RX_BYTES:
-                    metric_opt = counter.get()->getRxbytes();
-                    break;
-                case SGCLASSIFIER_RX_PACKETS:
-                    metric_opt = counter.get()->getRxpackets();
-                    break;
-                case SGCLASSIFIER_TX_BYTES:
-                    metric_opt = counter.get()->getTxbytes();
-                    break;
-                case SGCLASSIFIER_TX_PACKETS:
-                    metric_opt = counter.get()->getTxpackets();
-                    break;
-                default:
-                    LOG(ERROR) << "Unhandled sgclassifier metric: " << metric;
-                }
-                if (metric_opt && pgauge)
-                    pgauge->Set(pgauge->Value() \
-                                + static_cast<double>(metric_opt.get()));
-                if (!pgauge) {
-                    LOG(ERROR) << "Invalid sgclassifier update classifier: " << classifier;
-                    break;
-                }
-            }
+    // Update the metrics
+    for (SGCLASSIFIER_METRICS metric=SGCLASSIFIER_METRICS_MIN;
+            metric <= SGCLASSIFIER_METRICS_MAX;
+                metric = SGCLASSIFIER_METRICS(metric+1)) {
+        Gauge *pgauge = getDynamicGaugeSGClassifier(metric,
+                                                    classifier);
+        optional<uint64_t>   metric_opt;
+        switch (metric) {
+        case SGCLASSIFIER_RX_BYTES:
+            metric_opt = rx_bytes;
+            break;
+        case SGCLASSIFIER_RX_PACKETS:
+            metric_opt = rx_pkts;
+            break;
+        case SGCLASSIFIER_TX_BYTES:
+            metric_opt = tx_bytes;
+            break;
+        case SGCLASSIFIER_TX_PACKETS:
+            metric_opt = tx_pkts;
+            break;
+        default:
+            LOG(ERROR) << "Unhandled sgclassifier metric: " << metric;
         }
-        out.clear();
+        if (metric_opt && pgauge)
+            pgauge->Set(pgauge->Value() \
+                        + static_cast<double>(metric_opt.get()));
+        if (!pgauge) {
+            LOG(ERROR) << "Invalid sgclassifier update classifier: " << classifier;
+            break;
+        }
     }
 }
 
@@ -2919,11 +2878,11 @@ void PrometheusManager::addNUpdateRemoteEpCount (size_t count)
 /* Function called from ContractStatsManager to update RDDropCounter
  * This will be called from IntFlowManager to create metrics. */
 void PrometheusManager::addNUpdateRDDropCounter (const string& rdURI,
-                                                 bool isAdd)
+                                                 bool isAdd,
+                                                 uint64_t bytes,
+                                                 uint64_t pkts)
 {
     RETURN_IF_DISABLED
-    using namespace modelgbp::gbpe;
-    using namespace modelgbp::observer;
 
     const lock_guard<mutex> lock(rddrop_stats_mutex);
 
@@ -2936,47 +2895,29 @@ void PrometheusManager::addNUpdateRDDropCounter (const string& rdURI,
         return;
     }
 
-    Mutator mutator(framework, "policyelement");
-    optional<shared_ptr<PolicyStatUniverse> > su =
-                    PolicyStatUniverse::resolve(agent.getFramework());
-    if (su) {
-        vector<OF_SHARED_PTR<RoutingDomainDropCounter> > out;
-        su.get()->resolveGbpeRoutingDomainDropCounter(out);
-        for (const auto& counter : out) {
-            if (!counter)
-                continue;
-            if (rdURI.compare(counter.get()->getRoutingDomain("")))
-                continue;
-            if (counter.get()->getGenId(0) != (rddrop_last_genId+1))
-                continue;
-            rddrop_last_genId++;
-
-            // Update the metrics
-            for (RDDROP_METRICS metric=RDDROP_METRICS_MIN;
-                    metric <= RDDROP_METRICS_MAX;
-                        metric = RDDROP_METRICS(metric+1)) {
-                Gauge *pgauge = getDynamicGaugeRDDrop(metric, rdURI);
-                optional<uint64_t>   metric_opt;
-                switch (metric) {
-                case RDDROP_BYTES:
-                    metric_opt = counter.get()->getBytes();
-                    break;
-                case RDDROP_PACKETS:
-                    metric_opt = counter.get()->getPackets();
-                    break;
-                default:
-                    LOG(ERROR) << "Unhandled rddrop metric: " << metric;
-                }
-                if (metric_opt && pgauge)
-                    pgauge->Set(pgauge->Value() \
-                                + static_cast<double>(metric_opt.get()));
-                if (!pgauge) {
-                    LOG(ERROR) << "Invalid rddrop update rdURI: " << rdURI;
-                    break;
-                }
-            }
+    // Update the metrics
+    for (RDDROP_METRICS metric=RDDROP_METRICS_MIN;
+            metric <= RDDROP_METRICS_MAX;
+                metric = RDDROP_METRICS(metric+1)) {
+        Gauge *pgauge = getDynamicGaugeRDDrop(metric, rdURI);
+        optional<uint64_t>   metric_opt;
+        switch (metric) {
+        case RDDROP_BYTES:
+            metric_opt = bytes;
+            break;
+        case RDDROP_PACKETS:
+            metric_opt = pkts;
+            break;
+        default:
+            LOG(ERROR) << "Unhandled rddrop metric: " << metric;
         }
-        out.clear();
+        if (metric_opt && pgauge)
+            pgauge->Set(pgauge->Value() \
+                        + static_cast<double>(metric_opt.get()));
+        if (!pgauge && isAdd) {
+            LOG(ERROR) << "Invalid rddrop update rdURI: " << rdURI;
+            break;
+        }
     }
 }
 

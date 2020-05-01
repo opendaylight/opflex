@@ -234,9 +234,13 @@ public:
      *
      * @param rdURI       URI of routing domain
      * @param isAdd       flag to indicate if its create or update
+     * @param bytes       delta byte count
+     * @param pkts        delta packet count
      */
     void addNUpdateRDDropCounter(const string& rdURI,
-                                 bool isAdd);
+                                 bool isAdd,
+                                 uint64_t bytes,
+                                 uint64_t pkts);
     /**
      * Remove RDDropCounter metric given URI of routing domain
      *
@@ -281,8 +285,16 @@ public:
      * Update SGClassifierCounter metric family if its already present
      *
      * @param classifier       name of the classifier
+     * @param rx_bytes         delta rx byte count
+     * @param rx_pkts          delta rx packet count
+     * @param tx_bytes         delta tx byte count
+     * @param tx_pkts          delta tx packet count
      */
-    void addNUpdateSGClassifierCounter(const string& classifier);
+    void addNUpdateSGClassifierCounter(const string& classifier,
+                                       uint64_t rx_bytes,
+                                       uint64_t rx_pkts,
+                                       uint64_t tx_bytes,
+                                       uint64_t tx_pkts);
     /**
      * Remove SGClassifierCounter metric given the classifier
      *
@@ -299,10 +311,14 @@ public:
      * @param srcEpg           name of the srcEpg
      * @param dstEpg           name of the dstEpg
      * @param classifier       name of the classifier
+     * @param bytes            delta byte count
+     * @param pkts             delta packet count
      */
     void addNUpdateContractClassifierCounter(const string& srcEpg,
                                              const string& dstEpg,
-                                             const string& classifier);
+                                             const string& classifier,
+                                             uint64_t bytes,
+                                             uint64_t pkts);
     /**
      * Remove ContractClassifierCounter metric given the classifier
      *
@@ -827,11 +843,6 @@ private:
     // func to remove all gauges of every RDDropCounter
     void removeDynamicGaugeRDDrop(void);
 
-    // RDDropCounter diffs are stored in a circular buffer. Each buffer element
-    // has a unique running genID. Keep track of the last processed genId by
-    // PrometheusManager to avoid double counting
-    uint64_t rddrop_last_genId;
-
     /**
      * cache Gauge ptr for every RDDropCounter metric
      */
@@ -926,11 +937,6 @@ private:
     // func to remove all gauges of every SGClassifierCounter
     void removeDynamicGaugeSGClassifier(void);
 
-    // SGClassifierCounter diffs are stored in a circular buffer. Each buffer element
-    // has a unique running genID. Keep track of the last processed genId by
-    // PrometheusManager to avoid double counting
-    uint64_t sgclassifier_last_genId;
-
     /**
      * cache Gauge ptr for every SGClassifierCounter metric
      */
@@ -993,11 +999,6 @@ private:
     void removeDynamicGaugeContractClassifier(CONTRACT_METRICS metric);
     // func to remove all gauges of every ContractClassifierCounter
     void removeDynamicGaugeContractClassifier(void);
-
-    // ContractClassifierCounter diffs are stored in a circular buffer. Each buffer element
-    // has a unique running genID. Keep track of the last processed genId by
-    // PrometheusManager to avoid double counting
-    uint64_t contract_last_genId;
 
     /**
      * cache Gauge ptr for every ContractClassifierCounter metric
