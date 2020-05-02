@@ -196,7 +196,7 @@ public:
 
     /**
      * get the URI of the parent of LocalEp object
-     * @param lEp shared pointer to a LocalEpp object
+     * @param localEp shared pointer to a LocalEpp object
      * @return optional URI reference
      */
     static const optional<URI> getSession(const shared_ptr<LocalEp>& localEp);

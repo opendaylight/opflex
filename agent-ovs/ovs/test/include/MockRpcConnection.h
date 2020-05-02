@@ -239,7 +239,7 @@ private:
             */
     string response13 {"[{\"uuid\":[\"uuid\",\"ad0810fb-fa38-4dd0-b0b3-6a98985dd2bc\"]},{\"count\":1}]"};
 
-    string selectInterfaceResp {};
+    string selectInterfaceResp {"[{\"rows\":[{\"options\":[\"map\",[[\"erspan_dir\",\"32552\"],[\"erspan_hwid\",\"2\"],[\"erspan_ver\",\"2\"],[\"key\",\"1\"],[\"remote_ip\",\"11.2.3.4\"]]]}]}]"};
 
     /* SPAN request/responses end */
 
