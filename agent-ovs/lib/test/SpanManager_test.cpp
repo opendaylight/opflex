@@ -145,7 +145,7 @@ static bool checkSpan(boost::optional<shared_ptr<SessionState>> pSess,
 }
 
 static bool checkSrcEps(boost::optional<shared_ptr<SessionState>> pSess,
-    shared_ptr<span::SrcMember> srcMem, shared_ptr<L2Ep> l2e) {
+    shared_ptr<span::SrcMember>& srcMem, shared_ptr<L2Ep>& l2e) {
     if (!pSess) {
         return false;
     }

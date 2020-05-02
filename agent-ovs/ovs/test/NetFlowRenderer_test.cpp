@@ -13,7 +13,7 @@
 #include <opflexagent/logging.h>
 #include <opflexagent/test/BaseFixture.h>
 #include <NetFlowRenderer.h>
-#include "MockJsonRpc.h"
+#include "MockRpcConnection.h"
 
 #include <modelgbp/netflow/CollectorVersionEnumT.hpp>
 

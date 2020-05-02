@@ -39,7 +39,7 @@ using namespace std::chrono;
 /*
  * name of ERPSAN port
  */
-static const string ERSPAN_PORT_NAME("erspan");
+static const string ERSPAN_PORT_PREFIX("erspan");
 
 /**
  * helper function to get Value of a given index
@@ -141,7 +141,7 @@ public:
         /**
          * set of erspan ports
          */
-        set<string> out_ports;
+        string out_port;
     } mirror;
 
     /**
