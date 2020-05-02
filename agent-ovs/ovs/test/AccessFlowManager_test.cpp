@@ -187,29 +187,49 @@ BOOST_FIXTURE_TEST_CASE(learningBridge, AccessFlowManagerFixture) {
 BOOST_FIXTURE_TEST_CASE(secGrp, AccessFlowManagerFixture) {
     createObjects();
     createPolicyObjects();
+    shared_ptr<modelgbp::gbp::Subnets> rs;
     {
         Mutator mutator(framework, "policyreg");
+        rs = space->addGbpSubnets("subnets_rule0");
+
+        rs->addGbpSubnet("subnets_rule0_1")
+            ->setAddress("0.0.0.0")
+            .setPrefixLen(0);
+        rs->addGbpSubnet("subnets_rule0_2")
+            ->setAddress("0::")
+            .setPrefixLen(0);
+
+        shared_ptr<modelgbp::gbp::SecGroupRule> r1, r2, r3, r4, r5;
         secGrp1 = space->addGbpSecGroup("secgrp1");
-        secGrp1->addGbpSecGroupSubject("1_subject1")
-            ->addGbpSecGroupRule("1_1_rule1")
-            ->setDirection(DirectionEnumT::CONST_IN).setOrder(100)
+
+        r1 = secGrp1->addGbpSecGroupSubject("1_subject1")
+                ->addGbpSecGroupRule("1_1_rule1");
+        r1->setDirection(DirectionEnumT::CONST_IN).setOrder(100)
             .addGbpRuleToClassifierRSrc(classifier1->getURI().toString());
-        secGrp1->addGbpSecGroupSubject("1_subject1")
-            ->addGbpSecGroupRule("1_1_rule2")
-            ->setDirection(DirectionEnumT::CONST_IN).setOrder(150)
+        r1->addGbpSecGroupRuleToRemoteAddressRSrc(rs->getURI().toString());
+
+        r2 = secGrp1->addGbpSecGroupSubject("1_subject1")
+                ->addGbpSecGroupRule("1_1_rule2");
+        r2->setDirection(DirectionEnumT::CONST_IN).setOrder(150)
             .addGbpRuleToClassifierRSrc(classifier8->getURI().toString());
-        secGrp1->addGbpSecGroupSubject("1_subject1")
-            ->addGbpSecGroupRule("1_1_rule3")
-            ->setDirection(DirectionEnumT::CONST_OUT).setOrder(200)
+        r2->addGbpSecGroupRuleToRemoteAddressRSrc(rs->getURI().toString());
+
+        r3 = secGrp1->addGbpSecGroupSubject("1_subject1")
+            ->addGbpSecGroupRule("1_1_rule3");
+        r3->setDirection(DirectionEnumT::CONST_OUT).setOrder(200)
             .addGbpRuleToClassifierRSrc(classifier2->getURI().toString());
-        secGrp1->addGbpSecGroupSubject("1_subject1")
-            ->addGbpSecGroupRule("1_1_rule4")
-            ->setDirection(DirectionEnumT::CONST_IN).setOrder(300)
+
+        r4 = secGrp1->addGbpSecGroupSubject("1_subject1")
+                ->addGbpSecGroupRule("1_1_rule4");
+        r4->setDirection(DirectionEnumT::CONST_IN).setOrder(300)
             .addGbpRuleToClassifierRSrc(classifier6->getURI().toString());
-        secGrp1->addGbpSecGroupSubject("1_subject1")
-            ->addGbpSecGroupRule("1_1_rule5")
-            ->setDirection(DirectionEnumT::CONST_IN).setOrder(400)
+        r4->addGbpSecGroupRuleToRemoteAddressRSrc(rs->getURI().toString());
+
+        r5 = secGrp1->addGbpSecGroupSubject("1_subject1")
+                 ->addGbpSecGroupRule("1_1_rule5");
+        r5->setDirection(DirectionEnumT::CONST_IN).setOrder(400)
             .addGbpRuleToClassifierRSrc(classifier7->getURI().toString());
+        r5->addGbpSecGroupRuleToRemoteAddressRSrc(rs->getURI().toString());
         mutator.commit();
     }
 
@@ -238,19 +258,25 @@ BOOST_FIXTURE_TEST_CASE(secGrp, AccessFlowManagerFixture) {
     WAIT_FOR_TABLES("two-secgrp-nocon", 500);
 
     {
+        shared_ptr<modelgbp::gbp::SecGroupRule> r1, r2, r3;
+
         Mutator mutator(framework, "policyreg");
         secGrp2 = space->addGbpSecGroup("secgrp2");
-        secGrp2->addGbpSecGroupSubject("2_subject1")
-            ->addGbpSecGroupRule("2_1_rule1")
-            ->addGbpRuleToClassifierRSrc(classifier0->getURI().toString());
-        secGrp2->addGbpSecGroupSubject("2_subject1")
-            ->addGbpSecGroupRule("2_1_rule2")
-            ->setDirection(DirectionEnumT::CONST_BIDIRECTIONAL).setOrder(20)
+        r1 = secGrp2->addGbpSecGroupSubject("2_subject1")
+                ->addGbpSecGroupRule("2_1_rule1");
+        r1->addGbpRuleToClassifierRSrc(classifier0->getURI().toString());
+        r1->addGbpSecGroupRuleToRemoteAddressRSrc(rs->getURI().toString());
+
+        r2 = secGrp2->addGbpSecGroupSubject("2_subject1")
+                ->addGbpSecGroupRule("2_1_rule2");
+        r2->setDirection(DirectionEnumT::CONST_BIDIRECTIONAL).setOrder(20)
             .addGbpRuleToClassifierRSrc(classifier5->getURI().toString());
-        secGrp2->addGbpSecGroupSubject("2_subject1")
-            ->addGbpSecGroupRule("2_1_rule3")
-            ->setDirection(DirectionEnumT::CONST_OUT).setOrder(30)
+
+        r3 = secGrp2->addGbpSecGroupSubject("2_subject1")
+            ->addGbpSecGroupRule("2_1_rule3");
+        r3->setDirection(DirectionEnumT::CONST_OUT).setOrder(30)
             .addGbpRuleToClassifierRSrc(classifier9->getURI().toString());
+        r3->addGbpSecGroupRuleToRemoteAddressRSrc(rs->getURI().toString());
         mutator.commit();
     }
 
@@ -259,7 +285,6 @@ BOOST_FIXTURE_TEST_CASE(secGrp, AccessFlowManagerFixture) {
     initExpSecGrpSet12(true);
     WAIT_FOR_TABLES("two-secgrp", 500);
 
-    shared_ptr<modelgbp::gbp::Subnets> rs;
     {
         Mutator mutator(framework, "policyreg");
         rs = space->addGbpSubnets("subnets_rule1");
@@ -470,10 +495,9 @@ uint16_t AccessFlowManagerFixture::initExpSecGrp1(uint32_t setId,
             ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio).cookie(ruleId)
                  .tcp().reg(SEPG, setId).isIpSrc("10.0.0.0/8").isTpDst(80)
                  .actions().go(OUT).done());
-    } else {
-        ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio).cookie(ruleId)
-             .tcp().reg(SEPG, setId).isTpDst(80).actions().go(OUT).done());
     }
+    ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio).cookie(ruleId)
+         .tcp().reg(SEPG, setId).isTpDst(80).actions().go(OUT).done());
     /* classifer 8  */
     ruleId = idGen.getId("l24classifierRule",
                          classifier8->getURI().toString());
@@ -486,10 +510,9 @@ uint16_t AccessFlowManagerFixture::initExpSecGrp1(uint32_t setId,
                  .tcp6().reg(SEPG, setId)
                  .isIpv6Src("fd34:9c39:1374:358c::/64")
                  .isTpDst(80).actions().go(OUT).done());
-    } else {
-        ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio-128).cookie(ruleId)
-             .tcp6().reg(SEPG, setId).isTpDst(80).actions().go(OUT).done());
     }
+    ADDF(Bldr(SEND_FLOW_REM).table(IN_POL).priority(prio-128).cookie(ruleId)
+        .tcp6().reg(SEPG, setId).isTpDst(80).actions().go(OUT).done());
     /* classifier 2  */
     ruleId = idGen.getId("l24classifierRule",
                          classifier2->getURI().toString());

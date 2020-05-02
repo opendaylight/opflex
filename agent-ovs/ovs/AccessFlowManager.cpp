@@ -591,6 +591,7 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
 
         for (shared_ptr<PolicyRule>& pc : rules) {
             uint8_t dir = pc->getDirection();
+            bool skipL34 = false;
             const shared_ptr<L24Classifier>& cls = pc->getL24Classifier();
             const URI& ruleURI = cls.get()->getURI();
             uint64_t secGrpCookie =
@@ -598,6 +599,10 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
             boost::optional<const network::subnets_t&> remoteSubs;
             if (!pc->getRemoteSubnets().empty())
                 remoteSubs = pc->getRemoteSubnets();
+            else
+                skipL34 = !agent.addL34FlowsWithoutSubnet();
+
+            LOG(DEBUG) << "skipL34 flows: " << skipL34;
 
             flowutils::ClassAction act = flowutils::CA_DENY;
             if (pc->getAllow()) {
@@ -607,6 +612,35 @@ void AccessFlowManager::handleSecGrpSetUpdate(const uri_set_t& secGrps,
                 } else {
                     act = CA_ALLOW;
                 }
+            }
+
+            /*
+             * Do not program higher level protocols
+             * when remote subnet is missing
+             * except when agent.addL34FlowsWithoutSubnet() == true
+             */
+            if (skipL34) {
+                if (dir == DirectionEnumT::CONST_BIDIRECTIONAL ||
+                    dir == DirectionEnumT::CONST_IN) {
+                    flowutils::add_l2classifier_entries(*cls, act,
+                                                        OUT_TABLE_ID,
+                                                        pc->getPriority(),
+                                                        OFPUTIL_FF_SEND_FLOW_REM,
+                                                        secGrpCookie,
+                                                        secGrpSetId, 0,
+                                                        secGrpIn);
+                }
+                if (dir == DirectionEnumT::CONST_BIDIRECTIONAL ||
+                    dir == DirectionEnumT::CONST_OUT) {
+                    flowutils::add_l2classifier_entries(*cls, act,
+                                                        OUT_TABLE_ID,
+                                                        pc->getPriority(),
+                                                        OFPUTIL_FF_SEND_FLOW_REM,
+                                                        secGrpCookie,
+                                                        secGrpSetId, 0,
+                                                        secGrpOut);
+                }
+                continue;
             }
 
             if (dir == DirectionEnumT::CONST_BIDIRECTIONAL ||
