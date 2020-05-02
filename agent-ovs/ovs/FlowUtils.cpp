@@ -123,6 +123,27 @@ static flow_func make_flow_functor(const network::subnet_t& ss,
     return std::bind(applyRemoteSub, _1, func, addr, ss.second, _2);
 }
 
+void add_l2classifier_entries(L24Classifier& clsfr, ClassAction act,
+                              uint8_t nextTable, uint16_t priority,
+                              uint32_t flags, uint64_t cookie,
+                              uint32_t svnid, uint32_t dvnid,
+                              /* out */ FlowEntryList& entries) {
+    if (clsfr.isProtSet())
+        return;
+
+    ovs_be64 ckbe = ovs_htonll(cookie);
+    FlowBuilder f;
+
+    f.cookie(ckbe)
+     .flags(flags);
+    flowutils::match_group(f, priority, svnid, dvnid);
+    match_protocol(f, clsfr);
+    if (act != flowutils::CA_DENY)
+        f.action().go(nextTable);
+
+    entries.push_back(f.build());
+}
+
 void add_classifier_entries(L24Classifier& clsfr, ClassAction act,
                             boost::optional<const network::subnets_t&> sourceSub,
                             boost::optional<const network::subnets_t&> destSub,

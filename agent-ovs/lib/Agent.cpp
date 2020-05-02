@@ -71,6 +71,7 @@ Agent::Agent(OFFramework& framework_, const LogParams& _logParams)
       prometheusEnabled(true),
       prometheusExposeLocalHostOnly(false),
       prometheusExposeEpSvcNan(false),
+      behaviorL34FlowsWithoutSubnet(false),
       logParams(_logParams) {
 #else
 Agent::Agent(OFFramework& framework_, const LogParams& _logParams)
@@ -84,6 +85,7 @@ Agent::Agent(OFFramework& framework_, const LogParams& _logParams)
       contractInterval(0), securityGroupInterval(0), interfaceInterval(0),
       spanManager(framework, agent_io),
       netflowManager(framework,agent_io),
+      behaviorL34FlowsWithoutSubnet(false),
       logParams(_logParams) {
 #endif
     std::random_device rng;
@@ -194,6 +196,7 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     static const std::string OPFLEX_PRR_INTERVAL("opflex.timers.prr");
     static const std::string OPFLEX_HANDSHAKE("opflex.timers.handshake-timeout");
     static const std::string DISABLED_FEATURES("feature.disabled");
+    static const std::string BEHAVIOR_L34FLOWS_WITHOUT_SUBNET("behavior.l34flows-without-subnet");
 
     // set feature flags to true
     clearFeatureFlags();
@@ -252,6 +255,12 @@ void Agent::setProperties(const boost::property_tree::ptree& properties) {
     if (disabledFeatures) {
         for (const ptree::value_type &v : disabledFeatures.get())
             disabledFeaturesSet.insert(v.second.data());
+    }
+
+    optional<bool> behaviorAddL34FlowsWithoutSubnet =
+        properties.get_optional<bool>(BEHAVIOR_L34FLOWS_WITHOUT_SUBNET);
+    if (behaviorAddL34FlowsWithoutSubnet) {
+        behaviorL34FlowsWithoutSubnet = behaviorAddL34FlowsWithoutSubnet.get();
     }
 
 #ifdef HAVE_PROMETHEUS_SUPPORT

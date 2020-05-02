@@ -119,6 +119,26 @@ void add_classifier_entries(modelgbp::gbpe::L24Classifier& clsfr,
                             /* out */ FlowEntryList& entries);
 
 /**
+ * Create L2 flow entries for the classifier specified and append them
+ * to the provided list.
+ *
+ * @param classifier Classifier object to get matching rules from
+ * @param act an action to take for the flows
+ * @param nextTable the table to send to if the traffic is allowed
+ * @param priority Priority of the entry created
+ * @param flags the flow flags to use
+ * @param cookie Cookie of the entry created
+ * @param svnid VNID of the source endpoint group for the entry
+ * @param dvnid VNID of the destination endpoint group for the entry
+ * @param entries List to append entry to
+ */
+void add_l2classifier_entries(modelgbp::gbpe::L24Classifier& clsfr,
+                              ClassAction act,
+                              uint8_t nextTable, uint16_t priority,
+                              uint32_t flags, uint64_t cookie,
+                              uint32_t svnid, uint32_t dvnid,
+                              /* out */ FlowEntryList& entries);
+/**
  * Add a match entry for the DHCP v4 and v6 request
  *
  * @param fb the flowbuilder
