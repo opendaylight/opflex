@@ -22,7 +22,7 @@ JsonRpcTransactMessage::JsonRpcTransactMessage(OvsdbOperation operation_, OvsdbT
     operation(operation_), table(table_) {}
 
 JsonRpcTransactMessage::JsonRpcTransactMessage(const JsonRpcTransactMessage& copy) : JsonRpcMessage("transact", REQUEST),
-    conditions(copy.conditions), columns(copy.columns), rows(copy.rows), kvPairs(copy.kvPairs),
+    conditions(copy.conditions), columns(copy.columns), rowData(copy.rowData), kvPairs(copy.kvPairs),
     operation(copy.getOperation()), table(copy.getTable()) {}
 
 void JsonRpcTransactMessage::serializePayload(yajr::rpc::SendHandler& writer) {
@@ -134,14 +134,14 @@ bool JsonRpcTransactMessage::operator()(rapidjson::Writer<T> & writer) {
         writer.EndArray();
     }
 
-    if (!rows.empty()) {
+    if (!rowData.empty()) {
         writer.String("row");
         writer.StartObject();
-        for (auto& row : rows) {
-            string col = row.first;
+        for (auto& rowEntry : rowData) {
+            string col = rowEntry.first;
             LOG(DEBUG) << "row label " << col;
             writer.String(col.c_str());
-            const TupleDataSet& tdsPtr = row.second;
+            const TupleDataSet& tdsPtr = rowEntry.second;
             if (!tdsPtr.label.empty()) {
                 writer.StartArray();
                 writer.String(tdsPtr.label.c_str());
@@ -168,7 +168,7 @@ TransactReq::TransactReq(const list<JsonRpcTransactMessage>& msgs, uint64_t reqI
 }
 
 void TransactReq::serializePayload(yajr::rpc::SendHandler& writer) {
-    LOG(DEBUG) << "serializePayload send handler";
+    LOG(DEBUG) << "serializePayload send handler - reqId " << std::to_string(reqId);
     (*this)(writer);
 }
 

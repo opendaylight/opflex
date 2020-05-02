@@ -103,9 +103,7 @@ void OvsdbConnection::stop() {
             break;
         case yajr::StateChange::TRANSPORT_FAILURE:
             conn->setConnected(false);
-            {
-              LOG(ERROR)  << "SSL Connection error: ";
-            }
+            LOG(ERROR) << "SSL Connection error";
             break;
         case yajr::StateChange::FAILURE:
             conn->setConnected(false);
@@ -124,8 +122,10 @@ uv_loop_t* OvsdbConnection::loop_selector(void* data) {
 }
 
 void OvsdbConnection::connect() {
-    connect_async.data = this;
-    uv_async_send(&connect_async);
+    if (!connected) {
+        connect_async.data = this;
+        uv_async_send(&connect_async);
+    }
 }
 
 void OvsdbConnection::disconnect() {

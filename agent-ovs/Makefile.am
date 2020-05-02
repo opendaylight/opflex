@@ -435,7 +435,6 @@ if RENDERER_OVS
 	ovs/test/include/MockPortMapper.h \
 	ovs/test/include/MockFlowExecutor.h \
 	ovs/test/include/MockFlowReader.h \
-	ovs/test/include/MockJsonRpc.h \
 	ovs/test/include/MockRpcConnection.h \
 	ovs/test/include/MockSwitchManager.h \
 	ovs/test/include/FlowManagerFixture.h \

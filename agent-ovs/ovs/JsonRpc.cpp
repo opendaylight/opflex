@@ -43,31 +43,30 @@ bool JsonRpc::createNetFlow(const string& brUuid, const string& target, const in
     tuples.emplace_back("", target);
     TupleDataSet tdSet(tuples);
     JsonRpcTransactMessage msg1(OvsdbOperation::INSERT, OvsdbTable::NETFLOW);
-    msg1.rows["targets"] = tdSet;
+    msg1.rowData["targets"] = tdSet;
 
     tuples.clear();
     tuples.emplace_back("", timeout);
     tdSet = TupleDataSet(tuples);
-    msg1.rows["active_timeout"] = tdSet;
+    msg1.rowData["active_timeout"] = tdSet;
 
     tuples.clear();
     tuples.emplace_back("", addidtointerface);
     tdSet = TupleDataSet(tuples);
-    msg1.rows["add_id_to_interface"] = tdSet;
+    msg1.rowData["add_id_to_interface"] = tdSet;
 
     const string uuid_name = "netflow1";
     msg1.kvPairs.emplace_back("uuid-name", uuid_name);
 
     JsonRpcTransactMessage msg2(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
-    tuple<string, string, string> cond1("_uuid", "==", brUuid);
     set<tuple<string, string, string>> condSet;
-    condSet.emplace(cond1);
+    condSet.emplace("_uuid", "==", brUuid);
     msg2.conditions = condSet;
 
     tuples.clear();
     tuples.emplace_back("named-uuid", uuid_name);
     tdSet = TupleDataSet(tuples);
-    msg2.rows.emplace("netflow", tdSet);
+    msg2.rowData.emplace("netflow", tdSet);
 
     const list<JsonRpcTransactMessage> requests = {msg1, msg2};
     if (!sendRequestAndAwaitResponse(requests)) {
@@ -82,12 +81,12 @@ bool JsonRpc::createIpfix(const string& brUuid, const string& target, const int&
     tuples.emplace_back("", target);
     TupleDataSet tdSet(tuples);
     JsonRpcTransactMessage msg1(OvsdbOperation::INSERT, OvsdbTable::IPFIX);
-    msg1.rows.emplace("targets", tdSet);
+    msg1.rowData.emplace("targets", tdSet);
     if (sampling != 0) {
         tuples.clear();
         tuples.emplace_back("", sampling);
         tdSet = TupleDataSet(tuples);
-        msg1.rows.emplace("sampling", tdSet);
+        msg1.rowData.emplace("sampling", tdSet);
     }
     const string uuid_name = "ipfix1";
     msg1.kvPairs.emplace_back("uuid-name", uuid_name);
@@ -100,7 +99,7 @@ bool JsonRpc::createIpfix(const string& brUuid, const string& target, const int&
     tuples.clear();
     tuples.emplace_back("named-uuid", uuid_name);
     tdSet = TupleDataSet(tuples);
-    msg2.rows.emplace("ipfix", tdSet);
+    msg2.rowData.emplace("ipfix", tdSet);
 
     const list<JsonRpcTransactMessage> requests = {msg1, msg2};
     if (!sendRequestAndAwaitResponse(requests)) {
@@ -111,15 +110,14 @@ bool JsonRpc::createIpfix(const string& brUuid, const string& target, const int&
 }
 
 bool JsonRpc::deleteNetFlow(const string& brName) {
+    JsonRpcTransactMessage msg1(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
     set<tuple<string, string, string>> condSet;
     condSet.emplace("name", "==", brName);
-
-    JsonRpcTransactMessage msg1(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
     msg1.conditions = condSet;
 
     vector<TupleData> tuples;
     TupleDataSet tdSet(tuples, "set");
-    msg1.rows.emplace("netflow", tdSet);
+    msg1.rowData.emplace("netflow", tdSet);
 
     list<JsonRpcTransactMessage> requests = {msg1};
     if (!sendRequestAndAwaitResponse(requests)) {
@@ -130,16 +128,14 @@ bool JsonRpc::deleteNetFlow(const string& brName) {
 }
 
 bool JsonRpc::deleteIpfix(const string& brName) {
-    tuple<string, string, string> cond1("name", "==", brName);
-    set<tuple<string, string, string>> condSet;
-    condSet.emplace(cond1);
-
     JsonRpcTransactMessage msg1(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
+    set<tuple<string, string, string>> condSet;
+    condSet.emplace("name", "==", brName);
     msg1.conditions = condSet;
 
     vector<TupleData> tuples;
     TupleDataSet tdSet(tuples, "set");
-    msg1.rows.emplace("ipfix", tdSet);
+    msg1.rowData.emplace("ipfix", tdSet);
 
     const list<JsonRpcTransactMessage> requests = {msg1};
     if (!sendRequestAndAwaitResponse(requests)) {
@@ -179,11 +175,12 @@ bool JsonRpc::updateBridgePorts(
     condSet.emplace("_uuid", "==", brUuid);
     msg1.conditions = condSet;
     vector<TupleData> tuples;
+    tuples.reserve(brPorts.size());
     for (auto& elem : brPorts) {
         tuples.emplace_back("uuid", elem);
     }
     TupleDataSet tdSet(tuples, "set");
-    msg1.rows.emplace("ports", tdSet);
+    msg1.rowData.emplace("ports", tdSet);
 
     const list<JsonRpcTransactMessage> requests = {msg1};
     if (!sendRequestAndAwaitResponse(requests)) {
@@ -229,6 +226,7 @@ bool JsonRpc::handleGetBridgePortList(uint64_t reqId, const Document& payload, B
 }
 
 void JsonRpc::getUuidsFromVal(set<string>& uuidSet, const Document& payload, const string& index) {
+    LOG(INFO) << "getUuidsFromVal with index " << index;
     list<string> ids = {"0","rows","0",index,"0"};
     Value val;
     opflexagent::getValue(payload, ids, val);
@@ -253,10 +251,9 @@ void JsonRpc::getUuidsFromVal(set<string>& uuidSet, const Document& payload, con
 }
 
 bool JsonRpc::getBridgePortList(const string& bridge, BrPortResult& res) {
-    tuple<string, string, string> cond1("name", "==", bridge);
-    set<tuple<string, string, string>> condSet;
-    condSet.emplace(cond1);
     JsonRpcTransactMessage msg1(OvsdbOperation::SELECT, OvsdbTable::BRIDGE);
+    set<tuple<string, string, string>> condSet;
+    condSet.emplace("name", "==", bridge);
     msg1.conditions = condSet;
     msg1.columns.emplace("ports");
     msg1.columns.emplace("_uuid");
@@ -284,7 +281,7 @@ bool JsonRpc::getOvsdbMirrorConfig(mirror& mir) {
     set<string> uuids;
     uuids.insert(mir.src_ports.begin(), mir.src_ports.end());
     uuids.insert(mir.dst_ports.begin(), mir.dst_ports.end());
-    uuids.insert(mir.out_ports.begin(), mir.out_ports.end());
+    uuids.insert(mir.out_port);
 
     JsonRpcTransactMessage msg2(OvsdbOperation::SELECT, OvsdbTable::PORT);
     msg2.columns.emplace("name");
@@ -302,14 +299,18 @@ bool JsonRpc::getOvsdbMirrorConfig(mirror& mir) {
     //replace port UUIDs with names in the mirror struct
     substituteSet(mir.src_ports, portMap);
     substituteSet(mir.dst_ports, portMap);
-    substituteSet(mir.out_ports, portMap);
+    auto itr  = portMap.find(mir.out_port);
+    if (itr != portMap.end()) {
+        LOG(DEBUG) << "out_port name " << itr->second;
+        mir.out_port = itr->second;
+    }
     return true;
 }
 
 bool JsonRpc::getCurrentErspanParams(const string& portName, erspan_ifc& params) {
     // for ERSPAN port get IP address
     JsonRpcTransactMessage msg1(OvsdbOperation::SELECT, OvsdbTable::INTERFACE);
-    tuple<string, string, string> cond1("name", "==", ERSPAN_PORT_NAME);
+    tuple<string, string, string> cond1("name", "==", portName);
     set<tuple<string, string, string>> condSet;
     condSet.emplace(cond1);
     msg1.conditions = condSet;
@@ -360,7 +361,9 @@ bool JsonRpc::handleMirrorConfig(uint64_t reqId, const Document& payload, mirror
     uuids.clear();
     getUuidsFromVal(uuids, payload, "output_port");
 
-    mir.out_ports.insert(uuids.begin(), uuids.end());
+    if (!uuids.empty()) {
+        mir.out_port = *(uuids.begin());
+    }
     return true;
 }
 
@@ -474,10 +477,9 @@ void JsonRpc::getPortUuids(map<string, string>& ports) {
 }
 
 void JsonRpc::getBridgeUuid(const string& name, string& uuid) {
-    tuple<string, string, string> cond1("name", "==", name);
-    set<tuple<string, string, string>> condSet;
-    condSet.emplace(cond1);
     JsonRpcTransactMessage msg1(OvsdbOperation::SELECT, OvsdbTable::BRIDGE);
+    set<tuple<string, string, string>> condSet;
+    condSet.emplace("name", "==", name);
     msg1.conditions = condSet;
     msg1.columns.emplace("_uuid");
 
@@ -506,7 +508,7 @@ bool JsonRpc::createMirror(const string& brUuid, const string& name, const set<s
     set<string> ports;
     ports.insert(srcPorts.begin(), srcPorts.end());
     ports.insert(dstPorts.begin(), dstPorts.end());
-    ports.insert(ERSPAN_PORT_NAME);
+    ports.insert(ERSPAN_PORT_PREFIX + name);
     for (const auto& port : ports) {
         portUuidMap.emplace(port, "");
     }
@@ -518,54 +520,56 @@ bool JsonRpc::createMirror(const string& brUuid, const string& name, const set<s
     // src ports
     set<tuple<string,string>> rdata;
     populatePortUuids(srcPorts, portUuidMap, rdata);
+    tuples.reserve(rdata.size());
     for (auto pair : rdata) {
-        tuples.emplace_back(get<0>(pair).c_str(), get<1>(pair).c_str());
+        LOG(INFO) << "entry " << get<0>(pair).c_str() << " - " << get<1>(pair).c_str();
+        const string val = get<1>(pair);
+        tuples.emplace_back(get<0>(pair).c_str(), val);
     }
+    LOG(INFO) << "mirror src_port size " << tuples.size();
     TupleDataSet tdSet(tuples, "set");
-    msg1.rows.emplace("select_src_port", tdSet);
+    msg1.rowData.emplace("select_src_port", tdSet);
 
     // dst ports
     rdata.clear();
     tuples.clear();
     populatePortUuids(dstPorts, portUuidMap, rdata);
     for (auto pair : rdata) {
-        tuples.emplace_back(get<0>(pair).c_str(), get<1>(pair).c_str());
+        LOG(INFO) << "entry " << get<0>(pair).c_str() << " - " << get<1>(pair).c_str();
+        const string val = get<1>(pair);
+        tuples.emplace_back(get<0>(pair).c_str(), val);
     }
+    LOG(INFO) << "mirror dst_port size " << tuples.size();
     tdSet = TupleDataSet(tuples, "set");
-    msg1.rows.emplace("select_dst_port", tdSet);
+    msg1.rowData.emplace("select_dst_port", tdSet);
 
     // output ports
+    string outputPortUuid = portUuidMap[ERSPAN_PORT_PREFIX + name];
+    LOG(WARNING) << "output port uuid " << outputPortUuid;
+
     tuples.clear();
-    rdata.clear();
-    ports.clear();
-    ports.insert(ERSPAN_PORT_NAME);
-    populatePortUuids(ports, portUuidMap, rdata);
-    for (auto pair : rdata) {
-        tuples.emplace_back(get<0>(pair).c_str(), get<1>(pair).c_str());
-    }
-    tdSet = TupleDataSet(tuples, "set");
-    msg1.rows.emplace("output_port", tdSet);
+    tuples.emplace_back("uuid", outputPortUuid);
+    tdSet = TupleDataSet(tuples);
+    msg1.rowData.emplace("output_port", tdSet);
 
     // name
     tuples.clear();
     tuples.emplace_back("", name);
     tdSet = TupleDataSet(tuples);
-    msg1.rows.emplace("name", tdSet);
+    msg1.rowData.emplace("name", tdSet);
 
     const string uuid_name = "mirror1";
     msg1.kvPairs.emplace_back("uuid-name", uuid_name);
 
     // msg2
-    tuple<string, string, string> cond1("_uuid", "==", brUuid);
-    set<tuple<string, string, string>> condSet;
-    condSet.emplace(cond1);
-
     tuples.clear();
     JsonRpcTransactMessage msg2(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
+    set<tuple<string, string, string>> condSet;
+    condSet.emplace("_uuid", "==", brUuid);
     msg2.conditions = condSet;
     tuples.emplace_back("named-uuid", uuid_name);
     tdSet = TupleDataSet(tuples);
-    msg2.rows.emplace("mirrors", tdSet);
+    msg2.rowData.emplace("mirrors", tdSet);
 
     const list<JsonRpcTransactMessage> requests = {msg1};
     if (!sendRequestAndAwaitResponse(requests)) {
@@ -580,7 +584,7 @@ bool JsonRpc::addErspanPort(const string& bridge, erspan_ifc& port) {
     vector<TupleData> tuples;
     tuples.emplace_back("", port.name);
     TupleDataSet tdSet(tuples);
-    msg1.rows.emplace("name", tdSet);
+    msg1.rowData.emplace("name", tdSet);
 
     // uuid-name
     const string uuid_name = "port1";
@@ -591,7 +595,7 @@ bool JsonRpc::addErspanPort(const string& bridge, erspan_ifc& port) {
     const string named_uuid = "interface1";
     tuples.emplace_back("named-uuid", named_uuid);
     tdSet = TupleDataSet(tuples);
-    msg1.rows.emplace("interfaces", tdSet);
+    msg1.rowData.emplace("interfaces", tdSet);
 
     // uuid-name
     JsonRpcTransactMessage msg2(OvsdbOperation::INSERT, OvsdbTable::INTERFACE);
@@ -602,7 +606,14 @@ bool JsonRpc::addErspanPort(const string& bridge, erspan_ifc& port) {
     tuples.clear();
     tuples.emplace_back("", port.name);
     tdSet = TupleDataSet(tuples);
-    msg2.rows.emplace("name", tdSet);
+    msg2.rowData.emplace("name", tdSet);
+
+    tuples.clear();
+    const string typeString("erspan");
+    TupleData typeData("", typeString);
+    tuples.push_back(typeData);
+    tdSet = TupleDataSet(tuples);
+    msg2.rowData.emplace("type", tdSet);
 
     // options depend upon version
     tuples.clear();
@@ -619,22 +630,13 @@ bool JsonRpc::addErspanPort(const string& bridge, erspan_ifc& port) {
                             std::to_string(static_cast<erspan_ifc_v2&>(port).erspan_dir));
     }
     tdSet = TupleDataSet(tuples, "map");
-    msg2.rows.emplace("options", tdSet);
-
-    // type
-    tuples.clear();
-    tuples.emplace_back("", "erspan");
-    tdSet = TupleDataSet(tuples);
-    msg2.rows.emplace("type", tdSet);
+    msg2.rowData.emplace("options", tdSet);
 
     // get bridge port list and add erspan port to it.
     BrPortResult res;
     if (!getBridgePortList(bridge, res)) {
         return false;
     }
-    tuple<string, string, string> cond1("_uuid", "==", res.brUuid);
-    set<tuple<string, string, string>> condSet;
-    condSet.emplace(cond1);
 
     JsonRpcTransactMessage msg3(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
     tuples.clear();
@@ -643,7 +645,10 @@ bool JsonRpc::addErspanPort(const string& bridge, erspan_ifc& port) {
     }
     tuples.emplace_back("named-uuid", uuid_name);
     tdSet = TupleDataSet(tuples, "set");
-    msg3.rows.emplace("ports", tdSet);
+    msg3.rowData.emplace("ports", tdSet);
+    set<tuple<string, string, string>> condSet;
+    condSet.emplace("_uuid", "==", res.brUuid);
+    msg3.conditions = condSet;
 
     const list<JsonRpcTransactMessage> requests = {msg1, msg2, msg3};
     if (!sendRequestAndAwaitResponse(requests)) {
@@ -676,18 +681,15 @@ bool JsonRpc::handleCreateMirrorResp(uint64_t reqId, const Document& payload) {
 }
 
 bool JsonRpc::deleteMirror(const string& brName) {
-    list<string> mirList;
-    tuple<string, string, string> cond1("name", "==", brName);
-    set<tuple<string, string, string>> condSet;
-    condSet.emplace(cond1);
-
     JsonRpcTransactMessage msg(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
+    set<tuple<string, string, string>> condSet;
+    condSet.emplace("name", "==", brName);
     msg.conditions = condSet;
 
     vector<TupleData> tuples;
     TupleDataSet tdSet(tuples, "set");
     tdSet.label = "set";
-    msg.rows.emplace("mirrors", tdSet);
+    msg.rowData.emplace("mirrors", tdSet);
 
     list<JsonRpcTransactMessage> requests = {msg};
     if (!sendRequestAndAwaitResponse(requests)) {

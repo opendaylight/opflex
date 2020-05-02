@@ -76,13 +76,12 @@ public:
 
     /**
      * add port used for erspan
-     * @param brName bridge to create port on
      * @param portName erspan port name
      * @param ipAddr remote destination
      * @param version erspan version
      * @return true if success, false otherwise.
      */
-    bool addErspanPort(const string& brName, const string& portName, const string& ipAddr, const uint8_t version);
+    bool addErspanPort(const string& portName, const string& ipAddr, const uint8_t version);
 
     /**
      * delete port used for erspan
