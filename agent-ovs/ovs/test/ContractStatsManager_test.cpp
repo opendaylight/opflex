@@ -67,11 +67,43 @@ public:
     void verifyRoutingDomainDropStats(shared_ptr<RoutingDomain> rd,
                                       uint32_t packet_count,
                                       uint32_t byte_count);
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    virtual void verifyPromMetrics(shared_ptr<L24Classifier> classifier,
+                            uint32_t pkts,
+                            uint32_t bytes,
+                            bool isTx=false) override;
+#endif
     ContractStatsManager contractStatsManager;
     PolicyManager& policyManager;
 private:
 };
 
+#ifdef HAVE_PROMETHEUS_SUPPORT
+void ContractStatsManagerFixture::
+verifyPromMetrics (shared_ptr<L24Classifier> classifier,
+                   uint32_t pkts,
+                   uint32_t bytes,
+                   bool isTx)
+{
+    const std::string& s_pkts = "opflex_contract_packets{classifier=\"tenant:tenant0,"\
+                                "policy:classifier3,[etype:2048,proto:6,dport:80-85,]\""\
+                                ",dst_epg=\"tenant:tenant0,policy:epg2\",src_epg=\""\
+                                "tenant:tenant0,policy:epg1\"} "\
+                                + boost::lexical_cast<std::string>(pkts) + ".000000";
+    const std::string& s_bytes = "opflex_contract_bytes{classifier=\"tenant:tenant0,"\
+                                 "policy:classifier3,[etype:2048,proto:6,dport:80-85,]\""\
+                                 ",dst_epg=\"tenant:tenant0,policy:epg2\",src_epg=\""\
+                                 "tenant:tenant0,policy:epg1\"} "\
+                                 + boost::lexical_cast<std::string>(bytes) + ".000000";
+
+    const std::string& output = BaseFixture::getOutputFromCommand(cmd);
+    size_t pos = std::string::npos;
+    pos = output.find(s_pkts);
+    BOOST_CHECK_NE(pos, std::string::npos);
+    pos = output.find(s_bytes);
+    BOOST_CHECK_NE(pos, std::string::npos);
+}
+#endif
 
 void ContractStatsManagerFixture::
 verifyRoutingDomainDropStats(shared_ptr<RoutingDomain> rd,
@@ -162,6 +194,7 @@ BOOST_FIXTURE_TEST_CASE(testFlowMatchStats, ContractStatsManagerFixture) {
     testOneFlow(integrationPortConn,classifier3,
                 IntFlowManager::POL_TABLE_ID,
                 1,
+                false,
                 &contractStatsManager,
                 &policyManager,
                 epg1,
@@ -253,6 +286,7 @@ BOOST_FIXTURE_TEST_CASE(testFlowRemoved, ContractStatsManagerFixture) {
     verifyFlowStats(classifier3,
                     LAST_PACKET_COUNT,
                     LAST_PACKET_COUNT * PACKET_SIZE,
+                    false,
                     IntFlowManager::POL_TABLE_ID,
                     &contractStatsManager,
                     epg1,epg2);
@@ -288,6 +322,7 @@ BOOST_FIXTURE_TEST_CASE(testContractDelete, ContractStatsManagerFixture) {
                 classifier3,
                 IntFlowManager::POL_TABLE_ID,
                 1,
+                false,
                 &contractStatsManager,
                 &policyManager,
                 epg1,
@@ -324,6 +359,7 @@ BOOST_FIXTURE_TEST_CASE(testSEpgDelete, ContractStatsManagerFixture) {
                 classifier3,
                 IntFlowManager::POL_TABLE_ID,
                 1,
+                false,
                 &contractStatsManager,
                 &policyManager,
                 epg1,
@@ -358,6 +394,7 @@ BOOST_FIXTURE_TEST_CASE(testrDSEpgDelete, ContractStatsManagerFixture) {
                 classifier3,
                 IntFlowManager::POL_TABLE_ID,
                 1,
+                false,
                 &contractStatsManager,
                 &policyManager,
                 epg1,

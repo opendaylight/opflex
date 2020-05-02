@@ -105,7 +105,6 @@ public:
                              PolicyStatsManager &statsManager);
 
 #ifdef HAVE_PROMETHEUS_SUPPORT
-    const string cmd = "curl --proxy \"\" --compressed --silent http://127.0.0.1:9612/metrics 2>&1;";
     void checkPrometheusCounters(uint64_t exp_packet_count,
                                  uint64_t exp_byte_count,
                                  const std::string &bridgeName,

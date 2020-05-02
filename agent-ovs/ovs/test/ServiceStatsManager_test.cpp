@@ -110,7 +110,6 @@ public:
                      bool isOld, bool isFlowStateReAdd);
 
 #ifdef HAVE_PROMETHEUS_SUPPORT
-    const string cmd = "curl --proxy \"\" --compressed --silent http://127.0.0.1:9612/metrics 2>&1;";
     void checkSvcTgtPromMetrics(uint64_t pkts, uint64_t bytes, const string& ip, bool isNodePort=false);
     void checkPodSvcPromMetrics(uint64_t pkts, uint64_t bytes);
 #endif
