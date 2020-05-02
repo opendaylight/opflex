@@ -75,12 +75,30 @@ public:
             FlowManagerFixture (mode) {
     };
 
+#ifdef HAVE_PROMETHEUS_SUPPORT
+    const string cmd = "curl --proxy \"\" --compressed --silent http://127.0.0.1:9612/metrics 2>&1;";
+    virtual void verifyPromMetrics (shared_ptr<L24Classifier> classifier,
+                            uint32_t pkts,
+                            uint32_t bytes,
+                            bool isTx=false) {
+    }
+#endif
+
+    // New counter objects get created for every diff in flow. Prometheus
+    // maintains an aggregatiion of all these updates. On the second update
+    // with same values in tests, check for total value in prometheus.
     void verifyFlowStats(shared_ptr<L24Classifier> classifier,
-                         uint32_t packet_count,
-                         uint32_t byte_count,uint32_t table_id,
+                         uint32_t packet_count, // delta
+                         uint32_t byte_count, // delta
+                         bool isExistingMetric,
+                         uint32_t table_id,
                          PolicyStatsManager *statsManager,
                          shared_ptr<EpGroup> srcEpg = NULL,
                          shared_ptr<EpGroup> dstEpg = NULL) {
+
+        uint32_t t_byte_count = isExistingMetric?byte_count*2:byte_count;
+        uint32_t t_packet_count = isExistingMetric?packet_count*2:packet_count;
+
         optional<shared_ptr<PolicyStatUniverse> > su =
             PolicyStatUniverse::resolve(agent.getFramework());
         if (srcEpg.get() && dstEpg.get()) {
@@ -88,7 +106,9 @@ public:
                 boost::lexical_cast<std::string>(statsManager->getAgentUUID());
             LOG(DEBUG) << "verifying stats for src_epg: " << srcEpg->getURI().toString()
                         << " dst_epg: " << dstEpg->getURI().toString()
-                        << " classifier: " << classifier->getURI().toString();
+                        << " classifier: " << classifier->getURI().toString()
+                        << " delta pkt count: " << packet_count
+                        << " total pkt count: " << t_packet_count;
             optional<shared_ptr<L24ClassifierCounter> > myCounter =
                 boost::make_optional<shared_ptr<L24ClassifierCounter> >(false, nullptr);
             WAIT_FOR_DO_ONFAIL(
@@ -107,13 +127,18 @@ public:
                } else {
                    LOG(DEBUG) << "L24classifiercounter mo isnt present";
                });
+#ifdef HAVE_PROMETHEUS_SUPPORT
+            verifyPromMetrics(classifier, t_packet_count, t_byte_count);
+#endif
         } else {
             auto uuid =
                 boost::lexical_cast<std::string>(statsManager->getAgentUUID());
             optional<shared_ptr<SecGrpClassifierCounter> > myCounter =
                 boost::make_optional<shared_ptr<SecGrpClassifierCounter> >(false, nullptr);
             LOG(DEBUG) << "verifying stats for"
-                        << " classifier: " << classifier->getURI().toString();
+                        << " classifier: " << classifier->getURI().toString()
+                        << " delta pkt count: " << packet_count
+                        << " total pkt count: " << t_packet_count;
             WAIT_FOR_DO_ONFAIL(
                 (myCounter && myCounter.get()
                     && (
@@ -150,6 +175,10 @@ public:
                 } else {
                     LOG(DEBUG) << "SGclassifiercounter mo isnt present";
                 });
+#ifdef HAVE_PROMETHEUS_SUPPORT
+            verifyPromMetrics(classifier, t_packet_count, t_byte_count,
+                              table_id == AccessFlowManager::SEC_GROUP_OUT_TABLE_ID);
+#endif
         }
     }
 
@@ -352,7 +381,9 @@ public:
 
     void testOneFlow(MockConnection& portConn,
                      shared_ptr<L24Classifier>& classifier,uint32_t table_id,
-                     uint32_t portNum,PolicyStatsManager *statsManager,
+                     uint32_t portNum,
+                     bool isExistingMetric,
+                     PolicyStatsManager *statsManager,
                      PolicyManager *policyManager = NULL,
                      shared_ptr<EpGroup> srcEpg = NULL,
                      shared_ptr<EpGroup> dstEpg = NULL) {
@@ -419,6 +450,7 @@ public:
         verifyFlowStats(classifier,
                         exp_classifier_packet_count,
                         exp_classifier_packet_count * PACKET_SIZE,
+                        isExistingMetric,
                         table_id,statsManager,srcEpg,dstEpg);
 
         LOG(DEBUG) << "FlowStatsReplyMessage verification successful";
