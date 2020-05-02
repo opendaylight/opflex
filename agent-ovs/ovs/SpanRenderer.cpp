@@ -75,10 +75,11 @@ namespace opflexagent {
         spanDeleted(pSt);
     }
 
-    void SpanRenderer::sessionDeleted(const string &sessionName) {
+    void SpanRenderer::sessionDeleted(const string& sessionName) {
+        LOG(INFO) << "deleting session " << sessionName;
         deleteMirror(sessionName);
-        // There is only one ERSPAN port.
-        deleteErspanPort(ERSPAN_PORT_NAME);
+        LOG(INFO) << "deleting erspan port " << (ERSPAN_PORT_PREFIX + sessionName);
+        deleteErspanPort(ERSPAN_PORT_PREFIX + sessionName);
     }
 
     void SpanRenderer::handleSpanUpdate(const opflex::modb::URI& spanURI) {
@@ -111,16 +112,17 @@ namespace opflexagent {
             isMirProv = true;
         }
 
-        // There should be at least one source and one destination.
+        // There should be at least one source and the destination should be set
         // Admin state should be ON.
         if (seSt.get()->hasSrcEndpoints() ||
             !seSt.get()->getDestination().is_unspecified() ||
             seSt.get()->getAdminState() == 0) {
             if (isMirProv) {
-                LOG(DEBUG) << "deleting mirror";
+                LOG(DEBUG) << "deleting mirror " << seSt.get()->getName();
                 sessionDeleted(seSt.get()->getName());
             }
-            LOG(DEBUG) << "No mirror config";
+        } else {
+            LOG(INFO) << "Incomplete mirror config. Either admin down or missing src/dest EPs";
             return;
         }
 
@@ -182,20 +184,20 @@ namespace opflexagent {
 
         // get ERSPAN interface params if configured
         JsonRpc::erspan_ifc params;
-        if (!jRpc->getCurrentErspanParams(ERSPAN_PORT_NAME, params)) {
+        if (!jRpc->getCurrentErspanParams(ERSPAN_PORT_PREFIX + seSt.get()->getName(), params)) {
             LOG(DEBUG) << "Unable to get ERSPAN parameters";
             return;
         }
         // check for change in config, push it if there is a change.
-        if (params.remote_ip == seSt.get()->getDestination().to_string() ||
+        if (params.remote_ip != seSt.get()->getDestination().to_string() ||
             params.erspan_ver != seSt.get()->getVersion()) {
+            LOG(INFO) << "Mirror config has changed";
             updateMirrorConfig(seSt.get());
             return;
         }
     }
 
     void SpanRenderer::updateMirrorConfig(const shared_ptr<SessionState>& seSt) {
-        sessionDeleted(seSt->getName());
         // get the source ports.
         set<string> srcPort;
         set<string> dstPort;
@@ -203,22 +205,24 @@ namespace opflexagent {
         seSt->getSrcEndpointSet(srcEps);
         for (auto& src : srcEps) {
             if (src.getDirection() == DirectionEnumT::CONST_BIDIRECTIONAL ||
-                    src.getDirection() == DirectionEnumT::CONST_OUT) {
+                src.getDirection() == DirectionEnumT::CONST_OUT) {
                 srcPort.emplace(src.getPort());
             }
             if (src.getDirection() == DirectionEnumT::CONST_BIDIRECTIONAL ||
-                    src.getDirection() == DirectionEnumT::CONST_IN) {
+                src.getDirection() == DirectionEnumT::CONST_IN) {
                 dstPort.emplace(src.getPort());
             }
         }
 
-        addErspanPort(switchName, ERSPAN_PORT_NAME, seSt->getDestination().to_string(), seSt->getVersion());
+        deleteErspanPort(ERSPAN_PORT_PREFIX + seSt->getName());
+        addErspanPort(ERSPAN_PORT_PREFIX + seSt->getName(), seSt->getDestination().to_string(), seSt->getVersion());
         LOG(DEBUG) << "creating mirror";
+        deleteMirror(seSt->getName());
         createMirror(seSt->getName(), srcPort, dstPort);
     }
 
     bool SpanRenderer::deleteMirror(const string& sess) {
-        LOG(DEBUG) << "deleting mirror";
+        LOG(DEBUG) << "deleting mirror " << sess;
         if (!jRpc->deleteMirror(switchName)) {
             LOG(DEBUG) << "Unable to delete mirror";
             return false;
@@ -226,8 +230,8 @@ namespace opflexagent {
         return true;
     }
 
-    bool SpanRenderer::addErspanPort(const string& brName, const string& portName, const string &ipAddr, const uint8_t version) {
-        LOG(DEBUG) << "adding erspan port IP " << ipAddr << " and version " << version;
+    bool SpanRenderer::addErspanPort(const string& portName, const string &ipAddr, const uint8_t version) {
+        LOG(DEBUG) << "adding erspan port " << portName << " IP " << ipAddr << " and version " << std::to_string(version);
         JsonRpc::erspan_ifc ep;
         if (version == 1) {
             JsonRpc::erspan_ifc_v1 params = JsonRpc::erspan_ifc_v1();
@@ -251,7 +255,7 @@ namespace opflexagent {
         // current OVS implementation supports only one ERPSAN port and mirror.
         // choose 1 as the key.
         ep.key = 1;
-        if (!jRpc->addErspanPort(brName, ep)) {
+        if (!jRpc->addErspanPort(switchName, ep)) {
             LOG(DEBUG) << "add erspan port failed";
             return false;
         }
@@ -259,6 +263,7 @@ namespace opflexagent {
     }
 
     bool SpanRenderer::deleteErspanPort(const string& name) {
+        LOG(DEBUG) << "deleting erspan port " << name;
         string erspanUuid;
         jRpc->getPortUuid(name, erspanUuid);
         if (erspanUuid.empty()) {

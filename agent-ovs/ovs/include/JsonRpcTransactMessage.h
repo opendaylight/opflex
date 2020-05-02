@@ -18,6 +18,7 @@
 #include <rapidjson/document.h>
 #include <opflex/rpc/JsonRpcMessage.h>
 #include <opflexagent/logging.h>
+#include <unordered_map>
 
 namespace opflexagent {
 
@@ -150,11 +151,6 @@ public:
 };
 
 /**
- * struct representing row data for JSON/RPC requests
- */
-typedef map<string, TupleDataSet> row_map;
-
-/**
  * Transact message
  */
 class JsonRpcTransactMessage : public opflex::jsonrpc::JsonRpcMessage {
@@ -221,7 +217,7 @@ public:
     /**
      * map of row data
      */
-    row_map rows;
+    unordered_map<string, TupleDataSet> rowData;
     /**
      * key value pairs
      */

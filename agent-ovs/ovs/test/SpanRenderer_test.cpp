@@ -13,7 +13,7 @@
 #include <opflexagent/logging.h>
 #include <opflexagent/test/BaseFixture.h>
 #include <SpanRenderer.h>
-#include "MockJsonRpc.h"
+#include "MockRpcConnection.h"
 
 namespace opflexagent {
 
@@ -69,7 +69,7 @@ static bool verifyCreateDestroy(const shared_ptr<SpanRenderer>& spr) {
     ep.erspan_idx = 1;
     ep.erspan_ver = 1;
     ep.key = 1;
-    if (!spr->jRpc->addErspanPort("br-int", ep)) {
+    if (!spr->jRpc->addErspanPort(ERSPAN_PORT_PREFIX, ep)) {
         return false;
     }
 
@@ -86,18 +86,18 @@ BOOST_FIXTURE_TEST_CASE( verify_getport, SpanRendererFixture ) {
 BOOST_FIXTURE_TEST_CASE( verify_add_remote_port, SpanRendererFixture ) {
     spr->setNextId(1013);
 
-    BOOST_CHECK_EQUAL(true, spr->addErspanPort("br-int", ERSPAN_PORT_NAME, "3.3.3.3", 2));
-    BOOST_CHECK_EQUAL(true, spr->deleteErspanPort(ERSPAN_PORT_NAME));
+    BOOST_CHECK_EQUAL(true, spr->addErspanPort(ERSPAN_PORT_PREFIX, "3.3.3.3", 2));
+    BOOST_CHECK_EQUAL(true, spr->deleteErspanPort(ERSPAN_PORT_PREFIX));
 }
 
 BOOST_FIXTURE_TEST_CASE( verify_get_erspan_params, SpanRendererFixture ) {
     spr->setNextId(1018);
 
     JsonRpc::erspan_ifc_v1 params;
-    params.remote_ip = "2.2.2.1";
-    params.name = "abc";
-    // TODO - fix this test...proper mock responses needed
-    BOOST_CHECK_EQUAL(false, spr->jRpc->getCurrentErspanParams(ERSPAN_PORT_NAME, params));
+    BOOST_CHECK_EQUAL(true, spr->jRpc->getCurrentErspanParams(ERSPAN_PORT_PREFIX, params));
+
+    URI spanUri("/SpanUniverse/SpanSession/ugh-vspan/");
+    spr->spanUpdated(spanUri);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
