@@ -13,7 +13,7 @@
 namespace opflexagent {
 
     JsonRpcRenderer::JsonRpcRenderer(Agent& agent_) :
-        agent(agent_), timerStarted(false) {
+        agent(agent_), timerStarted(false), conn(nullptr) {
     }
 
     void JsonRpcRenderer::start(const std::string& swName, OvsdbConnection* conn_) {
