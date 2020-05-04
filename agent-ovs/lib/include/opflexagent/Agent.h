@@ -292,7 +292,7 @@ public:
     /**
      * get behavior for adding l34flows without subnet
      * @return true if l34flows should be added without subnet,
-     * false otherwise, defaults to false
+     * false otherwise, defaults to true
      */
     bool addL34FlowsWithoutSubnet() { return behaviorL34FlowsWithoutSubnet; }
 

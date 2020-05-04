@@ -71,7 +71,7 @@ Agent::Agent(OFFramework& framework_, const LogParams& _logParams)
       prometheusEnabled(true),
       prometheusExposeLocalHostOnly(false),
       prometheusExposeEpSvcNan(false),
-      behaviorL34FlowsWithoutSubnet(false),
+      behaviorL34FlowsWithoutSubnet(true),
       logParams(_logParams) {
 #else
 Agent::Agent(OFFramework& framework_, const LogParams& _logParams)
@@ -85,7 +85,7 @@ Agent::Agent(OFFramework& framework_, const LogParams& _logParams)
       contractInterval(0), securityGroupInterval(0), interfaceInterval(0),
       spanManager(framework, agent_io),
       netflowManager(framework,agent_io),
-      behaviorL34FlowsWithoutSubnet(false),
+      behaviorL34FlowsWithoutSubnet(true),
       logParams(_logParams) {
 #endif
     std::random_device rng;
