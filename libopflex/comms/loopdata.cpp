@@ -42,19 +42,11 @@ void internal::Peer::LoopData::onPrepareLoop() {
         uv_walk(prepare_.loop, walkAndCountHandlesCb, &countHandle);
 
         if (countHandle.counter) {
-            LOG(INFO)
-                << "Still waiting on "
-                << countHandle.counter
-                << " handles"
-            ;
-
+            LOG(INFO) << "Still waiting on " << countHandle.counter << " handles";
             return;
         }
 
-        LOG(INFO)
-            << this
-            << " Stopping and closing loop watcher"
-        ;
+        LOG(INFO) << this << " Stopping and closing loop watcher";
         uv_prepare_stop(&prepare_);
         uv_close((uv_handle_t*)&prepare_, &fini);
 
@@ -78,18 +70,11 @@ void internal::Peer::LoopData::onPrepareLoop() {
     if (peers[RETRY_TO_CONNECT].begin() !=
         peers[RETRY_TO_CONNECT].end()) {
 
-        LOG(INFO)
-            << "retrying first RETRY_TO_CONNECT peer"
-        ;
+        LOG(INFO) << "retrying first RETRY_TO_CONNECT peer";
 
         /* retry just the first active peer in the queue */
         peers[RETRY_TO_CONNECT]
             .erase_and_dispose(peers[RETRY_TO_CONNECT].begin(), RetryPeer());
-
-        VLOG(4)
-            << " Stopping prepareAgain_ @"
-            << reinterpret_cast<void *>(&prepareAgain_)
-        ;
 
         uv_timer_stop(&prepareAgain_);
         /* if there are more, we will uv_timer_start() down below */
@@ -126,30 +111,20 @@ prepared:
 }
 
 void internal::Peer::LoopData::onPrepareLoop(uv_prepare_t * h) {
-
     static_cast< ::yajr::comms::internal::Peer::LoopData *>(h->data)
         ->onPrepareLoop();
-
 }
 
 void internal::Peer::LoopData::fini(uv_handle_t * h) {
     LOG(INFO);
-
     delete static_cast< ::yajr::comms::internal::Peer::LoopData *>(h->data);
 }
 
 void internal::Peer::LoopData::destroy(bool now) {
     LOG(INFO);
-
-    assert(prepare_.data == this);
-
     assert(!destroying_);
     if (destroying_) {
-        LOG(WARNING)
-            << this
-            << " Double destroy() detected"
-        ;
-
+        LOG(WARNING) << this << " Double destroy() detected";
         return;
     }
 
@@ -240,13 +215,8 @@ void Peer::LoopData::RetryPeer::operator () (Peer *peer)
 
 void Peer::LoopData::PeerDeleter::operator () (Peer *peer)
 {
-    VLOG(1)
-        << peer
-        << " deleting abruptedly"
-    ;
-
+    VLOG(1) << peer << " deleting abruptedly";
     assert(!"peers should never get deleted this way");
-
     delete peer;
 }
 
@@ -276,13 +246,7 @@ void Peer::LoopData::down() {
 
 Peer::LoopData::~LoopData() {
 
-    VLOG(1)
-        << "Delete on Loop"
-    ;
-    VLOG(1)
-        << this
-        << " is being deleted"
-    ;
+    VLOG(1) << this << " is being deleted" ;
 
     for (size_t i=0; i < Peer::LoopData::TOTAL_STATES; ++i) {
         assert(peers[Peer::LoopData::PeerState(i)].empty());
@@ -294,10 +258,7 @@ Peer::LoopData::~LoopData() {
 
 void Peer::LoopData::PeerDisposer::operator () (Peer *peer)
 {
-    LOG(INFO)
-        << peer
-        << " destroy() because this communication thread is shutting down"
-    ;
+    LOG(INFO) << peer << " destroy() because this communication thread is shutting down";
     peer->destroy(now_);
 }
 

@@ -22,6 +22,7 @@
 #include <rapidjson/document.h>
 #include <uv.h>
 
+#include <boost/atomic.hpp>
 #include <boost/intrusive/list.hpp>
 
 #include <sstream>  /* for basic_stringstream<> */
@@ -423,7 +424,7 @@ class Peer : public SafeListBaseHook {
      */
     ::yajr::Peer::UvLoopSelector uvLoopSelector_;
     /** reference count */
-    unsigned int  uvRefCnt_;
+    boost::atomic<unsigned int>  uvRefCnt_;
     /** Is this peer connected */
     unsigned char connected_  :1;
     /** Is the peer begin destroyed */
