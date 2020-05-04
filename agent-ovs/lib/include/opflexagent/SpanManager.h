@@ -177,7 +177,7 @@ public:
             const shared_ptr<LocalEp>& lEp,
             const shared_ptr<L2Ep>& l2Ep,
             const URI& srcMemberUri,
-            const char dir);
+            const unsigned char dir);
 
         /**
          * process EP group
@@ -208,7 +208,7 @@ public:
 private:
 
     optional<shared_ptr<SrcMember>> findSrcMem(const URI& sessUri, const URI& uri);
-    void getSrcEpGroups(vector <shared_ptr<EpGroup>>& epGrpVec);
+    boost::optional<shared_ptr<EpGroup>> getEpgIfPartOfSession(const URI& epgUri);
 
     opflex::ofcore::OFFramework& framework;
     /**

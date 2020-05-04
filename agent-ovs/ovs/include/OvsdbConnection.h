@@ -156,8 +156,10 @@ class OvsdbConnection : public opflex::jsonrpc::RpcConnection {
     /**
      * mutex used for synchronizing JSON/RPC
      * request and response
+     *
+     * static for now as we only have a single OVSDB connection
      */
-    mutex mtx;
+    static mutex ovsdbMtx;
 
     /**
      * set the next request ID
@@ -181,7 +183,7 @@ private:
     yajr::Peer* peer;
 
     typedef struct req_cb_data_ {
-        TransactReq* req;
+        shared_ptr<TransactReq> req;
         yajr::Peer* peer;
     } req_cb_data;
 

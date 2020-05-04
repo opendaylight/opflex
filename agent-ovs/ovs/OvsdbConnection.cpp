@@ -23,16 +23,17 @@ extern "C" {
 
 namespace opflexagent {
 
+mutex OvsdbConnection::ovsdbMtx;
 
 void OvsdbConnection::send_req_cb(uv_async_t* handle) {
+    unique_lock<mutex> lock(OvsdbConnection::ovsdbMtx);
     auto* reqCbd = (req_cb_data*)handle->data;
-    TransactReq* req = reqCbd->req;
+    shared_ptr<TransactReq>& req = reqCbd->req;
     yajr::rpc::MethodName method(req->getMethod().c_str());
-    opflex::jsonrpc::PayloadWrapper wrapper(req);
+    opflex::jsonrpc::PayloadWrapper wrapper(req.get());
     yajr::rpc::OutboundRequest outr =
         yajr::rpc::OutboundRequest(wrapper, &method, req->getReqId(), reqCbd->peer);
     outr.send();
-    delete(req);
     delete(reqCbd);
 }
 
@@ -44,7 +45,7 @@ void OvsdbConnection::sendTransaction(const list<JsonRpcTransactMessage>& reques
         transactions[reqId] = trans;
     }
     auto* reqCbd = new req_cb_data();
-    reqCbd->req = new TransactReq(requests, reqId);
+    reqCbd->req = std::make_shared<TransactReq>(requests, reqId);
     reqCbd->peer = getPeer();
     send_req_async.data = (void*)reqCbd;
     uv_async_send(&send_req_async);
@@ -52,7 +53,7 @@ void OvsdbConnection::sendTransaction(const list<JsonRpcTransactMessage>& reques
 
 void OvsdbConnection::start() {
     LOG(DEBUG) << "Starting .....";
-    unique_lock<mutex> lock(mtx);
+    unique_lock<mutex> lock(OvsdbConnection::ovsdbMtx);
     client_loop = threadManager.initTask("OvsdbConnection");
     yajr::initLoop(client_loop);
     uv_async_init(client_loop,&connect_async, connect_cb);
@@ -62,6 +63,7 @@ void OvsdbConnection::start() {
 }
 
 void OvsdbConnection::connect_cb(uv_async_t* handle) {
+    unique_lock<mutex> lock(OvsdbConnection::ovsdbMtx);
     OvsdbConnection* ocp = (OvsdbConnection*)handle->data;
     if (ocp->ovsdbUseLocalTcpPort) {
         ocp->peer = yajr::Peer::create("127.0.0.1",

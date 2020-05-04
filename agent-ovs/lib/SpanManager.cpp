@@ -330,7 +330,7 @@ namespace opflexagent {
 
     void SpanManager::SpanUniverseListener::addEndpoint(
         const shared_ptr<LocalEp>& lEp, const shared_ptr<L2Ep>& l2Ep,
-        const URI& srcMemberUri, const char dir) {
+        const URI& srcMemberUri, const unsigned char dir) {
         LOG(DEBUG) << "get parent lEp " << (lEp ? "set" : "null") << " l2Ep " << (l2Ep ? "set" : "null");
         optional<URI> parent = SpanManager::getSession(lEp);
         if (parent) {
@@ -435,28 +435,18 @@ namespace opflexagent {
             // if a match is found, add the L2Ep to the list of sources
             // of the mirror.
             URI egUri(l2Ep->getGroup().get());
-            vector<shared_ptr<EpGroup>> epGrpVec;
-            spanmanager.getSrcEpGroups(epGrpVec);
-            vector<shared_ptr<EpGroup>> epgVec;
-            LOG(DEBUG) << "Looking for uri " << egUri;
-            for (auto& epg : epGrpVec) {
-                LOG(DEBUG) << "EPG URI " << epg->getURI();
-                if (epg->getURI() == egUri) {
-                    LOG(DEBUG) << "found Epg for L2Ep";
-                    epgVec.push_back(epg);
-                }
-            }
-            for (auto& pEpg : epgVec) {
+            boost::optional<shared_ptr<EpGroup>> epgOpt = spanmanager.getEpgIfPartOfSession(egUri);
+            if (epgOpt) {
                 std::vector<OF_SHARED_PTR<modelgbp::gbp::EpGroupToSpanSessionRSrc>> vGrpToSess;
-                pEpg->resolveGbpEpGroupToSpanSessionRSrc(vGrpToSess);
+                epgOpt->get()->resolveGbpEpGroupToSpanSessionRSrc(vGrpToSess);
                 for (auto& sesRsrc : vGrpToSess) {
                     auto it = spanmanager.sess_map.find(sesRsrc->getTargetURI().get());
                     if (it != spanmanager.sess_map.end()) {
                         LOG(DEBUG) << "found session " << sesRsrc->getTargetURI().get();
-                        optional<shared_ptr<SrcMember>> pSmem =
-                            spanmanager.findSrcMem(sesRsrc->getTargetURI().get(), pEpg->getURI());
-                        if (pSmem) {
-                            optional<const unsigned char> dir = pSmem.get()->getDir();
+                        optional<shared_ptr<SrcMember>> srcMem =
+                            spanmanager.findSrcMem(sesRsrc->getTargetURI().get(), egUri);
+                        if (srcMem) {
+                            optional<const unsigned char> dir = srcMem.get()->getDir();
                             if (dir) {
                                 SourceEndpoint srcEp(l2Ep->getURI().toString(),
                                                      l2Ep->getInterfaceName().get(),
@@ -471,13 +461,13 @@ namespace opflexagent {
         }
     }
 
-    void SpanManager::getSrcEpGroups(vector<shared_ptr<EpGroup>>& epGrpVec) {
+    boost::optional<shared_ptr<EpGroup>> SpanManager::getEpgIfPartOfSession(const URI& epgUri) {
         for (const auto& sess : sess_map) {
-            optional<shared_ptr<Session>> sPtr = Session::resolve(framework, sess.first);
-            if (!sPtr)
+            optional<shared_ptr<Session>> session = Session::resolve(framework, sess.first);
+            if (!session)
                 continue;
             vector <shared_ptr<SrcGrp>> srcGrpVec;
-            sPtr.get()->resolveSpanSrcGrp(srcGrpVec);
+            session.get()->resolveSpanSrcGrp(srcGrpVec);
             for (auto& srcGrp : srcGrpVec) {
                 vector<shared_ptr<SrcMember>> srcMemVec;
                 srcGrp->resolveSpanSrcMember(srcMemVec);
@@ -490,15 +480,7 @@ namespace opflexagent {
                             class_id_t class_id = memRef->getTargetClass().get();
                             if (class_id == modelgbp::gbp::EpGroup::CLASS_ID) {
                                 if (memRef->getTargetURI()) {
-                                    URI epgUri = memRef->getTargetURI().get();
-                                    LOG(DEBUG) << epgUri.toString();
-                                    optional<shared_ptr<EpGroup>> pEpGrp =
-                                        EpGroup::resolve(framework, epgUri);
-                                    if (pEpGrp) {
-                                        epGrpVec.push_back(pEpGrp.get());
-                                    } else {
-                                        LOG(DEBUG) << "Unable to resolve " << epgUri;
-                                    }
+                                    return EpGroup::resolve(framework, memRef->getTargetURI().get());
                                 }
                             }
                         }
@@ -506,5 +488,6 @@ namespace opflexagent {
                 }
             }
         }
+        return boost::none;
     }
 }

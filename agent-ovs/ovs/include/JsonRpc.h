@@ -391,7 +391,7 @@ private:
 
     template <typename T>
     inline bool sendRequestAndAwaitResponse(const list<T> &tl) {
-        unique_lock<mutex> lock(conn->mtx);
+        unique_lock<mutex> lock(OvsdbConnection::ovsdbMtx);
         if (!conn->ready.wait_for(lock, milliseconds(WAIT_TIMEOUT*1000),
                 [=]{return conn->isConnected();})) {
             LOG(DEBUG) << "lock timed out";

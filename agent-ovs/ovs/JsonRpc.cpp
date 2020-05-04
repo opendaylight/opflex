@@ -299,7 +299,7 @@ bool JsonRpc::getOvsdbMirrorConfig(mirror& mir) {
     //replace port UUIDs with names in the mirror struct
     substituteSet(mir.src_ports, portMap);
     substituteSet(mir.dst_ports, portMap);
-    auto itr  = portMap.find(mir.out_port);
+    auto itr = portMap.find(mir.out_port);
     if (itr != portMap.end()) {
         LOG(DEBUG) << "out_port name " << itr->second;
         mir.out_port = itr->second;
@@ -504,7 +504,6 @@ void JsonRpc::handleGetBridgeUuidResp(uint64_t reqId, const Document& payload, s
 bool JsonRpc::createMirror(const string& brUuid, const string& name, const set<string>& srcPorts,
                            const set<string>& dstPorts) {
     map<string, string> portUuidMap;
-
     set<string> ports;
     ports.insert(srcPorts.begin(), srcPorts.end());
     ports.insert(dstPorts.begin(), dstPorts.end());
@@ -571,7 +570,7 @@ bool JsonRpc::createMirror(const string& brUuid, const string& name, const set<s
     tdSet = TupleDataSet(tuples);
     msg2.rowData.emplace("mirrors", tdSet);
 
-    const list<JsonRpcTransactMessage> requests = {msg1};
+    const list<JsonRpcTransactMessage> requests = {msg1, msg2};
     if (!sendRequestAndAwaitResponse(requests)) {
         LOG(DEBUG) << "Error sending message";
         return false;
@@ -704,7 +703,7 @@ void JsonRpc::connect() {
 }
 
 bool JsonRpc::isConnected() {
-    unique_lock<mutex> lock(conn->mtx);
+    unique_lock<mutex> lock(OvsdbConnection::ovsdbMtx);
     if (!conn->ready.wait_for(lock, milliseconds(WAIT_TIMEOUT*1000),
         [=]{return conn->isConnected();})) {
         LOG(DEBUG) << "lock timed out, no connection";
