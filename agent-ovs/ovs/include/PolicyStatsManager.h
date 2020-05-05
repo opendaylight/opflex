@@ -141,13 +141,6 @@ public:
      */
     static const int MAX_AGE = 9;
 
-    /**
-     * This is a test method. Do not use in production
-     * @param txn_id: transaction id to simulate send
-     */
-    void testInjectTxnId(uint32_t txn_id) {
-        txns.insert(txn_id);
-    }
 protected:
     /**
      * Type used as a key for Policy counter maps

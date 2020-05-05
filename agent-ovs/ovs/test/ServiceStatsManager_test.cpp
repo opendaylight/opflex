@@ -44,6 +44,21 @@ namespace opflexagent {
 
 static const uint32_t LAST_PACKET_COUNT = 350; // for removed flow entry
 
+class MockServiceStatsManager : public ServiceStatsManager {
+public:
+    MockServiceStatsManager(Agent *agent_,
+                            IdGenerator& idGen_,
+                            SwitchManager& switchManager_,
+                            IntFlowManager& intFlowManager_,
+                            long timer_interval_)
+        : ServiceStatsManager(agent_, idGen_, switchManager_,
+                              intFlowManager_, timer_interval_) {};
+
+    void testInjectTxnId (uint32_t txn_id) {
+        txns.insert(txn_id);
+    }
+};
+
 class ServiceStatsManagerFixture : public PolicyStatsManagerFixture {
 
 public:
@@ -86,7 +101,7 @@ public:
 
     IntFlowManager  intFlowManager;
     PacketInHandler pktInHandler;
-    ServiceStatsManager serviceStatsManager;
+    MockServiceStatsManager serviceStatsManager;
     void testFlowStatsPodSvc(MockConnection& portConn,
                              PolicyStatsManager *statsManager,
                              bool testAggregate=false);
@@ -430,7 +445,7 @@ ServiceStatsManagerFixture::testFlowStatsSvcTgt (MockConnection& portConn,
     BOOST_REQUIRE(res_msg!=0);
     LOG(DEBUG) << "1 makeFlowStatsReplyMessage successful";
     ofp_header *msgHdr = (ofp_header *)res_msg->data;
-    statsManager->testInjectTxnId(msgHdr->xid);
+    serviceStatsManager.testInjectTxnId(msgHdr->xid);
 
     // send first flow stats reply message
     statsManager->Handle(&portConn,
@@ -460,7 +475,7 @@ ServiceStatsManagerFixture::testFlowStatsSvcTgt (MockConnection& portConn,
     BOOST_REQUIRE(res_msg!=0);
     LOG(DEBUG) << "2 makeFlowStatReplyMessage successful";
     msgHdr = (ofp_header *)res_msg->data;
-    statsManager->testInjectTxnId(msgHdr->xid);
+    serviceStatsManager.testInjectTxnId(msgHdr->xid);
 
     // send second flow stats reply message
     statsManager->Handle(&portConn,
@@ -573,7 +588,7 @@ ServiceStatsManagerFixture::testFlowStatsPodSvc (MockConnection& portConn,
     BOOST_REQUIRE(res_msg!=0);
     LOG(DEBUG) << "1 makeFlowStatsReplyMessage successful";
     ofp_header *msgHdr = (ofp_header *)res_msg->data;
-    statsManager->testInjectTxnId(msgHdr->xid);
+    serviceStatsManager.testInjectTxnId(msgHdr->xid);
 
     // send first flow stats reply message
     statsManager->Handle(&portConn,
@@ -600,7 +615,7 @@ ServiceStatsManagerFixture::testFlowStatsPodSvc (MockConnection& portConn,
     BOOST_REQUIRE(res_msg!=0);
     LOG(DEBUG) << "2 makeFlowStatReplyMessage successful";
     msgHdr = (ofp_header *)res_msg->data;
-    statsManager->testInjectTxnId(msgHdr->xid);
+    serviceStatsManager.testInjectTxnId(msgHdr->xid);
 
     // send second flow stats reply message
     statsManager->Handle(&portConn,
