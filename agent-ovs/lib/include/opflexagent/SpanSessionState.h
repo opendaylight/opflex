@@ -112,7 +112,7 @@ class SessionState {
 
         /**
          * constructor that takes a URI that points to a Session object
-         * @param uri_ URI to a Session object
+         * @param uri_ URI of a Session object
          * @param name_ name of Session object
          */
         SessionState(const URI& uri_, const string& name_) :
@@ -195,6 +195,75 @@ class SessionState {
         srcEpSet srcEndpoints;
         // mapping DstSummary to dst IP
         address destination;
+};
+
+class ErspanParams {
+public:
+    /**
+     * Default constructor
+     */
+    ErspanParams() : ver(0) {}
+
+    /**
+     * Copy constructor
+     */
+    ErspanParams(const ErspanParams& copy) : ver(copy.ver), remoteIp(copy.remoteIp), portName(copy.portName) {}
+
+    /**
+     * Get the ERSPAN version
+     *
+     * @return 1 for Type II, 2 for Type III
+     */
+    unsigned int getVersion() const {
+        return ver;
+    }
+
+    /**
+     * Set the ERSPAN version
+     *
+     * @param version ERSPAN version
+     */
+    void setVersion(int version) {
+        ver = version;
+    }
+
+    /**
+     * Get the ERSPAN session dest IP
+     * @return dest IP
+     */
+    const string& getRemoteIp() const {
+        return remoteIp;
+    }
+
+    /**
+     * Set the ERSPAN session dest IP
+     * @param remoteIp_ ERSPAN session dest IP
+     */
+    void setRemoteIp(const string& remoteIp_) {
+        remoteIp = remoteIp_;
+    }
+
+    /**
+     * Get the ERSPAN port name
+     * @return ERSPAN port name
+     */
+    const string& getPortName() const {
+        return portName;
+    }
+
+    /**
+     * Set the ERSPAN port name
+     * @param portName_ ERSPAN port name
+     */
+    void setPortName(const string& portName_) {
+        portName = portName_;
+    }
+
+private:
+
+    unsigned int ver;
+    string remoteIp;
+    string portName;
 };
 }
 
