@@ -307,7 +307,7 @@ bool JsonRpc::getOvsdbMirrorConfig(mirror& mir) {
     return true;
 }
 
-bool JsonRpc::getCurrentErspanParams(const string& portName, erspan_ifc& params) {
+bool JsonRpc::getCurrentErspanParams(const string& portName, ErspanParams& params) {
     // for ERSPAN port get IP address
     JsonRpcTransactMessage msg1(OvsdbOperation::SELECT, OvsdbTable::INTERFACE);
     tuple<string, string, string> cond1("name", "==", portName);
@@ -395,7 +395,7 @@ bool JsonRpc::getPortList(const uint64_t reqId, const Document& payload, unorder
     }
 }
 
-bool JsonRpc::getErspanOptions(const uint64_t reqId, const Document& payload, erspan_ifc& pIfc) {
+bool JsonRpc::getErspanOptions(const uint64_t reqId, const Document& payload, ErspanParams& params) {
     if (!payload.IsArray()) {
         LOG(DEBUG) << "payload is not an array";
         return false;
@@ -407,45 +407,16 @@ bool JsonRpc::getErspanOptions(const uint64_t reqId, const Document& payload, er
         LOG(DEBUG) << "expected array";
         return false;
     }
-    map<string, string> options;
     for (Value::ConstValueIterator itr1 = arr.Begin(); itr1 != arr.End(); itr1++) {
-        LOG(DEBUG) << (*itr1)[0].GetString() << ":"
-                   << (*itr1)[1].GetString();
         string val((*itr1)[1].GetString());
         string index((*itr1)[0].GetString());
-        options.emplace(index, val);
+        if (index == "erspan_ver") {
+            params.setVersion(stoi(val));
+        } else if (index == "remote_ip") {
+            params.setRemoteIp(val);
+        }
     }
-    auto ver = options.find("erspan_ver");
-    if (ver != options.end()) {
-        if (ver->second == "1") {
-            erspan_ifc_v1 params = erspan_ifc_v1();
-            if (options.find("erspan_idx") != options.end()) {
-                params.erspan_idx = stoi(options["erspan_idx"]);
-            }
-            pIfc = params;
-        } else if (ver->second == "2") {
-            erspan_ifc_v2 params = erspan_ifc_v2();
-            if (options.find("erspan_hwid") != options.end()) {
-                params.erspan_hw_id = stoi(options["erspan_hwid"]);
-            }
-            if (options.find("erspan_dir") != options.end()) {
-                params.erspan_dir = stoi(options["erspan_dir"]);
-            }
-            pIfc = params;
-        } else {
-            return false;
-        }
-        if (options.find("key") != options.end()) {
-            pIfc.key = stoi(options["key"]);
-        }
-        pIfc.erspan_ver = stoi(ver->second);
-        if (options.find("remote_ip") != options.end()) {
-            pIfc.remote_ip = options["remote_ip"];
-        }
-        return true;
-    } else {
-        return false;
-    }
+    return (params.getVersion() != 0);
 }
 
 void JsonRpc::getPortUuid(const string& name, string& uuid) {
@@ -578,10 +549,10 @@ bool JsonRpc::createMirror(const string& brUuid, const string& name, const set<s
     return handleCreateMirrorResp(pResp->reqId, pResp->payload);
 }
 
-bool JsonRpc::addErspanPort(const string& bridge, erspan_ifc& port) {
+bool JsonRpc::addErspanPort(const string& bridge, ErspanParams& params) {
     JsonRpcTransactMessage msg1(OvsdbOperation::INSERT, OvsdbTable::PORT);
     vector<TupleData> tuples;
-    tuples.emplace_back("", port.name);
+    tuples.emplace_back("", params.getPortName());
     TupleDataSet tdSet(tuples);
     msg1.rowData.emplace("name", tdSet);
 
@@ -603,7 +574,7 @@ bool JsonRpc::addErspanPort(const string& bridge, erspan_ifc& port) {
     // row entries
     // name
     tuples.clear();
-    tuples.emplace_back("", port.name);
+    tuples.emplace_back("", params.getPortName());
     tdSet = TupleDataSet(tuples);
     msg2.rowData.emplace("name", tdSet);
 
@@ -616,18 +587,8 @@ bool JsonRpc::addErspanPort(const string& bridge, erspan_ifc& port) {
 
     // options depend upon version
     tuples.clear();
-    tuples.emplace_back("erspan_ver", std::to_string(port.erspan_ver));
-    tuples.emplace_back("key", std::to_string(port.key));
-    tuples.emplace_back("remote_ip", port.remote_ip);
-    if (port.erspan_ver == 1) {
-        tuples.emplace_back("erspan_idx",
-                            std::to_string(static_cast<erspan_ifc_v1&>(port).erspan_idx));
-    } else if (port.erspan_ver == 2) {
-        tuples.emplace_back("erspan_hwid",
-                            std::to_string(static_cast<erspan_ifc_v2&>(port).erspan_hw_id));
-        tuples.emplace_back("erspan_dir",
-                            std::to_string(static_cast<erspan_ifc_v2&>(port).erspan_dir));
-    }
+    tuples.emplace_back("erspan_ver", std::to_string(params.getVersion()));
+    tuples.emplace_back("remote_ip", params.getRemoteIp());
     tdSet = TupleDataSet(tuples, "map");
     msg2.rowData.emplace("options", tdSet);
 

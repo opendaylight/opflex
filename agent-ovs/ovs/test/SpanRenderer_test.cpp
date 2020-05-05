@@ -14,6 +14,7 @@
 #include <opflexagent/test/BaseFixture.h>
 #include <SpanRenderer.h>
 #include "MockRpcConnection.h"
+#include <opflexagent/SpanSessionState.h>
 
 namespace opflexagent {
 
@@ -63,16 +64,13 @@ static bool verifyCreateDestroy(const shared_ptr<SpanRenderer>& spr) {
     if (!spr->deleteMirror(sessionName)) {
         return false;
     }
-    JsonRpc::erspan_ifc_v1 ep = JsonRpc::erspan_ifc_v1();
-    ep.name = "erspan";
-    ep.remote_ip = "10.20.120.240";
-    ep.erspan_idx = 1;
-    ep.erspan_ver = 1;
-    ep.key = 1;
-    if (!spr->jRpc->addErspanPort(ERSPAN_PORT_PREFIX, ep)) {
+    ErspanParams params;
+    params.setPortName("erspan");
+    params.setRemoteIp("10.20.120.240");
+    params.setVersion(1);
+    if (!spr->jRpc->addErspanPort(ERSPAN_PORT_PREFIX, params)) {
         return false;
     }
-
     set<string> src_ports = {"p1-tap", "p2-tap"};
     set<string> dst_ports = {"p1-tap", "p2-tap"};
     set<string> out_ports = {"erspan"};
@@ -93,7 +91,7 @@ BOOST_FIXTURE_TEST_CASE( verify_add_remote_port, SpanRendererFixture ) {
 BOOST_FIXTURE_TEST_CASE( verify_get_erspan_params, SpanRendererFixture ) {
     spr->setNextId(1018);
 
-    JsonRpc::erspan_ifc_v1 params;
+    ErspanParams params;
     BOOST_CHECK_EQUAL(true, spr->jRpc->getCurrentErspanParams(ERSPAN_PORT_PREFIX, params));
 
     URI spanUri("/SpanUniverse/SpanSession/ugh-vspan/");
