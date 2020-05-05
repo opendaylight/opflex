@@ -54,6 +54,19 @@ namespace opflexagent {
 
 static const uint32_t LAST_PACKET_COUNT = 379; // for removed flow entry
 
+class MockSecGrpStatsManager : public SecGrpStatsManager {
+public:
+    MockSecGrpStatsManager(Agent *agent_,
+                           IdGenerator& idGen_,
+                           SwitchManager& switchManager_,
+                           long timer_interval_)
+        : SecGrpStatsManager(agent_, idGen_, switchManager_, timer_interval_) {};
+
+    void testInjectTxnId (uint32_t txn_id) {
+        txns.insert(txn_id);
+    }
+};
+
 class SecGrpStatsManagerFixture : public PolicyStatsManagerFixture {
 
 public:
@@ -76,7 +89,7 @@ public:
                             uint32_t bytes,
                             bool isTx=false) override;
 #endif
-    SecGrpStatsManager secGrpStatsManager;
+    MockSecGrpStatsManager secGrpStatsManager;
 };
 
 #ifdef HAVE_PROMETHEUS_SUPPORT
@@ -156,11 +169,11 @@ BOOST_FIXTURE_TEST_CASE(testFlowMatchStats, SecGrpStatsManagerFixture) {
                               OFPTYPE_FLOW_STATS_REPLY, NULL);
     LOG(DEBUG) << "### SecGrpClassifierCounter flow stats in start";
     // testing one flow only
-    testOneFlow(accPortConn,classifier1,
+    testOneFlow<MockSecGrpStatsManager>(accPortConn,classifier1,
                 AccessFlowManager::SEC_GROUP_IN_TABLE_ID,
                 1, false, &secGrpStatsManager);
     // 2 entries in flow table now - testing second flow
-    testOneFlow(accPortConn,classifier2,
+    testOneFlow<MockSecGrpStatsManager>(accPortConn,classifier2,
                 AccessFlowManager::SEC_GROUP_IN_TABLE_ID,
                 2, false,
                 &secGrpStatsManager);
@@ -168,21 +181,21 @@ BOOST_FIXTURE_TEST_CASE(testFlowMatchStats, SecGrpStatsManagerFixture) {
     // Note: If the portNum is set as 2, then it clashes with classifier2
     // entry. So first classifier1 entry will get deleted. No new counter
     // objeects will get generated and verifyflowstats will fail.
-    testOneFlow(accPortConn,classifier1,
+    testOneFlow<MockSecGrpStatsManager>(accPortConn,classifier1,
                 AccessFlowManager::SEC_GROUP_IN_TABLE_ID,
                 3, true,
                 &secGrpStatsManager);
     LOG(DEBUG) << "### SecGrpClassifierCounter flow stats out start";
     // same 3 steps above for OUT table
-    testOneFlow(accPortConn,classifier1,
+    testOneFlow<MockSecGrpStatsManager>(accPortConn,classifier1,
                 AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,
                 1, false,
                 &secGrpStatsManager);
-    testOneFlow(accPortConn,classifier2,
+    testOneFlow<MockSecGrpStatsManager>(accPortConn,classifier2,
                 AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,
                 2, false,
                 &secGrpStatsManager);
-    testOneFlow(accPortConn,classifier1,
+    testOneFlow<MockSecGrpStatsManager>(accPortConn,classifier1,
                 AccessFlowManager::SEC_GROUP_OUT_TABLE_ID,
                 3, true,
                 &secGrpStatsManager);
@@ -302,7 +315,7 @@ BOOST_FIXTURE_TEST_CASE(testCircularBuffer, SecGrpStatsManagerFixture) {
     LOG(DEBUG) << "### SecGrpClassifierCounter circbuffer start";
     // Add flows in switchManager
 
-    testCircBuffer(accPortConn,
+    testCircBuffer<MockSecGrpStatsManager>(accPortConn,
                    classifier3,
                    AccessFlowManager::SEC_GROUP_IN_TABLE_ID,
                    2,
@@ -320,7 +333,7 @@ BOOST_FIXTURE_TEST_CASE(testSecGrpDelete, SecGrpStatsManagerFixture) {
     secGrpStatsManager.Handle(&accPortConn,
                               OFPTYPE_FLOW_STATS_REPLY, NULL);
     // testing one flow only
-    testOneFlow(accPortConn,classifier1,
+    testOneFlow<MockSecGrpStatsManager>(accPortConn,classifier1,
                 AccessFlowManager::SEC_GROUP_IN_TABLE_ID,
                 1, false, &secGrpStatsManager);
     Mutator mutator(agent.getFramework(), "policyreg");

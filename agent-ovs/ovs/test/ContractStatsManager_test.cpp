@@ -48,6 +48,19 @@ namespace opflexagent {
 
 static const uint32_t LAST_PACKET_COUNT = 379; // for removed flow entry
 
+class MockContractStatsManager : public ContractStatsManager {
+public:
+    MockContractStatsManager(Agent *agent_,
+                             IdGenerator& idGen_,
+                             SwitchManager& switchManager_,
+                             long timer_interval_)
+        : ContractStatsManager(agent_, idGen_, switchManager_, timer_interval_) {};
+
+    void testInjectTxnId (uint32_t txn_id) {
+        txns.insert(txn_id);
+    }
+};
+
 class ContractStatsManagerFixture : public PolicyStatsManagerFixture {
 
 public:
@@ -81,7 +94,7 @@ public:
     void verifyRdDropPromMetrics(uint32_t pkts, uint32_t bytes);
 #endif
     IntFlowManager  intFlowManager;
-    ContractStatsManager contractStatsManager;
+    MockContractStatsManager contractStatsManager;
     PolicyManager& policyManager;
 private:
     bool checkNewFlowMapSize(size_t pol_table_size);
@@ -260,7 +273,7 @@ BOOST_FIXTURE_TEST_CASE(testFlowMatchStats, ContractStatsManagerFixture) {
     contractStatsManager.Handle(&integrationPortConn,
                                 OFPTYPE_FLOW_STATS_REPLY, NULL);
 
-    testOneFlow(integrationPortConn,classifier3,
+    testOneFlow<MockContractStatsManager>(integrationPortConn,classifier3,
                 IntFlowManager::POL_TABLE_ID,
                 1,
                 false,
@@ -374,7 +387,7 @@ BOOST_FIXTURE_TEST_CASE(testCircularBuffer, ContractStatsManagerFixture) {
     contractStatsManager.start();
     LOG(DEBUG) << "### Contract circbuffer Start";
     // Add flows in switchManager
-    testCircBuffer(intPortConn,classifier3,
+    testCircBuffer<MockContractStatsManager>(intPortConn,classifier3,
                    IntFlowManager::POL_TABLE_ID,2,&contractStatsManager,
                    epg1,epg2,&policyManager);
     LOG(DEBUG) << "### Contract circbuffer End";
@@ -391,7 +404,7 @@ BOOST_FIXTURE_TEST_CASE(testContractDelete, ContractStatsManagerFixture) {
     contractStatsManager.Handle(&integrationPortConn,
                                 OFPTYPE_FLOW_STATS_REPLY, NULL);
 
-    testOneFlow(integrationPortConn,
+    testOneFlow<MockContractStatsManager>(integrationPortConn,
                 classifier3,
                 IntFlowManager::POL_TABLE_ID,
                 1,
@@ -428,7 +441,7 @@ BOOST_FIXTURE_TEST_CASE(testSEpgDelete, ContractStatsManagerFixture) {
     contractStatsManager.start();
     LOG(DEBUG) << "### Contract SEPG Delete Start";
 
-    testOneFlow(integrationPortConn,
+    testOneFlow<MockContractStatsManager>(integrationPortConn,
                 classifier3,
                 IntFlowManager::POL_TABLE_ID,
                 1,
@@ -463,7 +476,7 @@ BOOST_FIXTURE_TEST_CASE(testrDSEpgDelete, ContractStatsManagerFixture) {
     contractStatsManager.start();
     LOG(DEBUG) << "### Contract DSEPG Delete Start";
 
-    testOneFlow(integrationPortConn,
+    testOneFlow<MockContractStatsManager>(integrationPortConn,
                 classifier3,
                 IntFlowManager::POL_TABLE_ID,
                 1,

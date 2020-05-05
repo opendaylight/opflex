@@ -42,6 +42,72 @@ using modelgbp::observer::PolicyStatUniverse;
 
 namespace opflexagent {
 
+class MockIntTableDropStatsManager : public BaseTableDropStatsManager {
+public:
+    MockIntTableDropStatsManager(Agent* agent, IdGenerator& idGen,
+                         SwitchManager& switchManager,
+                         long timer_interval = 30000):
+                             BaseTableDropStatsManager(agent, idGen,
+                                     switchManager, timer_interval){};
+
+    void testInjectTxnId (uint32_t txn_id) {
+        txns.insert(txn_id);
+    }
+};
+
+class MockAccessTableDropStatsManager : public BaseTableDropStatsManager {
+public:
+    MockAccessTableDropStatsManager(Agent* agent, IdGenerator& idGen,
+                         SwitchManager& switchManager,
+                         long timer_interval = 30000):
+                             BaseTableDropStatsManager(agent, idGen,
+                                     switchManager, timer_interval) {};
+
+    void testInjectTxnId (uint32_t txn_id) {
+        txns.insert(txn_id);
+    }
+};
+
+class MockTableDropStatsManager {
+public:
+    MockTableDropStatsManager(Agent* agent,
+                          IdGenerator& idGen,
+                          SwitchManager& intSwitchManager,
+                          SwitchManager& accSwitchManager,
+                          long timer_interval = 30000):
+                             intTableDropStatsMgr(agent,
+                                 idGen, intSwitchManager,
+                                 timer_interval),
+                             accTableDropStatsMgr(agent,
+                                 idGen, accSwitchManager,
+                                 timer_interval) {}
+    void start() {
+        intTableDropStatsMgr.start(false);
+        accTableDropStatsMgr.start(false);
+    }
+
+    void stop() {
+        intTableDropStatsMgr.stop(false);
+        accTableDropStatsMgr.stop(false);
+    }
+
+    void setAgentUUID(const std::string& uuid) {
+        intTableDropStatsMgr.setAgentUUID(uuid);
+        accTableDropStatsMgr.setAgentUUID(uuid);
+    }
+
+    void registerConnection(SwitchConnection* intConnection,
+            SwitchConnection* accessConnection) {
+        intTableDropStatsMgr.registerConnection(intConnection);
+        if(accessConnection) {
+            accTableDropStatsMgr.registerConnection(accessConnection);
+        }
+    }
+
+    MockIntTableDropStatsManager intTableDropStatsMgr;
+    MockAccessTableDropStatsManager accTableDropStatsMgr;
+};
+
 class TableDropStatsManagerFixture : public PolicyStatsManagerFixture {
 
 public:
@@ -87,17 +153,18 @@ public:
     IntFlowManager intFlowManager;
     AccessFlowManager accFlowManager;
     PacketInHandler pktInHandler;
-    TableDropStatsManager tableDropStatsManager;
+    MockTableDropStatsManager tableDropStatsManager;
 
     void createIntBridgeDropFlowList(uint32_t table_id,
              FlowEntryList& entryList);
     void createAccBridgeDropFlowList(uint32_t table_id,
              FlowEntryList& entryList);
+    template <typename cStatsManager>
     void testOneStaticDropFlow(MockConnection& portConn,
                                uint32_t table_id,
                                PolicyStatsManager &statsManager,
                                SwitchManager &swMgr,
-                               bool refresh_aging);
+                               bool refresh_aging=false);
     void verifyDropFlowStats(uint64_t exp_packet_count,
                              uint64_t exp_byte_count,
                              uint32_t table_id,
@@ -215,12 +282,13 @@ void TableDropStatsManagerFixture::createIntBridgeDropFlowList(
 
 }
 
+template <typename cStatsManager>
 void TableDropStatsManagerFixture::testOneStaticDropFlow (
         MockConnection& portConn,
         uint32_t table_id,
         PolicyStatsManager &statsManager,
         SwitchManager &swMgr,
-        bool refresh_aged_flow=false)
+        bool refresh_aged_flow)
 {
     uint64_t expected_pkt_count = INITIAL_PACKET_COUNT*2,
             expected_byte_count = INITIAL_PACKET_COUNT*2*PACKET_SIZE;
@@ -258,7 +326,8 @@ void TableDropStatsManagerFixture::testOneStaticDropFlow (
     LOG(DEBUG) << "1 makeFlowStatReplyMessage created";
     BOOST_REQUIRE(res_msg!=0);
     ofp_header *msgHdr = (ofp_header *)res_msg->data;
-    statsManager.testInjectTxnId(msgHdr->xid);
+    cStatsManager* pSM = dynamic_cast<cStatsManager*>(&statsManager);
+    pSM->testInjectTxnId(msgHdr->xid);
 
     // send first flow stats reply message
     statsManager.Handle(&portConn,
@@ -278,7 +347,7 @@ void TableDropStatsManagerFixture::testOneStaticDropFlow (
     LOG(DEBUG) << "2 makeFlowStatReplyMessage created";
     BOOST_REQUIRE(res_msg!=0);
     msgHdr = (ofp_header *)res_msg->data;
-    statsManager.testInjectTxnId(msgHdr->xid);
+    pSM->testInjectTxnId(msgHdr->xid);
 
     // send second flow stats reply message
     statsManager.Handle(&portConn,
@@ -310,7 +379,7 @@ BOOST_FIXTURE_TEST_CASE(testStaticDropFlowsInt, TableDropStatsManagerFixture) {
     start();
     for(int i=IntFlowManager::SEC_TABLE_ID ;
             i < IntFlowManager::EXP_DROP_TABLE_ID ; i++) {
-        testOneStaticDropFlow(intPortConn, i,
+        testOneStaticDropFlow<MockIntTableDropStatsManager>(intPortConn, i,
                 getIntTableDropStatsManager(),
                 switchManager, (i>3));
     }
@@ -321,7 +390,7 @@ BOOST_FIXTURE_TEST_CASE(testStaticDropFlowsAcc, TableDropStatsManagerFixture) {
     start();
     for(int i = AccessFlowManager::GROUP_MAP_TABLE_ID;
             i < AccessFlowManager::EXP_DROP_TABLE_ID; i++) {
-        testOneStaticDropFlow(accPortConn, i,
+        testOneStaticDropFlow<MockAccessTableDropStatsManager>(accPortConn, i,
                               getAccTableDropStatsManager(),
                               accBr, (i>3));
     }
