@@ -51,6 +51,7 @@ public:
                                      switchManager, timer_interval){};
 
     void testInjectTxnId (uint32_t txn_id) {
+        std::lock_guard<mutex> lock(txnMtx);
         txns.insert(txn_id);
     }
 };
@@ -64,6 +65,7 @@ public:
                                      switchManager, timer_interval) {};
 
     void testInjectTxnId (uint32_t txn_id) {
+        std::lock_guard<mutex> lock(txnMtx);
         txns.insert(txn_id);
     }
 };

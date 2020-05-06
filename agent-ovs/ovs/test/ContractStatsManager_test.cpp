@@ -57,6 +57,7 @@ public:
         : ContractStatsManager(agent_, idGen_, switchManager_, timer_interval_) {};
 
     void testInjectTxnId (uint32_t txn_id) {
+        std::lock_guard<mutex> lock(txnMtx);
         txns.insert(txn_id);
     }
 };
@@ -68,7 +69,7 @@ public:
                                     intFlowManager(agent, switchManager, idGen,
                                                    ctZoneManager, tunnelEpManager),
                                     contractStatsManager(&agent, idGen,
-                                                         switchManager, 10),
+                                                         switchManager, 300),
                                     policyManager(agent.getPolicyManager()) {
         switchManager.setMaxFlowTables(IntFlowManager::NUM_FLOW_TABLES);
         intFlowManager.start();
@@ -225,12 +226,8 @@ struct ofpbuf *makeFlowStatReplyMessage(MockConnection *pConn,
 
 bool ContractStatsManagerFixture::checkNewFlowMapSize (size_t pol_table_size)
 {
-    // Call on_timer function to process the flow entries received from
-    // switchManager.
-    boost::system::error_code ec;
-    ec = make_error_code(boost::system::errc::success);
-    contractStatsManager.on_timer(ec);
-
+    //on_timer will kick in via agent_io thread. That will update
+    //stats state to indicate all necessary flows have been initialized
     std::lock_guard<std::mutex> lock(contractStatsManager.pstatMtx);
     if (contractStatsManager.contractState.newFlowCounterMap.size() == pol_table_size)
         return true;

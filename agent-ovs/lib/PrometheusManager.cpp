@@ -848,11 +848,11 @@ void PrometheusManager::start (bool exposeLocalHostOnly, bool exposeEpSvcNan_)
      * Note: Port #9612 has been reserved for opflex here:
      * https://github.com/prometheus/prometheus/wiki/Default-port-allocations
      */
+    registry_ptr = make_shared<Registry>();
     if (exposeLocalHostOnly)
         exposer_ptr = unique_ptr<Exposer>(new Exposer{"127.0.0.1:9612", "/metrics", 1});
     else
         exposer_ptr = unique_ptr<Exposer>(new Exposer{"9612", "/metrics", 1});
-    registry_ptr = make_shared<Registry>();
 
     /* Initialize Metric families which can be created during
      * init time */

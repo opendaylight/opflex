@@ -55,6 +55,7 @@ public:
                               intFlowManager_, timer_interval_) {};
 
     void testInjectTxnId (uint32_t txn_id) {
+        std::lock_guard<mutex> lock(txnMtx);
         txns.insert(txn_id);
     }
 };
@@ -68,12 +69,11 @@ public:
                                     pktInHandler(agent, intFlowManager),
                                     serviceStatsManager(&agent, idGen,
                                                        switchManager,
-                                                       intFlowManager, 10) {
+                                                       intFlowManager, 300) {
         createObjects();
         switchManager.setMaxFlowTables(IntFlowManager::NUM_FLOW_TABLES);
         intFlowManager.start();
 
-        setLoggingLevel("trace");
         // cloud nodeport tests need veth_host_ac
         portmapper.setPort("veth_host_ac", 72);
         portmapper.setPort(72, "veth_host_ac");
@@ -285,7 +285,7 @@ ServiceStatsManagerFixture::testFlowAge (PolicyStatsManager *statsManager,
         for (auto age = 0; age < PolicyStatsManager::MAX_AGE; age++) {
             boost::system::error_code ec;
             ec = make_error_code(boost::system::errc::success);
-            statsManager->on_timer(ec);
+            serviceStatsManager.update_state(ec);
         }
 
         // 2 flows got aged
@@ -303,7 +303,7 @@ ServiceStatsManagerFixture::testFlowAge (PolicyStatsManager *statsManager,
 
         boost::system::error_code ec;
         ec = make_error_code(boost::system::errc::success);
-        statsManager->on_timer(ec);
+        serviceStatsManager.update_state(ec);
 
         // 2 flows get readded to new map
         guard.lock();
@@ -320,7 +320,7 @@ ServiceStatsManagerFixture::testFlowAge (PolicyStatsManager *statsManager,
         for (auto age = 0; age < PolicyStatsManager::MAX_AGE; age++) {
             boost::system::error_code ec;
             ec = make_error_code(boost::system::errc::success);
-            statsManager->on_timer(ec);
+            serviceStatsManager.update_state(ec);
         }
 
         guard.lock();
@@ -335,7 +335,7 @@ ServiceStatsManagerFixture::testFlowAge (PolicyStatsManager *statsManager,
 
         boost::system::error_code ec;
         ec = make_error_code(boost::system::errc::success);
-        statsManager->on_timer(ec);
+        serviceStatsManager.update_state(ec);
 
         guard.lock();
         BOOST_CHECK_EQUAL(serviceStatsManager.statsState.newFlowCounterMap.size(), 17);
@@ -434,8 +434,8 @@ ServiceStatsManagerFixture::testFlowStatsSvcTgt (MockConnection& portConn,
 
     boost::system::error_code ec;
     ec = make_error_code(boost::system::errc::success);
-    // Call on_timer function to setup flow stat state.
-    statsManager->on_timer(ec);
+    // Call update_state() function to setup flow stat state.
+    serviceStatsManager.update_state(ec);
 
     // create first flow reply message
     struct ofpbuf *res_msg = makeFlowStatReplyMessage_2(&portConn,
@@ -454,9 +454,9 @@ ServiceStatsManagerFixture::testFlowStatsSvcTgt (MockConnection& portConn,
     LOG(DEBUG) << "1 FlowStatsReplyMessage handling successful";
     ofpbuf_delete(res_msg);
 
-    // Call on_timer function to process the stats collected
+    // Call update_state() function to process the stats collected
     // and update Genie objects for stats
-    statsManager->on_timer(ec);
+    serviceStatsManager.update_state(ec);
 
     // calculate expected packet count and byte count
     // that we should have in Genie object
@@ -483,9 +483,9 @@ ServiceStatsManagerFixture::testFlowStatsSvcTgt (MockConnection& portConn,
     LOG(DEBUG) << "2 FlowStatsReplyMessage handling successful";
     ofpbuf_delete(res_msg);
 
-    // Call on_timer function to process the stats collected
+    // Call update_state() function to process the stats collected
     // and update Genie objects for stats
-    statsManager->on_timer(ec);
+    serviceStatsManager.update_state(ec);
 
     uint32_t numFlows = entryList.size()/2;
     expPkts =
@@ -577,8 +577,8 @@ ServiceStatsManagerFixture::testFlowStatsPodSvc (MockConnection& portConn,
 
     boost::system::error_code ec;
     ec = make_error_code(boost::system::errc::success);
-    // Call on_timer function to setup flow stat state.
-    statsManager->on_timer(ec);
+    // Call update_state() function to setup flow stat state.
+    serviceStatsManager.update_state(ec);
 
     // create first flow reply message
     struct ofpbuf *res_msg = makeFlowStatReplyMessage_2(&portConn,
@@ -597,9 +597,9 @@ ServiceStatsManagerFixture::testFlowStatsPodSvc (MockConnection& portConn,
     LOG(DEBUG) << "1 FlowStatsReplyMessage handling successful";
     ofpbuf_delete(res_msg);
 
-    // Call on_timer function to process the stats collected
+    // Call update_state() function to process the stats collected
     // and update Genie objects for stats
-    statsManager->on_timer(ec);
+    serviceStatsManager.update_state(ec);
 
     // calculate expected packet count and byte count
     // that we should have in Genie object
@@ -623,9 +623,9 @@ ServiceStatsManagerFixture::testFlowStatsPodSvc (MockConnection& portConn,
     LOG(DEBUG) << "2 FlowStatsReplyMessage handling successful";
     ofpbuf_delete(res_msg);
 
-    // Call on_timer function to process the stats collected
+    // Call update_state() function to process the stats collected
     // and update Genie objects for stats
-    statsManager->on_timer(ec);
+    serviceStatsManager.update_state(ec);
 
     uint32_t numFlows = entryList.size()/2;
     expPkts =
@@ -711,8 +711,8 @@ ServiceStatsManagerFixture::testFlowRemovedSvcTgt (MockConnection& portConn,
 
     boost::system::error_code ec;
     ec = make_error_code(boost::system::errc::success);
-    // Call on_timer function to setup flow stat state.
-    statsManager->on_timer(ec);
+    // Call update_state() function to setup flow stat state.
+    serviceStatsManager.update_state(ec);
 
     // create flow removed message 1
     struct ofpbuf *res_msg = makeFlowRemovedMessage_2(&portConn,
@@ -749,9 +749,9 @@ ServiceStatsManagerFixture::testFlowRemovedSvcTgt (MockConnection& portConn,
     LOG(DEBUG) << "2 FlowRemovedMessage handling successful";
     ofpbuf_delete(res_msg);
 
-    // Call on_timer function to process the stats collected
+    // Call update_state() function to process the stats collected
     // and update Genie objects for stats
-    statsManager->on_timer(ec);
+    serviceStatsManager.update_state(ec);
 
     // calculate expected packet count and byte count
     // that we should have in Genie object
@@ -816,8 +816,8 @@ ServiceStatsManagerFixture::testFlowRemovedPodSvc (MockConnection& portConn,
 
     boost::system::error_code ec;
     ec = make_error_code(boost::system::errc::success);
-    // Call on_timer function to setup flow stat state.
-    statsManager->on_timer(ec);
+    // Call update_state() function to setup flow stat state.
+    serviceStatsManager.update_state(ec);
 
     // create flow removed message 1
     struct ofpbuf *res_msg = makeFlowRemovedMessage_2(&portConn,
@@ -854,9 +854,9 @@ ServiceStatsManagerFixture::testFlowRemovedPodSvc (MockConnection& portConn,
     LOG(DEBUG) << "2 FlowRemovedMessage handling successful";
     ofpbuf_delete(res_msg);
 
-    // Call on_timer function to process the stats collected
+    // Call update_state() function to process the stats collected
     // and update Genie objects for stats
-    statsManager->on_timer(ec);
+    serviceStatsManager.update_state(ec);
 
     // calculate expected packet count and byte count
     // that we should have in Genie object

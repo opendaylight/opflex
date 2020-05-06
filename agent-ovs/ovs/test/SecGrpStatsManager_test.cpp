@@ -63,6 +63,7 @@ public:
         : SecGrpStatsManager(agent_, idGen_, switchManager_, timer_interval_) {};
 
     void testInjectTxnId (uint32_t txn_id) {
+        std::lock_guard<mutex> lock(txnMtx);
         txns.insert(txn_id);
     }
 };
@@ -72,7 +73,7 @@ class SecGrpStatsManagerFixture : public PolicyStatsManagerFixture {
 public:
     SecGrpStatsManagerFixture() : PolicyStatsManagerFixture(),
                                   secGrpStatsManager(&agent, idGen,
-                                                     switchManager, 10) {
+                                                     switchManager, 100000) {
         idGen.initNamespace("l24classifierRule");
         idGen.initNamespace("secGroupSet");
         idGen.initNamespace("secGroup");

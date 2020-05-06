@@ -59,15 +59,8 @@ void ServiceStatsManager::stop() {
     PolicyStatsManager::stop();
 }
 
-void ServiceStatsManager::on_timer(const error_code& ec) {
-    if (ec) {
-        std::lock_guard<std::mutex> lock(timer_mutex);
-        // shut down the timer when we get a cancellation
-        LOG(DEBUG) << "Resetting timer, error: " << ec.message(); 
-        timer.reset();
-        return;
-    }
-
+void ServiceStatsManager::update_state (const error_code& ec)
+{
     // Request Switch Manager to provide flow entries
     {
         TableState::cookie_callback_t cb_func;
@@ -139,10 +132,22 @@ void ServiceStatsManager::on_timer(const error_code& ec) {
         // have already created the objects.
         updateServiceStatsObjects(&svrCountersMap);
     }
+}
 
+void ServiceStatsManager::on_timer(const error_code& ec) {
+    if (ec) {
+        std::lock_guard<std::mutex> lock(timer_mutex);
+        // shut down the timer when we get a cancellation
+        LOG(DEBUG) << "Resetting timer, error: " << ec.message();
+        timer.reset();
+        return;
+    }
+
+    update_state(ec);
     sendRequest(IntFlowManager::STATS_TABLE_ID);
     sendRequest(IntFlowManager::SERVICE_NEXTHOP_TABLE_ID);
     sendRequest(IntFlowManager::SERVICE_REV_TABLE_ID);
+
     if (!stopping) {
         std::lock_guard<std::mutex> lock(timer_mutex);
         if (timer) {

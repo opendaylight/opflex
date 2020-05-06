@@ -66,6 +66,7 @@ public:
         msg.reset();
         return 0;
     }
+    int GetProtocolVersion() { return OFP13_VERSION; }
 };
 
 class PolicyStatsManagerFixture : public FlowManagerFixture {

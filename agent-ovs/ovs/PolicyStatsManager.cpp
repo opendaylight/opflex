@@ -97,6 +97,7 @@ void PolicyStatsManager::stop(bool unregister_listener) {
     {
         std::lock_guard<std::mutex> lock(timer_mutex);
         if (timer) {
+            LOG(DEBUG) << "timer cancelled";
             timer->cancel();
         }
     }

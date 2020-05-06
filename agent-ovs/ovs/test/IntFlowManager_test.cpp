@@ -1447,7 +1447,6 @@ BOOST_FIXTURE_TEST_CASE(loadBalancedService_vlan, VlanIntFlowManagerFixture) {
 
 void BaseIntFlowManagerFixture::loadBalancedServiceTest() {
     setConnected();
-    setLoggingLevel("trace");
     LOG(DEBUG) << "#### Starting LB Service Test ####";
 
     intFlowManager.egDomainUpdated(epg0->getURI());
