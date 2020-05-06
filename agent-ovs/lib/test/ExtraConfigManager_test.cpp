@@ -61,6 +61,7 @@ BOOST_FIXTURE_TEST_CASE( rdconfigsource, FSRDConfigFixture ) {
     fs::remove(path1);
 
     WAIT_FOR((agent.getExtraConfigManager().getRDConfig(rdUri) == nullptr), 500);
+    watcher.stop();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -1003,6 +1003,7 @@ BOOST_FIXTURE_TEST_CASE( fsextsource, FSEndpointFixture ) {
         .build();
     WAIT_FOR(hasPolicyEntry<ExternalL3Ep>(framework, extL3Ep3), 500);
 
+    watcher.stop();
 }
 
 BOOST_FIXTURE_TEST_CASE( fsextsvisource, FSEndpointFixture ) {
@@ -1038,6 +1039,7 @@ BOOST_FIXTURE_TEST_CASE( fsextsvisource, FSEndpointFixture ) {
     WAIT_FOR((agent.getEndpointManager().getEndpoint(
             "83f18f0b-80f7-46e2-b06c-4d9487b0c793") == nullptr), 500);
 
+    watcher.stop();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
