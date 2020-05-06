@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bea58f3c_90ad5c01",
+        "filename": "agent-ovs/lib/PrometheusManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 851,
+      "author": {
+        "id": 8577
+      },
+      "writtenOn": "2020-05-06T05:45:45Z",
+      "side": 1,
+      "message": "Hi Tom, I followed this example (https://github.com/jupp0r/prometheus-cpp) earlier and added Registry after Exposer. But this leads to data race issues between main thread and civet worker thread. Will be good to push this in J. What do you think?",
+      "range": {
+        "startLine": 851,
+        "startChar": 4,
+        "endLine": 851,
+        "endChar": 16
+      },
+      "revId": "75a20a358800dd559e6a58dfa40d6f6109eb2bd7",
+      "serverId": "7fc14799-209e-464c-9743-7a06c2c21a81",
+      "unresolved": true
+    }
+  ]
+}
