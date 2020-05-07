@@ -51,6 +51,7 @@ public:
     bool ignoreFlowMods;
     std::unordered_set<int> ignoredFlowMods;
     std::mutex group_mod_mutex;
+    std::mutex flow_mod_mutex;
     bool ignoreGroupMods;
     bool ignoreTlvMods;
 };
