@@ -97,6 +97,7 @@ void AccessFlowManager::start() {
     agent.getEndpointManager().registerListener(this);
     agent.getLearningBridgeManager().registerListener(this);
     agent.getPolicyManager().registerListener(this);
+    agent.getExtraConfigManager().registerListener(this);
 
     for (size_t i = 0; i < sizeof(ID_NAMESPACES)/sizeof(char*); i++) {
         idGen.initNamespace(ID_NAMESPACES[i]);
