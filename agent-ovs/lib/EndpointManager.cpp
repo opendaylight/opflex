@@ -328,8 +328,7 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
     unique_lock<mutex> guard(ep_mutex);
     Mutator mutator(framework, "policyelement");
     unordered_set<uri_set_t> notifySecGroupSets;
-    bool extDomRemoved = false;
-    URI *egURI = NULL;
+    uri_set_t notifyExtDomSets;
 
     ep_map_t::iterator it = ep_map.find(uuid);
     if (it != ep_map.end()) {
@@ -394,9 +393,8 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
                 if (it->second.empty()) {
                     group_ep_map.erase(it);
                     if(es.endpoint->isExternal()){
-                        extDomRemoved = true;
-                        egURI = &es.egURI.get();
-                        local_ext_dom_map.erase(*egURI);
+                        notifyExtDomSets.insert(es.egURI.get());
+                        local_ext_dom_map.erase(es.egURI.get());
                     }
                 }
             }
@@ -452,8 +450,8 @@ void EndpointManager::removeEndpoint(const std::string& uuid) {
     for (auto& s : notifySecGroupSets) {
         notifyListeners(s);
     }
-    if(extDomRemoved && (egURI != NULL)) {
-        notifyLocalExternalDomainListeners(*egURI);
+    for(auto& s: notifyExtDomSets) {
+        notifyLocalExternalDomainListeners(s);
     }
 }
 
