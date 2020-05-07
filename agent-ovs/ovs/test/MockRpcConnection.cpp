@@ -49,6 +49,7 @@ void MockRpcConnection::sendTransaction(const list<JsonRpcTransactMessage>& requ
     ResponseDict& rDict = ResponseDict::Instance();
     auto itr = rDict.dict.find(reqId);
     if (itr != rDict.dict.end()) {
+        LOG(DEBUG) << "sending response for reqId " << reqId;
         trans->handleTransaction(reqId, rDict.d[itr->second]);
     } else {
         LOG(DEBUG) << "No response found for req " << reqId;

@@ -12,8 +12,6 @@
 #include <opflexagent/SpanManager.h>
 #include <opflexagent/logging.h>
 #include <modelgbp/span/Universe.hpp>
-#include <modelgbp/gbp/EpGroup.hpp>
-#include <modelgbp/span/LocalEp.hpp>
 #include <modelgbp/epr/L2Universe.hpp>
 #include <modelgbp/epdr/EndPointToGroupRSrc.hpp>
 
@@ -167,13 +165,12 @@ namespace opflexagent {
     }
 
     void SpanManager::SpanUniverseListener::processSession(const shared_ptr<Session>& sess) {
-        LOG(DEBUG) << "Process Session " << sess->getURI();
-        shared_ptr<SessionState> sessState;
         auto itr = spanmanager.sess_map.find(sess->getURI());
         if (itr != spanmanager.sess_map.end()) {
             spanmanager.sess_map.erase(itr);
         }
-        sessState = make_shared<SessionState>(sess->getURI(), sess->getName().get());
+        shared_ptr<SessionState> sessState =
+            make_shared<SessionState>(sess->getURI(), sess->getName().get());
         spanmanager.sess_map.insert(make_pair(sess->getURI(), sessState));
         sessState->setAdminState(sess->getState(1));
 
@@ -245,7 +242,7 @@ namespace opflexagent {
     }
 
     void SessionState::addSrcEndpoint(const SourceEndpoint& srcEp) {
-        LOG(DEBUG) << "Adding src end point" << srcEp.getName();
+        LOG(DEBUG) << "Adding src end point " << srcEp.getName();
         lock_guard<recursive_mutex> guard(opflexagent::SpanManager::updates);
         srcEndpoints.emplace(srcEp);
     }
@@ -331,7 +328,6 @@ namespace opflexagent {
     void SpanManager::SpanUniverseListener::addEndpoint(
         const shared_ptr<LocalEp>& lEp, const shared_ptr<L2Ep>& l2Ep,
         const URI& srcMemberUri, const unsigned char dir) {
-        LOG(DEBUG) << "get parent lEp " << (lEp ? "set" : "null") << " l2Ep " << (l2Ep ? "set" : "null");
         optional<URI> parent = SpanManager::getSession(lEp);
         if (parent) {
             spanmanager.notifyUpdate.insert(parent.get());
@@ -372,14 +368,11 @@ namespace opflexagent {
                 break;
             }
         }
-        if (uriStr.empty()) {
-            optional<URI> uri;
-            return uri;
-        } else {
-            LOG(DEBUG) << "uri " << uriStr;
-            optional<URI> uri(uriStr);
-            return uri;
+        optional<URI> uri;
+        if (!uriStr.empty()) {
+            uri = URI(uriStr);
         }
+        return uri;
     }
 
     optional<shared_ptr<SrcMember>> SpanManager::findSrcMem(const URI& sessUri, const URI& uri) {

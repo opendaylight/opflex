@@ -44,7 +44,7 @@ public:
 static bool verifyCreateDestroy(const shared_ptr<SpanRenderer>& spr) {
     spr->setNextId(1000);
     JsonRpc::mirror mir;
-    if (!spr->jRpc->getOvsdbMirrorConfig(mir)) {
+    if (!spr->jRpc->getOvsdbMirrorConfig("br-int", mir)) {
         return false;
     }
     string erspanUuid;
@@ -52,11 +52,7 @@ static bool verifyCreateDestroy(const shared_ptr<SpanRenderer>& spr) {
     if (erspanUuid.empty()) {
         return false;
     }
-    JsonRpc::BrPortResult res;
-    if (!spr->jRpc->getBridgePortList("br-int", res)) {
-        return false;
-    }
-    if (!spr->jRpc->updateBridgePorts(res.brUuid, res.portUuids, erspanUuid, false)) {
+    if (!spr->jRpc->updateBridgePorts("br-int", erspanUuid, false)) {
         return false;
     }
 
@@ -68,7 +64,7 @@ static bool verifyCreateDestroy(const shared_ptr<SpanRenderer>& spr) {
     params.setPortName("erspan");
     params.setRemoteIp("10.20.120.240");
     params.setVersion(1);
-    if (!spr->jRpc->addErspanPort(ERSPAN_PORT_PREFIX, params)) {
+    if (!spr->jRpc->addErspanPort("br-int", params)) {
         return false;
     }
     set<string> src_ports = {"p1-tap", "p2-tap"};
@@ -82,14 +78,14 @@ BOOST_FIXTURE_TEST_CASE( verify_getport, SpanRendererFixture ) {
 }
 
 BOOST_FIXTURE_TEST_CASE( verify_add_remote_port, SpanRendererFixture ) {
-    spr->setNextId(1013);
+    spr->setNextId(1011);
 
     BOOST_CHECK_EQUAL(true, spr->addErspanPort(ERSPAN_PORT_PREFIX, "3.3.3.3", 2));
     BOOST_CHECK_EQUAL(true, spr->deleteErspanPort(ERSPAN_PORT_PREFIX));
 }
 
 BOOST_FIXTURE_TEST_CASE( verify_get_erspan_params, SpanRendererFixture ) {
-    spr->setNextId(1018);
+    spr->setNextId(1014);
 
     ErspanParams params;
     BOOST_CHECK_EQUAL(true, spr->jRpc->getCurrentErspanParams(ERSPAN_PORT_PREFIX, params));

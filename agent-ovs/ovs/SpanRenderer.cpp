@@ -108,7 +108,7 @@ namespace opflexagent {
         // get mirror artifacts from OVSDB if provisioned
         JsonRpc::mirror mir;
         bool isMirProv = false;
-        if (jRpc->getOvsdbMirrorConfig(mir)) {
+        if (jRpc->getOvsdbMirrorConfig(switchName, mir)) {
             isMirProv = true;
         }
 
@@ -118,7 +118,6 @@ namespace opflexagent {
             !seSt.get()->getDestination().is_unspecified() ||
             seSt.get()->getAdminState() == 0) {
             if (isMirProv) {
-                LOG(DEBUG) << "deleting mirror " << seSt.get()->getName();
                 sessionDeleted(seSt.get()->getName());
             }
         } else {
@@ -251,15 +250,8 @@ namespace opflexagent {
             LOG(WARNING) << "Can't find port named " << name;
             return false;
         }
-
-        LOG(DEBUG) << name << " uuid: " << erspanUuid;
-        JsonRpc::BrPortResult res;
-        if (!jRpc->getBridgePortList(switchName, res)) {
-            LOG(DEBUG) << "Unable to retrieve port list on " << switchName;
-            return false;
-        }
-
-        jRpc->updateBridgePorts(res.brUuid, res.portUuids, erspanUuid, false);
+        LOG(DEBUG) << name << " port uuid: " << erspanUuid;
+        jRpc->updateBridgePorts(switchName, erspanUuid, false);
         return true;
     }
     bool SpanRenderer::createMirror(const string& sess, const set<string>& srcPorts,

@@ -91,7 +91,7 @@ public:
     /**
      * number of span responses to send
      */
-    static const unsigned int no_of_span_msgs = 19;
+    static const unsigned int no_of_span_msgs = 15;
 
     /**
      * number of netflow responses to send
@@ -158,16 +158,8 @@ private:
     string request6 {"[\"Open_vSwitch\",{\"where\":[[\"name\",\"==\",\"br-int\"]],\"table\":\
             \"Bridge\",\"op\":\"update\",\"row\":{\"mirrors\":[\"set\",[]]}}]"};
             */
-    string response6 {"[{\"count\":1}]"};
-    /*
-    string request7 {"[\"Open_vSwitch\",{\"where\":[[\"name\",\"==\",\"br-int\"]],\"table\
-            \":\"Bridge\",\"op\":\"select\",\"columns\":[\"_uuid\",\"ports\"]}]"};
-            */
-    string response7 {"[{\"rows\":[{\"ports\":[\"set\",[[\"uuid\",\
-            \"0a7a4d65-e785-4674-a219-167391d10c3f\"],[\"uuid\",\
-            \"373108c7-ce2d-4d46-a419-1654a5bf47ef\"],[\"uuid\",\
-            \"ffaee0cd-bb7d-4698-9af1-99f57f9b7081\"]]],\"_uuid\":[\"uuid\",\
-            \"7cb323d7-0215-406d-ae1d-679b72e1f6aa\"]}]}]"};
+    string deleteMirrorResp {"[{\"count\":1}]"};
+
     /*
     string request8 {"[\"Open_vSwitch\",{\"uuid-name\":\"rowfaaf29de_8043_4197_8636_4c3d72aeefef\",\
             \"table\":\"Port\",\"op\":\"insert\",\"row\":{\"interfaces\":[\"named-uuid\",\
@@ -186,46 +178,8 @@ private:
     string request9 {"[\"Open_vSwitch\",{\"where\":[[\"name\",\"==\",\"br-int\"]],\"table\":\
             \"Bridge\",\"op\":\"select\",\"columns\":[\"_uuid\"]}]"};
             */
-    string response9 {"[{\"rows\":[{\"_uuid\":[\"uuid\",\"7cb323d7-0215-406d-ae1d-679b72e1f6aa\"]}]}]"};
-    /*
-    string request10 {"[\"Open_vSwitch\",{\"where\":[[\"name\",\"==\",\"erspan\"]],\"table\":\
-            \"Port\",\"op\":\"select\"}]"};
-            */
-    string response10 {"[{\"rows\":[{\"protected\":false,\"statistics\":[\"map\",[]],\"bond_downdelay\":0,\
-            \"name\":\"erspan\",\"mac\":[\"set\",[]],\"fake_bridge\":false,\"trunks\":[\"set\",[]]\
-            ,\"_uuid\":[\"uuid\",\"67a63d27-9f82-48e6-9931-068bf7dd1b1d\"],\"rstp_status\":\
-            [\"map\",[]],\"tag\":[\"set\",[]],\"_version\":[\"uuid\",\"e1279783-fdf4-487d-9bdb-\
-            35d0fdc225e0\"],\"cvlans\":[\"set\",[]],\"bond_updelay\":0,\"bond_active_slave\":\
-            [\"set\",[]],\"status\":[\"map\",[]],\"external_ids\":[\"map\",[]],\"other_config\":\
-            [\"map\",[]],\"qos\":[\"set\",[]],\"bond_mode\":[\"set\",[]],\"rstp_statistics\":[\
-            \"map\",[]],\"vlan_mode\":[\"set\",[]],\"interfaces\":[\"uuid\",\"56eadeda-cb76-4d09-\
-            b49a-b5abf7640cd4\"],\"bond_fake_iface\":false,\"lacp\":[\"set\",[]]}]}]"};
-    /*
-    string request11 {"[\"Open_vSwitch\",{\"where\":[[\"name\",\"==\",\"p1-tap\"]],\"table\"\
-            :\"Port\",\"op\":\"select\"}]"};
-            */
-    string response11 {"[{\"rows\":[{\"protected\":false,\"statistics\":[\"map\",[]],\"bond_downdelay\":0,\
-            \"name\":\"p1-tap\",\"mac\":[\"set\",[]],\"fake_bridge\":false,\"trunks\":[\"set\",\
-            []],\"_uuid\":[\"uuid\",\"0a7a4d65-e785-4674-a219-167391d10c3f\"],\"rstp_status\":\
-            [\"map\",[]],\"tag\":[\"set\",[]],\"_version\":[\"uuid\",\"f67c3499-82d0-46da-95c2-\
-            cc73eff735b2\"],\"cvlans\":[\"set\",[]],\"bond_updelay\":0,\"bond_active_slave\":\
-            [\"set\",[]],\"status\":[\"map\",[]],\"external_ids\":[\"map\",[]],\"other_config\"\
-            :[\"map\",[]],\"qos\":[\"set\",[]],\"bond_mode\":[\"set\",[]],\"rstp_statistics\":\
-            [\"map\",[]],\"vlan_mode\":[\"set\",[]],\"interfaces\":[\"uuid\",\"22eb4594-4ee5-\
-            42f0-be04-3c6daf46918f\"],\"bond_fake_iface\":false,\"lacp\":[\"set\",[]]}]}]"};
-    /*
-    string request12 {"[\"Open_vSwitch\",{\"where\":[[\"name\",\"==\",\"p2-tap\"]],\"table\":\
-            \"Port\",\"op\":\"select\"}]"};
-            */
-    string response12 {"[{\"rows\":[{\"protected\":false,\"statistics\":[\"map\",[]],\"bond_downdelay\":0,\
-            \"name\":\"p2-tap\",\"mac\":[\"set\",[]],\"fake_bridge\":false,\"trunks\":[\"set\",\
-            []],\"_uuid\":[\"uuid\",\"373108c7-ce2d-4d46-a419-1654a5bf47ef\"],\"rstp_status\":\
-            [\"map\",[]],\"tag\":[\"set\",[]],\"_version\":[\"uuid\",\"43c91940-feaa-42ee-8646-\
-            5d26f90bde17\"],\"cvlans\":[\"set\",[]],\"bond_updelay\":0,\"bond_active_slave\":\
-            [\"set\",[]],\"status\":[\"map\",[]],\"external_ids\":[\"map\",[]],\"other_config\":\
-            [\"map\",[]],\"qos\":[\"set\",[]],\"bond_mode\":[\"set\",[]],\"rstp_statistics\":\
-            [\"map\",[]],\"vlan_mode\":[\"set\",[]],\"interfaces\":[\"uuid\",\"9d39228b-186f-\
-            455e-8da1-c8dc82d92692\"],\"bond_fake_iface\":false,\"lacp\":[\"set\",[]]}]}]"};
+    string bridgeUuidResp {"[{\"rows\":[{\"_uuid\":[\"uuid\",\"7cb323d7-0215-406d-ae1d-679b72e1f6aa\"]}]}]"};
+
     /*
     string request13 {"[\"Open_vSwitch\",{\"uuid-name\":\"row8c31e171_96ef_452c_8a4b_abbdf1ea498c\
             \",\"table\":\"Mirror\",\"op\":\"insert\",\"row\":{\"name\":\"msandhu-sess1\",\
@@ -237,7 +191,7 @@ private:
             406d-ae1d-679b72e1f6aa\"]]],\"table\":\"Bridge\",\"op\":\"update\",\"row\":\
             {\"mirrors\":[\"named-uuid\",\"row8c31e171_96ef_452c_8a4b_abbdf1ea498c\"]}}]"};
             */
-    string response13 {"[{\"uuid\":[\"uuid\",\"ad0810fb-fa38-4dd0-b0b3-6a98985dd2bc\"]},{\"count\":1}]"};
+    string createMirrorResp {"[{\"uuid\":[\"uuid\",\"ad0810fb-fa38-4dd0-b0b3-6a98985dd2bc\"]},{\"count\":1}]"};
 
     string selectInterfaceResp {"[{\"rows\":[{\"options\":[\"map\",[[\"erspan_dir\",\"32552\"],[\"erspan_hwid\",\"2\"],[\"erspan_ver\",\"2\"],[\"key\",\"1\"],[\"remote_ip\",\"11.2.3.4\"]]]}]}]"};
 
@@ -273,10 +227,10 @@ private:
 
     /* NetFlow request/responses end */
 
-    string response[no_of_span_msgs + no_of_netflow_msgs] = {response1, selectPortsResp, response3, bridgePortSelectResp, updateBridgePortsResp,
-            response6, response7, interfaceInsertResp, response9, response10, response11, response12, response13,
-            bridgePortSelectResp, interfaceInsertResp, selectPortsResp, bridgePortSelectResp, updateBridgePortsResp,
-            selectInterfaceResp,
+    string response[no_of_span_msgs + no_of_netflow_msgs] = {response1, selectPortsResp, response3,
+            updateBridgePortsResp, deleteMirrorResp, interfaceInsertResp, bridgeUuidResp, selectPortsResp,
+            selectPortsResp, selectPortsResp, createMirrorResp, interfaceInsertResp, selectPortsResp,
+            updateBridgePortsResp, selectInterfaceResp,
             deleteResp, deleteResp, getBridgeUuidResp, createNetflowResp, deleteResp,
             deleteResp, deleteResp, getBridgeUuidResp, createIpFixResp, deleteResp};
 

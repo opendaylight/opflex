@@ -59,7 +59,7 @@ static bool verifyCreateDestroy(const shared_ptr<NetFlowRenderer>& nfr) {
 }
 
 BOOST_FIXTURE_TEST_CASE( verify_createdestroy, NetFlowRendererFixture ) {
-    WAIT_FOR(verifyCreateDestroy(nfr), 1);
+    BOOST_CHECK_EQUAL(true, verifyCreateDestroy(nfr));
 }
 BOOST_AUTO_TEST_SUITE_END()
 

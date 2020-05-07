@@ -17,7 +17,6 @@
 #include <opflex/modb/ObjectListener.h>
 #include <opflexagent/PolicyListener.h>
 #include <opflexagent/SpanListener.h>
-#include <modelgbp/span/Universe.hpp>
 #include <modelgbp/span/Session.hpp>
 #include <modelgbp/span/SrcGrp.hpp>
 #include <modelgbp/span/SrcMember.hpp>

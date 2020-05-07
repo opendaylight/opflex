@@ -115,20 +115,11 @@ public:
     /**
      * update the port list for the bridge
      * @param[in] brUuid bridge UUID
-     * @param[in] brPorts set of bridge port UUIDs
-     * @param[in] port port UUID to be added or removed.
-     * @param[in] action true: add port, false: remove port.
+     * @param[in] portUuid port UUID to be added or removed.
+     * @param[in] addToList true: add port, false: remove port.
      * @return bool true if update succeeded, false otherwise.
      */
-    bool updateBridgePorts(const string& brUuid, set<string>& brPorts, const string& port, bool action);
-
-    /**
-     * sends request to get port list of the bridge
-     * @param[in] bridge name of bridge
-     * @param[out] result bridge and port UUIDs
-     * @return bool true if successful, false otherwise
-     */
-    bool getBridgePortList(const string& bridge, BrPortResult& result);
+    bool updateBridgePorts(const string& brUuid, const string& portUuid, bool addToList);
 
     /**
      * get the UUID of the port
@@ -237,15 +228,6 @@ public:
      * process bridge port list response
      * @param[in] reqId request ID
      * @param[in] payload body of the response
-     * @param[out] result result struct
-     * @return true id success, false otherwise
-     */
-    static bool handleGetBridgePortList(uint64_t reqId, const rapidjson::Document& payload, BrPortResult& result);
-
-    /**
-     * process bridge port list response
-     * @param[in] reqId request ID
-     * @param[in] payload body of the response
      * @param[out] uuid of the bridge
      */
     static void handleGetBridgeUuidResp(uint64_t reqId, const rapidjson::Document& payload,
@@ -263,10 +245,11 @@ public:
 
     /**
      * get the mirror config from OVSDB.
+     * @param[in] brName bridge name
      * @param[out] mir struct to hold mirror data
      * @return bool true if retrieval succeeded, false otherwise.
      */
-    bool getOvsdbMirrorConfig(mirror& mir);
+    bool getOvsdbMirrorConfig(const string& brName, mirror& mir);
 
     /**
      * process bridge port list response
