@@ -220,9 +220,9 @@ namespace opflexagent {
         createMirror(seSt->getName(), srcPort, dstPort);
     }
 
-    bool SpanRenderer::deleteMirror(const string& sess) {
-        LOG(DEBUG) << "deleting mirror " << sess;
-        if (!jRpc->deleteMirror(switchName)) {
+    bool SpanRenderer::deleteMirror(const string& sessionName) {
+        LOG(DEBUG) << "deleting mirror " << sessionName;
+        if (!jRpc->deleteMirror(switchName, sessionName)) {
             LOG(DEBUG) << "Unable to delete mirror";
             return false;
         }
