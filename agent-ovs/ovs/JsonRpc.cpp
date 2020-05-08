@@ -83,6 +83,12 @@ bool JsonRpc::createIpfix(const string& brUuid, const string& target, const int&
         tdSet = TupleDataSet(tuples);
         msg1.rowData.emplace("sampling", tdSet);
     }
+
+    tuples.clear();
+    static const string enabled("true");
+    tuples.emplace_back("enable-tunnel-sampling", enabled);
+    tdSet = TupleDataSet(tuples, "map");
+    msg1.rowData.emplace("other_config", tdSet);
     const string uuid_name = "ipfix1";
     msg1.kvPairs.emplace_back("uuid-name", uuid_name);
 
@@ -535,7 +541,6 @@ bool JsonRpc::addErspanPort(const string& bridgeName, ErspanParams& params) {
     tdSet = TupleDataSet(tuples);
     msg2.rowData.emplace("type", tdSet);
 
-    // options depend upon version
     tuples.clear();
     tuples.emplace_back("erspan_ver", std::to_string(params.getVersion()));
     tuples.emplace_back("remote_ip", params.getRemoteIp());
