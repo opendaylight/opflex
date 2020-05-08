@@ -91,7 +91,7 @@ public:
     /**
      * number of span responses to send
      */
-    static const unsigned int no_of_span_msgs = 15;
+    static const unsigned int no_of_span_msgs = 16;
 
     /**
      * number of netflow responses to send
@@ -154,6 +154,8 @@ private:
             \"ffaee0cd-bb7d-4698-9af1-99f57f9b7081\"]]]}}]"};
             */
     string updateBridgePortsResp {"[{\"count\":1}]"};
+
+    string getMirrorUuidResp {"[{\"rows\":[{\"_uuid\":[\"uuid\",\"5167f875-139e-4a62-9147-1170f71b3b4b\"]}]}]"};
     /*
     string request6 {"[\"Open_vSwitch\",{\"where\":[[\"name\",\"==\",\"br-int\"]],\"table\":\
             \"Bridge\",\"op\":\"update\",\"row\":{\"mirrors\":[\"set\",[]]}}]"};
@@ -228,9 +230,9 @@ private:
     /* NetFlow request/responses end */
 
     string response[no_of_span_msgs + no_of_netflow_msgs] = {response1, selectPortsResp, response3,
-            updateBridgePortsResp, deleteMirrorResp, interfaceInsertResp, bridgeUuidResp, selectPortsResp,
-            selectPortsResp, selectPortsResp, createMirrorResp, interfaceInsertResp, selectPortsResp,
-            updateBridgePortsResp, selectInterfaceResp,
+            updateBridgePortsResp, getMirrorUuidResp, deleteMirrorResp, interfaceInsertResp, bridgeUuidResp,
+            selectPortsResp, selectPortsResp, selectPortsResp, createMirrorResp, interfaceInsertResp,
+            selectPortsResp, updateBridgePortsResp, selectInterfaceResp,
             deleteResp, deleteResp, getBridgeUuidResp, createNetflowResp, deleteResp,
             deleteResp, deleteResp, getBridgeUuidResp, createIpFixResp, deleteResp};
 

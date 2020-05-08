@@ -200,10 +200,10 @@ void JsonRpc::getUuidsFromVal(set<string>& uuidSet, const Document& payload, con
     }
 }
 
-bool JsonRpc::getOvsdbMirrorConfig(const string &brName, mirror &mir) {
+bool JsonRpc::getOvsdbMirrorConfig(const string& sessionName, mirror& mir) {
     JsonRpcTransactMessage msg1(OvsdbOperation::SELECT, OvsdbTable::MIRROR);
     set<tuple<string, OvsdbFunction, string>> condSet;
-    condSet.emplace("name", OvsdbFunction::EQ, brName);
+    condSet.emplace("name", OvsdbFunction::EQ, sessionName);
     msg1.conditions = condSet;
     const list<JsonRpcTransactMessage> requests1 = {msg1};
     if (!sendRequestAndAwaitResponse(requests1)) {
@@ -383,6 +383,20 @@ void JsonRpc::getPortUuids(map<string, string>& ports) {
     }
 }
 
+void JsonRpc::getMirrorUuid(const string& name, string& uuid) {
+    JsonRpcTransactMessage msg1(OvsdbOperation::SELECT, OvsdbTable::MIRROR);
+    set<tuple<string, OvsdbFunction, string>> condSet;
+    condSet.emplace("name", OvsdbFunction::EQ, name);
+    msg1.conditions = condSet;
+    msg1.columns.emplace("_uuid");
+
+    const list<JsonRpcTransactMessage> requests{msg1};
+    if (!sendRequestAndAwaitResponse(requests)) {
+        LOG(DEBUG) << "Error sending message";
+    }
+    handleGetUuidResp(pResp->reqId, pResp->payload, uuid);
+}
+
 void JsonRpc::getBridgeUuid(const string& name, string& uuid) {
     JsonRpcTransactMessage msg1(OvsdbOperation::SELECT, OvsdbTable::BRIDGE);
     set<tuple<string, OvsdbFunction, string>> condSet;
@@ -394,10 +408,10 @@ void JsonRpc::getBridgeUuid(const string& name, string& uuid) {
     if (!sendRequestAndAwaitResponse(requests)) {
         LOG(DEBUG) << "Error sending message";
     }
-    handleGetBridgeUuidResp(pResp->reqId, pResp->payload, uuid);
+    handleGetUuidResp(pResp->reqId, pResp->payload, uuid);
 }
 
-void JsonRpc::handleGetBridgeUuidResp(uint64_t reqId, const Document& payload, string& uuid) {
+void JsonRpc::handleGetUuidResp(uint64_t reqId, const Document& payload, string& uuid) {
     list<string> ids = {"0","rows","0","_uuid","1"};
     Value val;
     opflexagent::getValue(payload, ids, val);
@@ -567,16 +581,23 @@ bool JsonRpc::handleCreateMirrorResp(uint64_t reqId, const Document& payload) {
     return true;
 }
 
-bool JsonRpc::deleteMirror(const string& brName) {
-    JsonRpcTransactMessage msg(OvsdbOperation::UPDATE, OvsdbTable::BRIDGE);
+bool JsonRpc::deleteMirror(const string& brName, const string& sessionName) {
+    string sessionUuid;
+    getMirrorUuid(sessionName, sessionUuid);
+    if (sessionUuid.empty()) {
+        LOG(DEBUG) << "Unable to find session " << sessionName;
+        return false;
+    }
+
+    JsonRpcTransactMessage msg(OvsdbOperation::MUTATE, OvsdbTable::BRIDGE);
     set<tuple<string, OvsdbFunction, string>> condSet;
     condSet.emplace("name", OvsdbFunction::EQ, brName);
     msg.conditions = condSet;
 
     vector<TupleData> tuples;
-    TupleDataSet tdSet(tuples, "set");
-    tdSet.label = "set";
-    msg.rowData.emplace("mirrors", tdSet);
+    tuples.emplace_back("uuid", sessionUuid);
+    TupleDataSet tdSet = TupleDataSet(tuples);
+    msg.mutateRowData.emplace("mirrors", std::make_pair(OvsdbOperation::DELETE, tdSet));
 
     list<JsonRpcTransactMessage> requests = {msg};
     if (!sendRequestAndAwaitResponse(requests)) {

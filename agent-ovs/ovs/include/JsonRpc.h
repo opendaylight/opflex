@@ -154,9 +154,10 @@ public:
     /**
      * deletes mirror on OVSDB bridge.
      * @param[in] brName name of bridge that the mirror is associated with
+     * @param[in] sessionName Session to delete
      * @return true if success, false otherwise.
      */
-    bool deleteMirror(const string& brName);
+    bool deleteMirror(const string& brName, const string& sessionName);
 
     /**
      * get uuid of bridge from OVSDB
@@ -164,6 +165,13 @@ public:
      * @param[out] uuid of the bridge or empty
      */
     void getBridgeUuid(const string& name, string& uuid);
+
+    /**
+     * get uuid of the named mirror from OVSDB
+     * @param[in] name name of mirror
+     * @param[out] uuid of the mirror or empty
+     */
+    void getMirrorUuid(const string& name, string& uuid);
 
     /**
      * read port uuids from the map and insert into list
@@ -230,8 +238,7 @@ public:
      * @param[in] payload body of the response
      * @param[out] uuid of the bridge
      */
-    static void handleGetBridgeUuidResp(uint64_t reqId, const rapidjson::Document& payload,
-            string& uuid);
+    static void handleGetUuidResp(uint64_t reqId, const rapidjson::Document& payload, string& uuid);
 
     /**
      * process mirror config
@@ -245,11 +252,11 @@ public:
 
     /**
      * get the mirror config from OVSDB.
-     * @param[in] brName bridge name
+     * @param[in] sessionName session name
      * @param[out] mir struct to hold mirror data
      * @return bool true if retrieval succeeded, false otherwise.
      */
-    bool getOvsdbMirrorConfig(const string& brName, mirror& mir);
+    bool getOvsdbMirrorConfig(const string& sessionName, mirror& mir);
 
     /**
      * process bridge port list response

@@ -44,7 +44,7 @@ public:
 static bool verifyCreateDestroy(const shared_ptr<SpanRenderer>& spr) {
     spr->setNextId(1000);
     JsonRpc::mirror mir;
-    if (!spr->jRpc->getOvsdbMirrorConfig("br-int", mir)) {
+    if (!spr->jRpc->getOvsdbMirrorConfig("abc",mir)) {
         return false;
     }
     string erspanUuid;
@@ -78,14 +78,14 @@ BOOST_FIXTURE_TEST_CASE( verify_getport, SpanRendererFixture ) {
 }
 
 BOOST_FIXTURE_TEST_CASE( verify_add_remote_port, SpanRendererFixture ) {
-    spr->setNextId(1011);
+    spr->setNextId(1012);
 
     BOOST_CHECK_EQUAL(true, spr->addErspanPort(ERSPAN_PORT_PREFIX, "3.3.3.3", 2));
     BOOST_CHECK_EQUAL(true, spr->deleteErspanPort(ERSPAN_PORT_PREFIX));
 }
 
 BOOST_FIXTURE_TEST_CASE( verify_get_erspan_params, SpanRendererFixture ) {
-    spr->setNextId(1014);
+    spr->setNextId(1015);
 
     ErspanParams params;
     BOOST_CHECK_EQUAL(true, spr->jRpc->getCurrentErspanParams(ERSPAN_PORT_PREFIX, params));
