@@ -67,7 +67,8 @@ void ContractStatsManager::start() {
 
     {
         std::lock_guard<std::mutex> lock(timer_mutex);
-        timer->async_wait(bind(&ContractStatsManager::on_timer, this, error));
+        if (timer)
+            timer->async_wait(bind(&ContractStatsManager::on_timer, this, error));
     }
 }
 

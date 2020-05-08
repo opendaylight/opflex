@@ -173,8 +173,7 @@ verifyRoutingDomainDropStats(shared_ptr<RoutingDomain> rd,
 #endif
 }
 
-struct ofpbuf *makeFlowStatReplyMessage(MockConnection *pConn,
-                                        uint32_t priority, uint64_t cookie,
+struct ofpbuf *makeFlowStatReplyMessage(uint32_t priority, uint64_t cookie,
                                         uint32_t packet_count,
                                         uint32_t byte_count,
                                         uint32_t reg0, uint32_t reg2,
@@ -299,8 +298,7 @@ BOOST_FIXTURE_TEST_CASE(testRdDropStats, ContractStatsManagerFixture) {
     uint32_t byte_count = 6994;
 
     /* create  per RD flow drop stats  */
-    struct ofpbuf *res_msg = makeFlowStatReplyMessage(&integrationPortConn,
-                                                      priority,
+    struct ofpbuf *res_msg = makeFlowStatReplyMessage(priority,
                                                       flow::cookie::RD_POL_DROP_FLOW,
                                                       packet_count, byte_count,
                                                       0, 0, rdId);
