@@ -797,6 +797,7 @@ public:
     virtual void remoteEndpointUpdated(const std::string& uuid) {
         std::unique_lock<std::mutex> guard(mutex);
         updates.insert(uuid);
+        LOG(DEBUG) << "updated uuid: " << uuid << ", total#" << updates.size();
     };
 
     size_t numUpdates() {
@@ -844,8 +845,10 @@ BOOST_FIXTURE_TEST_CASE( remoteEndpoint, BaseFixture ) {
     WAIT_FOR(agent.getPolicyManager().groupExists(epg0->getURI()), 500);
     WAIT_FOR(agent.getPolicyManager().groupExists(epg1->getURI()), 500);
     WAIT_FOR(listener.numUpdates() == 3, 500);
-    listener.clear();
 
+    // Wait for egDomain and remoteEp updates to settle down
+    usleep(100000);
+    listener.clear();
     // update epg for ep
     rep1->addInvRemoteInventoryEpToGroupRSrc()
         ->setTargetEpGroup(epg1->getURI());
