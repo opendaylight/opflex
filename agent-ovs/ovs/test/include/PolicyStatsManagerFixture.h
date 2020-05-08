@@ -62,7 +62,12 @@ public:
         ofp_header *hdr = (ofp_header *)msg->data;
         ofptype typ;
         ofptype_decode(&typ, hdr);
-        BOOST_CHECK(typ == OFPTYPE_FLOW_STATS_REQUEST);
+        // Boost test methods arent thread safe. Main thread runs UTs and agentio
+        // can call mock class code. Both can run BOOST check calls which leads to
+        // data race. Calling boost check only if the type is a mismatch, which will
+        // then indicate a real error which can get logged with BOOST_CHECK.
+        if (typ != OFPTYPE_FLOW_STATS_REQUEST)
+            BOOST_CHECK(typ == OFPTYPE_FLOW_STATS_REQUEST);
         msg.reset();
         return 0;
     }
