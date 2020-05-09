@@ -336,30 +336,6 @@ void BaseTableDropStatsManager::handleTableDropStats(struct ofputil_flow_stats* 
     }
     PolicyStatsManager::flowCounterState_t &counterState =
             CurrentDropCounterState[fentry->table_id];
-    FlowEntryMatchKey_t flowEntryKey((uint32_t)ovs_ntohll(fentry->cookie),
-            fentry->priority, fentry->match);
-    auto it = counterState.newFlowCounterMap.find(flowEntryKey);
-    if(it != counterState.newFlowCounterMap.end()) {
-       /* This flow just got added and the newcounterMap entry
-        * will move to the oldcounterMap entry following the next call.
-        * to updateNewFlowCounters.Capture the accumulated count
-        * till now so that counter value is consistent for the time that
-        * the datapath is counting similar to what is being done for
-        * RDPolicyDrop counters, but different in that table drop counter
-        * is multi-dimensional
-        */
-        uint64_t packet_count = 0, byte_count =0;
-        PolicyStatsManager::FlowStats_t &counter =
-            TableDropCounterState[fentry->table_id];
-        if(counter.packet_count) {
-            packet_count = counter.packet_count.get();
-            byte_count = counter.byte_count.get();
-        }
-        counter.packet_count = make_optional(true,
-                (packet_count+fentry->packet_count));
-        counter.byte_count = make_optional(true,
-                (byte_count+fentry->byte_count));
-    }
     updateNewFlowCounters((uint32_t)ovs_ntohll(fentry->cookie),
                                           fentry->priority,
                                           (fentry->match),
