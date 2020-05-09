@@ -15,7 +15,7 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 8,
+  "id": 15,
   "links": [],
   "panels": [
     {
@@ -25,11 +25,11 @@
       "dashLength": 10,
       "dashes": false,
       "decimals": null,
-      "fill": 0,
+      "fill": 2,
       "fillGradient": 1,
       "gridPos": {
         "h": 10,
-        "w": 11,
+        "w": 12,
         "x": 0,
         "y": 0
       },
@@ -121,12 +121,12 @@
       "dashLength": 10,
       "dashes": false,
       "decimals": null,
-      "fill": 0,
+      "fill": 2,
       "fillGradient": 4,
       "gridPos": {
         "h": 10,
-        "w": 13,
-        "x": 11,
+        "w": 12,
+        "x": 12,
         "y": 0
       },
       "id": 3,
@@ -225,7 +225,7 @@
       "dataFormat": "timeseries",
       "gridPos": {
         "h": 10,
-        "w": 11,
+        "w": 12,
         "x": 0,
         "y": 10
       },
@@ -290,8 +290,8 @@
       "dataFormat": "timeseries",
       "gridPos": {
         "h": 10,
-        "w": 13,
-        "x": 11,
+        "w": 12,
+        "x": 12,
         "y": 10
       },
       "heatmap": {},
@@ -337,6 +337,201 @@
       "yBucketBound": "auto",
       "yBucketNumber": null,
       "yBucketSize": null
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "cacheTimeout": null,
+      "dashLength": 10,
+      "dashes": false,
+      "decimals": null,
+      "fill": 2,
+      "fillGradient": 1,
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
+      "id": 7,
+      "legend": {
+        "alignAsTable": true,
+        "avg": true,
+        "current": false,
+        "hideEmpty": true,
+        "hideZero": true,
+        "max": false,
+        "min": false,
+        "rightSide": true,
+        "show": false,
+        "sideWidth": null,
+        "sort": "avg",
+        "sortDesc": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pluginVersion": "6.3.6",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "topk(10, rate(opflex_svc_to_endpoint_packets{svc_name=\"kubernetes\"}[5m]))",
+          "intervalFactor": 1,
+          "legendFormat": "\"{{svc_namespace}}:{{svc_name}}\" to \"{{ep_namespace}}:{{ep_name}}\"",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Top 10 Pods consuming \"Kubernetes\" service [rate-5m]",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "pps",
+          "label": "",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "pps",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": false
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "cacheTimeout": null,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus-cloud",
+      "decimals": null,
+      "fill": 2,
+      "fillGradient": 1,
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 31
+      },
+      "id": 6,
+      "legend": {
+        "alignAsTable": true,
+        "avg": true,
+        "current": false,
+        "hideEmpty": true,
+        "hideZero": true,
+        "max": false,
+        "min": false,
+        "rightSide": true,
+        "show": false,
+        "sideWidth": null,
+        "sort": "avg",
+        "sortDesc": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pluginVersion": "6.3.6",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "rate(opflex_endpoint_to_svc_packets{ep_name=\"prometheus-deployment-5c4f4f5779-hvk5f\"}[5m])",
+          "intervalFactor": 1,
+          "legendFormat": "\"{{ep_namespace}}:{{ep_name}}\" to \"{{svc_namespace}}:{{svc_name}}\"",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Services used by Prometheus pod in cloud setup [rate-5m]",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "pps",
+          "label": "",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "pps",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": false
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     }
   ],
   "refresh": false,
@@ -368,6 +563,6 @@
   },
   "timezone": "",
   "title": "Opflex endpoint <--> service [east-west]",
-  "uid": "O8_oiXUZk",
-  "version": 33
+  "uid": "O8_stPQRk",
+  "version": 10
 }
