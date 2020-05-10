@@ -32,6 +32,7 @@ namespace opflexagent {
     }
 
     void SpanRenderer::spanUpdated(const opflex::modb::URI& spanURI) {
+        LOG(INFO) << "span updated " << spanURI;
         handleSpanUpdate(spanURI);
     }
 
@@ -247,7 +248,7 @@ namespace opflexagent {
         string erspanUuid;
         jRpc->getPortUuid(name, erspanUuid);
         if (erspanUuid.empty()) {
-            LOG(WARNING) << "Can't find port named " << name;
+            LOG(DEBUG) << "Port is not present in OVSDB: " << name;
             return false;
         }
         LOG(DEBUG) << name << " port uuid: " << erspanUuid;

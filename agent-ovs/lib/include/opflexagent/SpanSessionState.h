@@ -197,6 +197,9 @@ class SessionState {
         address destination;
 };
 
+/**
+ * ERSPAN params
+ */
 class ErspanParams {
 public:
     /**

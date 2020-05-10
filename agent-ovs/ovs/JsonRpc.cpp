@@ -146,22 +146,6 @@ bool JsonRpc::deleteIpfix(const string& brName) {
     return true;
 }
 
-bool JsonRpc::handleGetPortUuidResp(uint64_t reqId,
-        const Document& payload, string& uuid) {
-    if (payload.IsArray()) {
-        list<string> ids = { "0","rows","0","_uuid","1" };
-        Value val;
-        opflexagent::getValue(payload, ids, val);
-        if (!val.IsNull()) {
-            uuid = val.GetString();
-            return true;
-        }
-    } else {
-        LOG(WARNING) << "payload is not an array";
-    }
-    return false;
-}
-
 bool JsonRpc::updateBridgePorts(const string& brName, const string& portUuid, bool addToList) {
     JsonRpcTransactMessage msg1(OvsdbOperation::MUTATE, OvsdbTable::BRIDGE);
     set<tuple<string, OvsdbFunction, string>> condSet;
@@ -181,31 +165,6 @@ bool JsonRpc::updateBridgePorts(const string& brName, const string& portUuid, bo
     return true;
 }
 
-void JsonRpc::getUuidsFromVal(set<string>& uuidSet, const Document& payload, const string& index) {
-    LOG(INFO) << "getUuidsFromVal with index " << index;
-    list<string> ids = {"0","rows","0",index,"0"};
-    Value val;
-    opflexagent::getValue(payload, ids, val);
-    if (!val.IsNull() && val.IsString()) {
-        const string valStr(val.GetString());
-        ids = {"0", "rows", "0", index, "1"};
-        val.SetObject();
-        opflexagent::getValue(payload, ids, val);
-        if (valStr == "uuid") {
-            uuidSet.emplace(valStr);
-        }
-    } else {
-        LOG(WARNING) << "Error getting port uuid";
-        return;
-    }
-
-    if (val.IsArray()) {
-        for (Value::ConstValueIterator itr1 = val.Begin(); itr1 != val.End(); itr1++) {
-            uuidSet.emplace((*itr1)[1].GetString());
-        }
-    }
-}
-
 bool JsonRpc::getOvsdbMirrorConfig(const string& sessionName, mirror& mir) {
     JsonRpcTransactMessage msg1(OvsdbOperation::SELECT, OvsdbTable::MIRROR);
     set<tuple<string, OvsdbFunction, string>> condSet;
@@ -216,7 +175,7 @@ bool JsonRpc::getOvsdbMirrorConfig(const string& sessionName, mirror& mir) {
         LOG(DEBUG) << "Error sending message";
         return false;
     }
-    if (!handleMirrorConfig(pResp->reqId, pResp->payload, mir)) {
+    if (!handleMirrorConfig(pResp->payload, mir)) {
         return false;
     }
     // collect all port UUIDs in a set and query
@@ -235,7 +194,7 @@ bool JsonRpc::getOvsdbMirrorConfig(const string& sessionName, mirror& mir) {
         return false;
     }
     unordered_map<string, string> portMap;
-    if (!getPortList(pResp->reqId, pResp->payload, portMap)) {
+    if (!getPortList(pResp->payload, portMap)) {
         LOG(DEBUG) << "Unable to get port list";
         return false;
     }
@@ -263,7 +222,7 @@ bool JsonRpc::getCurrentErspanParams(const string& portName, ErspanParams& param
         LOG(DEBUG) << "Error sending message";
         return false;
     }
-    if (!getErspanOptions(pResp->reqId, pResp->payload, params)) {
+    if (!getErspanOptions(pResp->payload, params)) {
         LOG(DEBUG) << "failed to get ERSPAN options";
         return false;
     }
@@ -284,80 +243,74 @@ void JsonRpc::substituteSet(set<string>& s, const unordered_map<string, string>&
     s.insert(names.begin(), names.end());
 }
 
-bool JsonRpc::handleMirrorConfig(uint64_t reqId, const Document& payload, mirror& mir) {
-    set<string> uuids;
-    getUuidsFromVal(uuids, payload, "_uuid");
-    if (uuids.empty()) {
+bool JsonRpc::handleMirrorConfig(const Document& payload, mirror& mir) {
+    getUuidByNameFromResp(payload, "_uuid", mir.uuid);
+    if (mir.uuid.empty()) {
         LOG(DEBUG) << "no mirror found";
         return false;
     }
-
-    mir.uuid = *(uuids.begin());
-    getUuidsFromVal(uuids, payload, "select_src_port");
-
-    mir.src_ports.insert(uuids.begin(), uuids.end());
-    uuids.clear();
-    getUuidsFromVal(uuids, payload, "select_dst_port");
-
-    mir.dst_ports.insert(uuids.begin(), uuids.end());
-    uuids.clear();
-    getUuidsFromVal(uuids, payload, "output_port");
-
-    if (!uuids.empty()) {
-        mir.out_port = *(uuids.begin());
-    }
+    getUuidsByNameFromResp(payload, "select_src_port", mir.src_ports);
+    getUuidsByNameFromResp(payload, "select_dst_port", mir.dst_ports);
+    getUuidByNameFromResp(payload, "output_port", mir.out_port);
     return true;
 }
 
-bool JsonRpc::getPortList(const uint64_t reqId, const Document& payload, unordered_map<string, string>& portMap) {
-    if (payload.IsArray()) {
-        list<string> ids = { "0","rows"};
-        Value arr;
-        opflexagent::getValue(payload, ids, arr);
-        if (arr.IsNull() || !arr.IsArray()) {
-            LOG(DEBUG) << "expected array";
-            return false;
-        }
-        for (Value::ConstValueIterator itr1 = arr.Begin();
-             itr1 != arr.End(); itr1++) {
-            if (itr1->HasMember("name") && itr1->HasMember("_uuid")) {
-                LOG(DEBUG) << (*itr1)["name"].GetString() << ":"
-                           << (*itr1)["_uuid"][1].GetString();
-                portMap.emplace((*itr1)["_uuid"][1].GetString(),
-                             (*itr1)["name"].GetString());
-            } else {
-                LOG(WARNING) << "Result missing name/uuid";
-                return false;
+bool JsonRpc::getPortList(const Document& payload, unordered_map<string, string>& portMap) {
+    LOG(WARNING) << "Gettting port list";
+    if (payload.IsArray() && payload.Size() > 0 && payload[0].IsObject() && payload[0].HasMember("rows")) {
+        const Value& rowVal = payload[0]["rows"];
+        if (rowVal.IsArray()) {
+            for (Value::ConstValueIterator itr = rowVal.Begin(); itr != rowVal.End(); itr++) {
+                if (itr->HasMember("name") && itr->HasMember("_uuid")) {
+                    LOG(DEBUG) << (*itr)["name"].GetString() << ":"
+                               << (*itr)["_uuid"][1].GetString();
+                    portMap.emplace((*itr)["_uuid"][1].GetString(),
+                                    (*itr)["name"].GetString());
+                } else {
+                    LOG(WARNING) << "Result missing name/uuid";
+                    return false;
+                }
             }
         }
-        return true;
     } else {
         LOG(DEBUG) << "payload is not an array";
         return false;
     }
+    return true;
 }
 
-bool JsonRpc::getErspanOptions(const uint64_t reqId, const Document& payload, ErspanParams& params) {
+bool JsonRpc::getErspanOptions(const Document& payload, ErspanParams& params) {
     if (!payload.IsArray()) {
         LOG(DEBUG) << "payload is not an array";
         return false;
     }
-    list<string> ids = {"0","rows","0","options","1"};
-    Value arr;
-    opflexagent::getValue(payload, ids, arr);
-    if (arr.IsNull() || !arr.IsArray()) {
-        LOG(DEBUG) << "expected array";
-        return false;
-    }
-    for (Value::ConstValueIterator itr1 = arr.Begin(); itr1 != arr.End(); itr1++) {
-        string val((*itr1)[1].GetString());
-        string index((*itr1)[0].GetString());
-        if (index == "erspan_ver") {
-            params.setVersion(stoi(val));
-        } else if (index == "remote_ip") {
-            params.setRemoteIp(val);
+    if (payload.Size() > 0 && payload[0].IsObject() && payload[0].HasMember("rows")) {
+        const Value& rowVal = payload[0]["rows"];
+        if (rowVal.IsArray() && rowVal.Size() > 0 && rowVal[0].IsObject()) {
+            if (rowVal[0].HasMember("options")) {
+                const Value& optionsVal = rowVal[0]["options"];
+                if (optionsVal.Size() > 1 && optionsVal[0].IsString() && optionsVal[1].IsArray()) {
+                    string entry = optionsVal[0].GetString();
+                    if (entry == "map") {
+                        // then array of arrays
+                        for (Value::ConstValueIterator itr = optionsVal[1].Begin(); itr != optionsVal[1].End(); itr++) {
+                            if (itr->IsArray()) {
+                                for (Value::ConstValueIterator innerItr = itr->Begin(); innerItr != itr->End(); innerItr++) {
+                                    string key(innerItr[0].GetString());
+                                    if (key == "erspan_ver") {
+                                        params.setVersion(stoi(innerItr[1].GetString()));
+                                    } else if (key == "remote_ip") {
+                                        params.setRemoteIp(innerItr[1].GetString());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
+
     return (params.getVersion() != 0);
 }
 
@@ -374,9 +327,7 @@ void JsonRpc::getPortUuid(const string& name, string& uuid) {
         return;
     }
 
-    if (!handleGetPortUuidResp(pResp->reqId, pResp->payload,uuid)) {
-        LOG(WARNING) << "Unable to extract UUID from response";
-    }
+    getUuidByNameFromResp(pResp->payload, "_uuid", uuid);
 }
 
 void JsonRpc::getPortUuids(map<string, string>& ports) {
@@ -400,31 +351,69 @@ void JsonRpc::getMirrorUuid(const string& name, string& uuid) {
     if (!sendRequestAndAwaitResponse(requests)) {
         LOG(DEBUG) << "Error sending message";
     }
-    handleGetUuidResp(pResp->reqId, pResp->payload, uuid);
+    getUuidByNameFromResp(pResp->payload, "_uuid", uuid);
 }
 
 void JsonRpc::getBridgeUuid(const string& name, string& uuid) {
+    static const string uuidColumn("_uuid");
     JsonRpcTransactMessage msg1(OvsdbOperation::SELECT, OvsdbTable::BRIDGE);
     set<tuple<string, OvsdbFunction, string>> condSet;
     condSet.emplace("name", OvsdbFunction::EQ, name);
     msg1.conditions = condSet;
-    msg1.columns.emplace("_uuid");
+    msg1.columns.emplace(uuidColumn);
 
     const list<JsonRpcTransactMessage> requests{msg1};
     if (!sendRequestAndAwaitResponse(requests)) {
         LOG(DEBUG) << "Error sending message";
     }
-    handleGetUuidResp(pResp->reqId, pResp->payload, uuid);
+    getUuidByNameFromResp(pResp->payload, uuidColumn, uuid);
 }
 
-void JsonRpc::handleGetUuidResp(uint64_t reqId, const Document& payload, string& uuid) {
-    list<string> ids = {"0","rows","0","_uuid","1"};
-    Value val;
-    opflexagent::getValue(payload, ids, val);
-    if (!val.IsNull() && val.IsString()) {
-        uuid = val.GetString();
-    } else {
-        LOG(WARNING) << "Unable to extract UUID from response for request " << reqId;
+void JsonRpc::getUuidByNameFromResp(const Document& payload, const string& uuidName, string& uuid) {
+    if (payload.IsArray() && payload.Size() > 0 && payload[0].IsObject() && payload[0].HasMember("rows")) {
+        const Value& rowVal = payload[0]["rows"];
+        if (rowVal.IsArray() && rowVal.Size() > 0 && rowVal[0].IsObject()) {
+            if (rowVal[0].HasMember(uuidName.c_str())) {
+                const Value& uuidVal = rowVal[0][uuidName.c_str()];
+                if (uuidVal.Size() > 1) {
+                    uuid = uuidVal[1].GetString();
+                }
+            }
+        }
+    }
+}
+
+void JsonRpc::getUuidsByNameFromResp(const Document& payload, const string& uuidsName, set<string>& uuids) {
+    if (payload.IsArray() && payload.Size() > 0 && payload[0].IsObject() && payload[0].HasMember("rows")) {
+        const Value& rowVal = payload[0]["rows"];
+        if (rowVal.IsArray() && rowVal.Size() > 0 && rowVal[0].IsObject()) {
+            if (rowVal[0].HasMember(uuidsName.c_str())) {
+                LOG(DEBUG) << "Adding uuids for " << uuidsName;
+                const Value& uuidVal = rowVal[0][uuidsName.c_str()];
+                if (uuidVal.Size() > 1 && uuidVal[0].IsString() && uuidVal[1].IsArray()) {
+                    string entry = uuidVal[0].GetString();
+                    if (entry == "set") {
+                        // then array of arrays
+                        for (Value::ConstValueIterator itr = uuidVal[1].Begin(); itr != uuidVal[1].End(); itr++) {
+                            if (itr->IsArray()) {
+                                for (Value::ConstValueIterator uuidItr = itr->Begin(); uuidItr != itr->End(); uuidItr++) {
+                                    if (uuidItr->IsString()) {
+                                        string val = uuidItr->GetString();
+                                        if (val != "uuid") {
+                                            LOG(DEBUG) << "Adding uuid " << uuidItr->GetString();
+                                            uuids.emplace(uuidItr->GetString());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if (uuidVal.Size() > 1 && uuidVal[0].IsString() && uuidVal[1].IsString()) {
+                    LOG(WARNING) << "uuid " << uuidVal[1].GetString();
+                    uuids.emplace(uuidVal[1].GetString());
+                }
+            }
+        }
     }
 }
 
@@ -502,7 +491,7 @@ bool JsonRpc::createMirror(const string& brUuid, const string& name, const set<s
         LOG(DEBUG) << "Error sending message";
         return false;
     }
-    return handleCreateMirrorResp(pResp->reqId, pResp->payload);
+    return true;
 }
 
 bool JsonRpc::addErspanPort(const string& bridgeName, ErspanParams& params) {
@@ -574,18 +563,6 @@ inline void JsonRpc::populatePortUuids(const set<string>& ports, const map<strin
     }
 }
 
-bool JsonRpc::handleCreateMirrorResp(uint64_t reqId, const Document& payload) {
-    list<string> ids = {"0","uuid","1"};
-    Value val;
-    opflexagent::getValue(payload, ids, val);
-    if (!val.IsNull() && val.IsString()) {
-        LOG(DEBUG) << "mirror uuid " << val.GetString();
-    } else {
-        return false;
-    }
-    return true;
-}
-
 bool JsonRpc::deleteMirror(const string& brName, const string& sessionName) {
     string sessionUuid;
     getMirrorUuid(sessionName, sessionUuid);
@@ -624,75 +601,6 @@ bool JsonRpc::isConnected() {
         return false;
     }
     return true;
-}
-
-/**
- * walks the Value hierarchy according to the indices passed in the list
- * to retrieve the Value.
- * @param[in] val the Value tree to be walked
- * @param[in] idx list of indices to walk the tree.
- * @return a Value object.
- */
-void getValue(const Document& val, const list<string>& idx, Value& result) {
-    Document::AllocatorType& alloc = ((Document&)val).GetAllocator();
-    Value tmpVal(Type::kNullType);
-    if (val == NULL || !val.IsArray()) {
-        result = tmpVal;
-        return;
-    }
-    // if string is a number, treat it as index array.
-    // otherwise its an object name.
-    tmpVal.CopyFrom(val, alloc);
-    for (const auto& itr : idx) {
-        LOG(DEBUG) << "index " << itr;
-        bool isArr = false;
-        int index = 0;
-        try {
-            index = stoi(itr);
-            isArr = true;
-        } catch (const invalid_argument& e) {
-            // must be object name.
-        }
-
-        if (isArr) {
-            int arrSize = tmpVal.Size();
-            LOG(DEBUG) << "arr size " << arrSize;
-            if ((arrSize - 1) < index) {
-                LOG(DEBUG) << "arr size is less than index";
-                // array size is less than the index we are looking for
-                tmpVal.SetNull();
-                result = tmpVal;
-                return;
-            }
-            tmpVal = tmpVal[index];
-        } else if (tmpVal.IsObject()) {
-            if (tmpVal.HasMember(itr.c_str())) {
-                Value::ConstMemberIterator itrMem =
-                        tmpVal.FindMember(itr.c_str());
-                if (itrMem != tmpVal.MemberEnd()) {
-                    LOG(DEBUG) << "obj name << " << itrMem->name.GetString();
-                    tmpVal.CopyFrom(itrMem->value, alloc);
-                } else {
-                    // member not found
-                    tmpVal.RemoveAllMembers();
-                    result = tmpVal;
-                    return;
-                }
-            } else {
-                tmpVal.RemoveAllMembers();
-                result = tmpVal;
-                return;
-            }
-        } else {
-            LOG(DEBUG) << "Value is not array or object";
-            // some primitive type, should not hit this before
-            // list iteration is over.
-            tmpVal.SetNull();
-            result = tmpVal;
-            return;
-        }
-    }
-    result = tmpVal;
 }
 
 } // namespace opflexagemt

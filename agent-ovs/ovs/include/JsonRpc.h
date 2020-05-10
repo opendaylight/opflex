@@ -43,14 +43,6 @@ using namespace std::chrono;
 static const string ERSPAN_PORT_PREFIX("erspan");
 
 /**
- * helper function to get Value of a given index
- * @param[in] val rapidjson Value object
- * @param[in] idx list of strings representing indices
- * @param[out] result Value object
- */
-void getValue(const Document& val, const list<string>& idx, Value& result);
-
-/**
  * class to handle JSON/RPC transactions without opflex.
  */
 class JsonRpc : public Transaction {
@@ -78,22 +70,6 @@ public:
          */
         string out_port;
     } mirror;
-
-    /**
-     * results for bridge port list query
-     * contains UUIDs for the bridge and the ports in the ports column
-     * of the bridge table row.
-     */
-    struct BrPortResult {
-        /**
-         * bridge UUID
-         */
-        string brUuid;
-        /**
-         * set of port UUIDs
-         */
-        set<string> portUuids;
-    };
 
     /**
      * Constructor
@@ -223,32 +199,28 @@ public:
     bool deleteIpfix(const string& brName);
 
     /**
-     * process port uuid request response
-     * @param[in] reqId request ID
+     * retrieve uuid from response
      * @param[in] payload body of the response
-     * @param[out] uuid uuid of the port
-     * @return true id success, false otherwise
+     * @param[in] uuidName name of the UUID field
+     * @param[out] uuid uuid or empty
      */
-    static bool handleGetPortUuidResp(uint64_t reqId, const rapidjson::Document& payload,
-            string& uuid);
+    static void getUuidByNameFromResp(const rapidjson::Document& payload, const string& uuidName, string& uuid);
 
     /**
-     * process bridge port list response
-     * @param[in] reqId request ID
+     * retrieve list of uuids from response
      * @param[in] payload body of the response
-     * @param[out] uuid of the bridge
+     * @param[in] uuidsName name of the field that's a list of uuids
+     * @param[out] uuids list of uuids
      */
-    static void handleGetUuidResp(uint64_t reqId, const rapidjson::Document& payload, string& uuid);
+    static void getUuidsByNameFromResp(const rapidjson::Document& payload, const string& uuidsName, set<string>& uuids);
 
     /**
      * process mirror config
-     * @param[in] reqId request ID
      * @param[in] payload body of the response
      * @param[out] mir mirror info
      * @return true id success, false otherwise
      */
-    static bool handleMirrorConfig(uint64_t reqId, const rapidjson::Document& payload,
-            mirror& mir);
+    static bool handleMirrorConfig(const rapidjson::Document& payload, mirror& mir);
 
     /**
      * get the mirror config from OVSDB.
@@ -257,14 +229,6 @@ public:
      * @return bool true if retrieval succeeded, false otherwise.
      */
     bool getOvsdbMirrorConfig(const string& sessionName, mirror& mir);
-
-    /**
-     * process bridge port list response
-     * @param[in] reqId request ID
-     * @param[in] payload body of the response
-     * @return true id success, false otherwise
-     */
-    static bool handleCreateMirrorResp(uint64_t reqId, const rapidjson::Document& payload);
 
     /**
      * get ERSPAN interface parameters from OVSDB
@@ -288,31 +252,20 @@ public:
 private:
 
     /**
-     * get UUIDs from a Value struct. Can handle both a single uuid two tuple
-     * or an set of uuid two tuples.
-     * @param[in] payload Value struct with the info to be parsed
-     * @param[in] index an index into the Value struct
-     * @param[out] uuidSet set of UUIDs extracted from the Value struct
-     */
-    static void getUuidsFromVal(set<string>& uuidSet, const Document& payload, const string& index);
-
-    /**
      * get the list of port names and UUIDs from the Value struct
-     * @param[in] payload Value struct with the info to be parsed
      * @param[in] payload a Value struct
      * @param[out] portMap unordered map of port UUID as key and name as value
      * @return bool false if there is a problem getting the value, true otherwise
      */
-    static bool getPortList(const uint64_t reqId, const Document& payload, unordered_map<string, string>& portMap);
+    static bool getPortList(const Document& payload, unordered_map<string, string>& portMap);
 
     /**
      * get ERSPAN interface options from Value struct
-     * @param[in] reqId request ID
      * @param[in] payload response Value struct
      * @param[out] pararms ERSPAN session params
      * interface struct
      */
-    static bool getErspanOptions(const uint64_t reqId, const Document& payload, ErspanParams& params);
+    static bool getErspanOptions(const Document& payload, ErspanParams& params);
 
     template <typename T>
     inline bool sendRequestAndAwaitResponse(const list<T> &tl) {
