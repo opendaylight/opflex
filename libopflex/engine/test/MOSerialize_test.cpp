@@ -257,6 +257,14 @@ BOOST_FIXTURE_TEST_CASE( mo_deserialize , BaseFixture ) {
     BOOST_CHECK_EQUAL(1, children.size());
     BOOST_CHECK_EQUAL(uri3.toString(), children.at(0).toString());
     BOOST_CHECK_EQUAL(0, notifs.size());
+
+    string modbFilename("/tmp/mo.db");
+    serializer.dumpMODB(modbFilename);
+    //string unresolvedModbFilename("/tmp/unresolvedmo.db");
+    //FILE* unresolvedMoFile = fopen(unresolvedModbFilename.c_str(), "rw");
+    //serializer.dumpUnResolvedMODB(unresolvedMoFile);
+    FILE* moFile = fopen(modbFilename.c_str(), "r");
+    serializer.readMOs(moFile, sysClient);
 }
 
 BOOST_FIXTURE_TEST_CASE( types , BaseFixture ) {
