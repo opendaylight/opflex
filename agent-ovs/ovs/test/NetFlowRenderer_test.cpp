@@ -42,11 +42,17 @@ public:
     unique_ptr<OvsdbConnection> conn;
 };
 
-static bool verifyCreateDestroy(const shared_ptr<NetFlowRenderer>& nfr) {
+bool verifyCreateDestroy(Agent& agent, const shared_ptr<NetFlowRenderer>& nfr) {
     nfr->setNextId(2000);
 
+    Mutator mutator(agent.getFramework(), "policyreg");
+    auto root = modelgbp::dmtree::Root::createRootElement(agent.getFramework());
+    auto pu = root->addPolicyUniverse();
+    auto platform = pu->addPlatformConfig("platform");
+    auto exporterConfig = platform->addNetflowExporterConfig("exporter");
+    URI exporterURI = exporterConfig->getURI();
+
     bool result = nfr->createNetFlow("5.5.5.6", 10);
-    URI exporterURI("/PolicyUniverse/");
     ExporterConfigState state(exporterURI, "test");
     state.setVersion(1); // modelgbp::netflow::CollectorVersionEnumT::CONST_V5
     shared_ptr<ExporterConfigState> statePtr = make_shared<ExporterConfigState>(state);
@@ -54,12 +60,20 @@ static bool verifyCreateDestroy(const shared_ptr<NetFlowRenderer>& nfr) {
 
     result = result && nfr->createIpfix("5.5.5.5", 500);
     statePtr->setVersion(2); // modelgbp::netflow::CollectorVersionEnumT::CONST_V9
+
+    exporterConfig->setDscp(99);
+    exporterConfig->setSrcAddr("3.3.3.3");
+    exporterConfig->setVersion(2);
+    exporterConfig->setDstAddr("5.5.5.7");
+    agent.getNetFlowManager().updateExporterConfigState(exporterConfig);
+    nfr->exporterUpdated(exporterURI);
+
     nfr->exporterDeleted(statePtr);
     return result;
 }
 
 BOOST_FIXTURE_TEST_CASE( verify_createdestroy, NetFlowRendererFixture ) {
-    BOOST_CHECK_EQUAL(true, verifyCreateDestroy(nfr));
+    BOOST_CHECK_EQUAL(true, verifyCreateDestroy(agent, nfr));
 }
 BOOST_AUTO_TEST_SUITE_END()
 

@@ -174,19 +174,7 @@ bool JsonRpcTransactMessage::operator()(rapidjson::Writer<T> & writer) {
             string mutateRowOperation = toString(rowEntry.second.first);
             writer.String(mutateRowOperation.c_str());
             const TupleDataSet &tdsPtr = rowEntry.second.second;
-            if (!tdsPtr.label.empty()) {
-                writer.StartArray();
-                writer.String(tdsPtr.label.c_str());
-                writer.StartArray();
-                LOG(DEBUG) << "label " << tdsPtr.label;
-                for (auto &val : tdsPtr.tuples) {
-                    writePair<T>(writer, val, false);
-                }
-                writer.EndArray();
-                writer.EndArray();
-            } else {
-                writePair(writer, *(tdsPtr.tuples.begin()), false);
-            }
+            writePair(writer, *(tdsPtr.tuples.begin()), false);
             writer.EndArray();
         }
         writer.EndArray();

@@ -77,6 +77,12 @@ public:
     boost::optional<shared_ptr<ExporterConfigState>> getExporterConfigState(const URI& uri) const;
 
     /**
+     * Update the exporter config state
+     * @param exporterconfig Pointer to updated exporter config
+     */
+    void updateExporterConfigState(const shared_ptr<modelgbp::netflow::ExporterConfig>& exporterconfig);
+
+    /**
      * Are there any exporters
      *
      */

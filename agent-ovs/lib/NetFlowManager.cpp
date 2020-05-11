@@ -161,14 +161,13 @@ namespace opflexagent {
         return !exporter_map.empty();
     }
 
-    void NetFlowManager::NetFlowUniverseListener::processExporterConfig(const shared_ptr<modelgbp::netflow::ExporterConfig>& exporterconfig) {
-        shared_ptr<ExporterConfigState> exportState;
-        lock_guard<recursive_mutex> guard(opflexagent::NetFlowManager::exporter_mutex);
-        auto itr = netflowmanager.exporter_map.find(exporterconfig->getURI());
-        if (itr != netflowmanager.exporter_map.end()) {
-            netflowmanager.exporter_map.erase(itr);
+    void NetFlowManager::updateExporterConfigState(const shared_ptr<modelgbp::netflow::ExporterConfig>& exporterconfig) {
+        lock_guard<recursive_mutex> guard(NetFlowManager::exporter_mutex);
+        auto itr = exporter_map.find(exporterconfig->getURI());
+        if (itr != exporter_map.end()) {
+            exporter_map.erase(itr);
         }
-        exportState = make_shared<ExporterConfigState>(exporterconfig->getURI(), exporterconfig->getName().get());
+        shared_ptr<ExporterConfigState> exportState = make_shared<ExporterConfigState>(exporterconfig->getURI(), exporterconfig->getName().get());
         boost::optional<const string&> dstAddr =   exporterconfig->getDstAddr();
         if (dstAddr) {
             exportState->setDstAddress(dstAddr.get());
@@ -197,7 +196,11 @@ namespace opflexagent {
         if (activeTimeout) {
             exportState->setActiveFlowTimeOut(activeTimeout.get());
         }
-        netflowmanager.exporter_map.insert(make_pair(exporterconfig->getURI(), exportState));
+        exporter_map.insert(make_pair(exporterconfig->getURI(), exportState));
+    }
+
+    void NetFlowManager::NetFlowUniverseListener::processExporterConfig(const shared_ptr<modelgbp::netflow::ExporterConfig>& exporterconfig) {
+        netflowmanager.updateExporterConfigState(exporterconfig);
     }
 }
 

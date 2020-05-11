@@ -19,6 +19,8 @@ namespace opflexagent {
 class SimStatsFixture : public BaseFixture {
 public:
     SimStatsFixture() : BaseFixture(), epSource(&agent.getEndpointManager()), simStats(agent) {
+        boost::property_tree::ptree properties;
+        agent.setProperties(properties);
         simStats.start();
         shared_ptr<modelgbp::policy::Universe> pUniverse =
             modelgbp::policy::Universe::resolve(framework).get();

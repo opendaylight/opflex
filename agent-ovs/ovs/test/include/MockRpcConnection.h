@@ -96,7 +96,7 @@ public:
     /**
      * number of netflow responses to send
      */
-    static const unsigned int no_of_netflow_msgs = 10;
+    static const unsigned int no_of_netflow_msgs = 14;
 
     /**
      * rapidjson Document object array
@@ -234,6 +234,7 @@ private:
             selectPortsResp, selectPortsResp, selectPortsResp, createMirrorResp, interfaceInsertResp,
             selectPortsResp, updateBridgePortsResp, selectInterfaceResp,
             deleteResp, deleteResp, getBridgeUuidResp, createNetflowResp, deleteResp,
+            deleteResp, deleteResp, getBridgeUuidResp, createIpFixResp,
             deleteResp, deleteResp, getBridgeUuidResp, createIpFixResp, deleteResp};
 
 };

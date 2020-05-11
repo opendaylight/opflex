@@ -11,21 +11,17 @@
 
 #include <boost/test/unit_test.hpp>
 #include <modelgbp/dmtree/Root.hpp>
-#include <opflex/modb/Mutator.h>
 
 #include <opflexagent/logging.h>
 #include <opflexagent/test/BaseFixture.h>
 #include "Policies.h"
-#include <modelgbp/platform/Config.hpp>
-#include <modelgbp/netflow/ExporterConfig.hpp>
-#include <opflexagent/ExporterConfigState.h>
 #include <modelgbp/netflow/CollectorVersionEnumT.hpp>
 
 namespace opflexagent {
 
 using std::shared_ptr;
 using namespace modelgbp;
-using namespace modelgbp::gbp;
+
 class NetflowFixture : public BaseFixture {
 
 public:
@@ -72,20 +68,20 @@ static bool checkNetFlowDstAddress(boost::optional<shared_ptr<ExporterConfigStat
     if (!pExpst)
         return false;
     const string addr = pExportCfg->getDstAddr("");
-    LOG(DEBUG) << "checkNetFlowDstAddress" << addr;
+    LOG(DEBUG) << "checkNetFlowDstAddress " << addr;
     return pExpst.get()->getDstAddress() == addr;
 }
 static bool checkNetFlowDstPort(boost::optional<shared_ptr<ExporterConfigState>> pExpst,
                                 shared_ptr<netflow::ExporterConfig>& pExportCfg) {
     if (!pExpst)
         return false;
-    LOG(DEBUG) << "checkNetFlowDstPort" << pExpst.get()->getDestinationPort();
+    LOG(DEBUG) << "checkNetFlowDstPort " << pExpst.get()->getDestinationPort();
     return pExpst.get()->getDestinationPort() == pExportCfg->getDstPort();
 }
 static bool checkNetFlowVers(boost::optional<shared_ptr<ExporterConfigState>> pExpst,
                              shared_ptr<netflow::ExporterConfig>& pExportCfg) {
     if (!pExpst) return false;
-    LOG(DEBUG) << "checkNetFlowVers" << pExpst.get()->getVersion();
+    LOG(DEBUG) << "checkNetFlowVers " << std::to_string(pExpst.get()->getVersion());
     return pExpst.get()->getVersion() == pExportCfg->getVersion().get();
 }
 BOOST_FIXTURE_TEST_CASE( verify_artifacts, NetflowFixture ) {
@@ -96,18 +92,11 @@ BOOST_FIXTURE_TEST_CASE( verify_artifacts, NetflowFixture ) {
     WAIT_FOR(checkNetFlowDstPort(agent.getNetFlowManager().getExporterConfigState(exportCfg->getURI()), exportCfg), 500);
     WAIT_FOR(checkNetFlowVers(agent.getNetFlowManager().getExporterConfigState(exportCfg->getURI()), exportCfg), 500);
 
-    {
-        // remove exporter
-        Mutator mutator(framework, "policyreg");
-        exportCfg->remove();
-        mutator.commit();
-    }
-    {
-        // remove PlatformConfig
-        Mutator mutator(framework, "policyreg");
-        exportCfg->remove();
-        mutator.commit();
-    }
+    // remove exporter
+    Mutator mutator(framework, "policyreg");
+    exportCfg->remove();
+    mutator.commit();
+
     WAIT_FOR(!agent.getNetFlowManager().anyExporters(), 500)
 }
 

@@ -94,7 +94,7 @@ public:
 
 private:
     void updateConnectCb(const boost::system::error_code& ec, const opflex::modb::URI& uri);
-    void delConnectCb(const boost::system::error_code& ec, shared_ptr<ExporterConfigState> expSt);
+    void delConnectCb(const boost::system::error_code& ec, shared_ptr<ExporterConfigState>& expSt);
 };
 }
 #endif //OPFLEX_NETFLOWRENDERER_H

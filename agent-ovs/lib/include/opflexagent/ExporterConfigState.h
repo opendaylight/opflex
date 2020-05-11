@@ -104,13 +104,13 @@ public:
      */
     void setVersion(const uint8_t& version_ ) { version = version_; };
     /**
-     * get the version of  ExporterConfig
-     * @return version  of the  ExporterConfig
+     * get the dscp of ExporterConfig
+     * @return dscp of the ExporterConfig
      */
     const uint8_t& getDscp() const { return dscp; };
     /**
-     * set the  dscp of ExporterConfig
-     * @param[in] dscp_ dscp  of the  ExporterConfig
+     * set the dscp of ExporterConfig
+     * @param[in] dscp_ dscp of the ExporterConfig
      */
     void setDscp(const uint8_t& dscp_ ) { dscp = dscp_; };
     /**
@@ -118,11 +118,6 @@ public:
      * @return a URI
      */
     const URI& getUri() const { return uri; };
-    /**
-     * set the URI to the one passed in
-     * @param uri_ URI to a  ExporterConfig object
-     */
-    void setUri(URI &uri_) { uri = uri_; };
 };
 } // namespace opflexagent
 #endif //OPFLEX_EXPORTERCONFIGSTATE

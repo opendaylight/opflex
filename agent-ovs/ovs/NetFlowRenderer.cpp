@@ -14,17 +14,13 @@
 #include <opflexagent/NetFlowManager.h>
 
 #include <boost/optional.hpp>
-
-#include <boost/range/adaptors.hpp>
 #include <boost/format.hpp>
 
 
 namespace opflexagent {
     using boost::optional;
-    using namespace boost::adaptors;
 
     NetFlowRenderer::NetFlowRenderer(Agent& agent_) : JsonRpcRenderer(agent_) {
-
     }
 
     void NetFlowRenderer::start(const std::string& swName, OvsdbConnection* conn) {
@@ -94,13 +90,9 @@ namespace opflexagent {
         LOG(DEBUG) << "netflow/ipfix target " << target.c_str() << " version is " << std::to_string(expSt.get()->getVersion());
 
         if (expSt.get()->getVersion() == CollectorVersionEnumT::CONST_V5) {
-            LOG(DEBUG) << "creating netflow";
             uint32_t timeout = expSt.get()->getActiveFlowTimeOut();
-            LOG(DEBUG) << "netflow timeout " << timeout;
             createNetFlow(target, timeout);
-        } else if (expSt.get()->getVersion() ==
-                   CollectorVersionEnumT::CONST_V9) {
-            LOG(DEBUG) << "creating IPFIX";
+        } else if (expSt.get()->getVersion() == CollectorVersionEnumT::CONST_V9) {
             uint32_t sampling = expSt.get()->getSamplingRate();
             createIpfix(target, sampling);
         }
@@ -165,7 +157,7 @@ namespace opflexagent {
     }
 
     void NetFlowRenderer::delConnectCb(const boost::system::error_code& ec,
-                                       shared_ptr<ExporterConfigState> expSt) {
+                                       shared_ptr<ExporterConfigState>& expSt) {
         if (ec) {
             connection_timer.reset();
             return;
@@ -173,6 +165,4 @@ namespace opflexagent {
         LOG(DEBUG) << "timer span del cb";
         exporterDeleted(expSt);
     }
-
-
 }
