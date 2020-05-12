@@ -38,7 +38,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -61,6 +61,7 @@
       "targets": [
         {
           "expr": "opflex_peer_identity_req_count",
+          "legendFormat": "peer:{{peer}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -125,7 +126,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -148,6 +149,7 @@
       "targets": [
         {
           "expr": "opflex_peer_identity_resp_count",
+          "legendFormat": "peer:{{peer}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -212,7 +214,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -235,6 +237,7 @@
       "targets": [
         {
           "expr": "opflex_peer_identity_err_count",
+          "legendFormat": "peer:{{peer}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -299,7 +302,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -322,6 +325,7 @@
       "targets": [
         {
           "expr": "opflex_peer_policy_resolve_req_count",
+          "legendFormat": "peer:{{peer}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -386,7 +390,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -409,6 +413,7 @@
       "targets": [
         {
           "expr": "opflex_peer_policy_resolve_resp_count",
+          "legendFormat": "peer:{{peer}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -473,7 +478,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -496,6 +501,7 @@
       "targets": [
         {
           "expr": "opflex_peer_policy_resolve_err_count",
+          "legendFormat": "peer:{{peer}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -560,7 +566,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -583,6 +589,7 @@
       "targets": [
         {
           "expr": "opflex_peer_policy_unresolve_req_count",
+          "legendFormat": "peer:{{peer}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -647,7 +654,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -670,6 +677,7 @@
       "targets": [
         {
           "expr": "opflex_peer_policy_unresolve_resp_count",
+          "legendFormat": "peer:{{peer}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -734,7 +742,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -757,6 +765,7 @@
       "targets": [
         {
           "expr": "opflex_peer_policy_unresolve_err_count",
+          "legendFormat": "peer:{{peer}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -821,7 +830,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -844,6 +853,7 @@
       "targets": [
         {
           "expr": "opflex_peer_ep_declare_req_count",
+          "legendFormat": "peer:{{peer}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -908,7 +918,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -931,6 +941,7 @@
       "targets": [
         {
           "expr": "opflex_peer_ep_declare_resp_count",
+          "legendFormat": "peer:{{peer}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -995,7 +1006,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -1018,6 +1029,7 @@
       "targets": [
         {
           "expr": "opflex_peer_ep_declare_err_count",
+          "legendFormat": "peer:{{peer}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -1082,7 +1094,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -1105,6 +1117,7 @@
       "targets": [
         {
           "expr": "opflex_peer_ep_undeclare_req_count",
+          "legendFormat": "peer:{{peer}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -1169,7 +1182,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -1192,6 +1205,7 @@
       "targets": [
         {
           "expr": "opflex_peer_ep_undeclare_resp_count",
+          "legendFormat": "peer:{{peer}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -1256,7 +1270,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -1279,6 +1293,7 @@
       "targets": [
         {
           "expr": "opflex_peer_ep_undeclare_err_count",
+          "legendFormat": "peer:{{peer}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -1343,7 +1358,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -1366,6 +1381,7 @@
       "targets": [
         {
           "expr": "opflex_peer_state_report_req_count",
+          "legendFormat": "peer:{{peer}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -1430,7 +1446,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -1453,6 +1469,7 @@
       "targets": [
         {
           "expr": "opflex_peer_state_report_resp_count",
+          "legendFormat": "peer:{{peer}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -1517,7 +1534,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -1540,6 +1557,7 @@
       "targets": [
         {
           "expr": "opflex_peer_state_report_err_count",
+          "legendFormat": "peer:{{peer}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -1604,7 +1622,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -1627,6 +1645,7 @@
       "targets": [
         {
           "expr": "opflex_peer_policy_update_receive_count",
+          "legendFormat": "peer:{{peer}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -1701,5 +1720,5 @@
   "timezone": "",
   "title": "Opflex Peer Stats",
   "uid": "7nfGOi_Zk",
-  "version": 15
+  "version": 17
 }

@@ -15,7 +15,7 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 8,
+  "id": 15,
   "links": [],
   "panels": [
     {
@@ -26,14 +26,14 @@
       "dashes": false,
       "decimals": null,
       "fill": 2,
-      "fillGradient": 2,
+      "fillGradient": 1,
       "gridPos": {
         "h": 10,
         "w": 12,
         "x": 0,
         "y": 0
       },
-      "id": 14,
+      "id": 2,
       "legend": {
         "alignAsTable": true,
         "avg": true,
@@ -42,7 +42,7 @@
         "hideZero": true,
         "max": false,
         "min": false,
-        "rightSide": false,
+        "rightSide": true,
         "show": false,
         "sideWidth": null,
         "sort": "avg",
@@ -51,7 +51,7 @@
         "values": true
       },
       "lines": true,
-      "linewidth": 2,
+      "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
       "options": {
@@ -68,9 +68,9 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "topk(5, rate(opflex_svc_rx_packets{scope=\"cluster\"}[5m]))",
+          "expr": "rate(opflex_endpoint_to_svc_packets[5m])",
           "intervalFactor": 1,
-          "legendFormat": "svc={{name}}, ns={{namespace}}, node={{instance}}",
+          "legendFormat": "\"{{ep_namespace}}:{{ep_name}}\" to \"{{svc_namespace}}:{{svc_name}}\"",
           "refId": "A"
         }
       ],
@@ -78,7 +78,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "top 5 service ingress [rate-5m]",
+      "title": "endpoint to service [rate-5m]",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -111,7 +111,7 @@
         }
       ],
       "yaxis": {
-        "align": true,
+        "align": false,
         "alignLevel": null
       }
     },
@@ -122,7 +122,7 @@
       "dashes": false,
       "decimals": null,
       "fill": 2,
-      "fillGradient": 2,
+      "fillGradient": 4,
       "gridPos": {
         "h": 10,
         "w": 12,
@@ -138,7 +138,7 @@
         "hideZero": true,
         "max": false,
         "min": false,
-        "rightSide": false,
+        "rightSide": true,
         "show": false,
         "sideWidth": null,
         "sort": "avg",
@@ -147,7 +147,7 @@
         "values": true
       },
       "lines": true,
-      "linewidth": 2,
+      "linewidth": 1,
       "nullPointMode": "null",
       "options": {
         "dataLinks": []
@@ -162,9 +162,9 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "topk(5, rate(opflex_svc_tx_packets{scope=\"cluster\"}[5m]))",
+          "expr": "rate(opflex_svc_to_endpoint_packets[5m])",
           "intervalFactor": 1,
-          "legendFormat": "svc={{name}}, ns={{namespace}}, node={{instance}}",
+          "legendFormat": "\"{{svc_namespace}}:{{svc_name}}\" to \"{{ep_namespace}}:{{ep_name}}\"",
           "refId": "A"
         }
       ],
@@ -172,7 +172,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "top 5 service egress [rate-5m]",
+      "title": "service to endpoint [rate-5m]",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -210,564 +210,19 @@
       }
     },
     {
+      "aliasColors": {},
+      "bars": false,
       "cacheTimeout": null,
-      "cards": {
-        "cardPadding": 0.5,
-        "cardRound": null
-      },
-      "color": {
-        "cardColor": "#b4ff00",
-        "colorScale": "sqrt",
-        "colorScheme": "interpolateSpectral",
-        "exponent": 0.5,
-        "mode": "spectrum"
-      },
-      "dataFormat": "timeseries",
+      "dashLength": 10,
+      "dashes": false,
+      "decimals": null,
+      "fill": 2,
+      "fillGradient": 1,
       "gridPos": {
-        "h": 10,
-        "w": 12,
+        "h": 11,
+        "w": 24,
         "x": 0,
         "y": 10
-      },
-      "heatmap": {},
-      "hideZeroBuckets": false,
-      "highlightCards": true,
-      "id": 16,
-      "legend": {
-        "show": true
-      },
-      "links": [],
-      "options": {},
-      "pluginVersion": "6.3.6",
-      "reverseYBuckets": false,
-      "targets": [
-        {
-          "expr": "topk(5, rate(opflex_svc_rx_packets{scope=\"cluster\"}[5m]))",
-          "intervalFactor": 1,
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "top 5 service ingress [rate-5m]",
-      "tooltip": {
-        "show": true,
-        "showHistogram": true
-      },
-      "type": "heatmap",
-      "xAxis": {
-        "show": true
-      },
-      "xBucketNumber": null,
-      "xBucketSize": null,
-      "yAxis": {
-        "decimals": null,
-        "format": "pps",
-        "logBase": 1,
-        "max": null,
-        "min": null,
-        "show": true,
-        "splitFactor": null
-      },
-      "yBucketBound": "auto",
-      "yBucketNumber": null,
-      "yBucketSize": null
-    },
-    {
-      "cards": {
-        "cardPadding": 0.5,
-        "cardRound": null
-      },
-      "color": {
-        "cardColor": "rgb(86, 255, 0)",
-        "colorScale": "sqrt",
-        "colorScheme": "interpolateSpectral",
-        "exponent": 0.5,
-        "min": null,
-        "mode": "spectrum"
-      },
-      "dataFormat": "timeseries",
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 12,
-        "y": 10
-      },
-      "heatmap": {},
-      "hideZeroBuckets": false,
-      "highlightCards": true,
-      "id": 17,
-      "legend": {
-        "show": true
-      },
-      "options": {},
-      "reverseYBuckets": false,
-      "targets": [
-        {
-          "expr": "topk(5, rate(opflex_svc_tx_packets{scope=\"cluster\"}[5m]))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "top 5 service egress [rate-5m] ",
-      "tooltip": {
-        "show": true,
-        "showHistogram": true
-      },
-      "type": "heatmap",
-      "xAxis": {
-        "show": true
-      },
-      "xBucketNumber": null,
-      "xBucketSize": null,
-      "yAxis": {
-        "decimals": null,
-        "format": "pps",
-        "logBase": 1,
-        "max": null,
-        "min": null,
-        "show": true,
-        "splitFactor": null
-      },
-      "yBucketBound": "auto",
-      "yBucketNumber": null,
-      "yBucketSize": null
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "cacheTimeout": null,
-      "dashLength": 10,
-      "dashes": false,
-      "decimals": null,
-      "fill": 2,
-      "fillGradient": 2,
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 0,
-        "y": 20
-      },
-      "id": 2,
-      "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": false,
-        "hideEmpty": true,
-        "hideZero": true,
-        "max": false,
-        "min": false,
-        "rightSide": false,
-        "show": false,
-        "sideWidth": null,
-        "sort": "avg",
-        "sortDesc": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "options": {
-        "dataLinks": []
-      },
-      "percentage": false,
-      "pluginVersion": "6.3.6",
-      "pointradius": 2,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "rate(opflex_svc_rx_packets{scope=\"cluster\"}[5m])",
-          "intervalFactor": 1,
-          "legendFormat": "svc={{name}}, ns={{namespace}}, node={{instance}}",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "service ingress [rate-5m]",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "pps",
-          "label": "",
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "pps",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": false
-        }
-      ],
-      "yaxis": {
-        "align": true,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "decimals": null,
-      "fill": 2,
-      "fillGradient": 2,
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 12,
-        "y": 20
-      },
-      "id": 15,
-      "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": false,
-        "hideEmpty": true,
-        "hideZero": true,
-        "max": false,
-        "min": false,
-        "rightSide": false,
-        "show": false,
-        "sideWidth": null,
-        "sort": "avg",
-        "sortDesc": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 2,
-      "nullPointMode": "null",
-      "options": {
-        "dataLinks": []
-      },
-      "percentage": false,
-      "pointradius": 2,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "rate(opflex_svc_tx_packets{scope=\"cluster\"}[5m])",
-          "intervalFactor": 1,
-          "legendFormat": "svc={{name}}, ns={{namespace}}, node={{instance}}",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "service egress [rate-5m]",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "pps",
-          "label": "",
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": false
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "cacheTimeout": null,
-      "cards": {
-        "cardPadding": 0.5,
-        "cardRound": null
-      },
-      "color": {
-        "cardColor": "#b4ff00",
-        "colorScale": "sqrt",
-        "colorScheme": "interpolateSpectral",
-        "exponent": 0.5,
-        "mode": "spectrum"
-      },
-      "dataFormat": "timeseries",
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 0,
-        "y": 30
-      },
-      "heatmap": {},
-      "hideZeroBuckets": false,
-      "highlightCards": true,
-      "id": 5,
-      "legend": {
-        "show": true
-      },
-      "links": [],
-      "options": {},
-      "pluginVersion": "6.3.6",
-      "reverseYBuckets": false,
-      "targets": [
-        {
-          "expr": "rate(opflex_svc_rx_packets{scope=\"cluster\"}[5m])",
-          "intervalFactor": 1,
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "service ingress [rate-5m]",
-      "tooltip": {
-        "show": true,
-        "showHistogram": true
-      },
-      "type": "heatmap",
-      "xAxis": {
-        "show": true
-      },
-      "xBucketNumber": null,
-      "xBucketSize": null,
-      "yAxis": {
-        "decimals": null,
-        "format": "pps",
-        "logBase": 1,
-        "max": null,
-        "min": null,
-        "show": true,
-        "splitFactor": null
-      },
-      "yBucketBound": "auto",
-      "yBucketNumber": null,
-      "yBucketSize": null
-    },
-    {
-      "cards": {
-        "cardPadding": 0.5,
-        "cardRound": null
-      },
-      "color": {
-        "cardColor": "rgb(86, 255, 0)",
-        "colorScale": "sqrt",
-        "colorScheme": "interpolateSpectral",
-        "exponent": 0.5,
-        "min": null,
-        "mode": "spectrum"
-      },
-      "dataFormat": "timeseries",
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 12,
-        "y": 30
-      },
-      "heatmap": {},
-      "hideZeroBuckets": false,
-      "highlightCards": true,
-      "id": 4,
-      "legend": {
-        "show": true
-      },
-      "options": {},
-      "reverseYBuckets": false,
-      "targets": [
-        {
-          "expr": "rate(opflex_svc_tx_packets{scope=\"cluster\"}[5m])",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "service egress [rate-5m] ",
-      "tooltip": {
-        "show": true,
-        "showHistogram": true
-      },
-      "type": "heatmap",
-      "xAxis": {
-        "show": true
-      },
-      "xBucketNumber": null,
-      "xBucketSize": null,
-      "yAxis": {
-        "decimals": null,
-        "format": "pps",
-        "logBase": 1,
-        "max": null,
-        "min": null,
-        "show": true,
-        "splitFactor": null
-      },
-      "yBucketBound": "auto",
-      "yBucketNumber": null,
-      "yBucketSize": null
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "cacheTimeout": null,
-      "dashLength": 10,
-      "dashes": false,
-      "decimals": null,
-      "fill": 2,
-      "fillGradient": 2,
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 0,
-        "y": 40
-      },
-      "id": 6,
-      "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": false,
-        "hideEmpty": true,
-        "hideZero": true,
-        "max": false,
-        "min": false,
-        "rightSide": false,
-        "show": false,
-        "sideWidth": null,
-        "sort": "avg",
-        "sortDesc": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "options": {
-        "dataLinks": []
-      },
-      "percentage": false,
-      "pluginVersion": "6.3.6",
-      "pointradius": 2,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "rate(opflex_svc_target_rx_packets{svc_scope=\"cluster\"}[5m])",
-          "intervalFactor": 1,
-          "legendFormat": "pod={{ep_name}}, ns={{ep_namespace}}, node={{instance}}",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "service-pod ingress [rate-5m]",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "pps",
-          "label": "",
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "pps",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": false
-        }
-      ],
-      "yaxis": {
-        "align": true,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "decimals": null,
-      "fill": 2,
-      "fillGradient": 2,
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 12,
-        "y": 40
       },
       "id": 7,
       "legend": {
@@ -778,7 +233,7 @@
         "hideZero": true,
         "max": false,
         "min": false,
-        "rightSide": false,
+        "rightSide": true,
         "show": false,
         "sideWidth": null,
         "sort": "avg",
@@ -787,12 +242,14 @@
         "values": true
       },
       "lines": true,
-      "linewidth": 2,
+      "linewidth": 1,
+      "links": [],
       "nullPointMode": "null",
       "options": {
         "dataLinks": []
       },
       "percentage": false,
+      "pluginVersion": "6.3.6",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -802,9 +259,9 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(opflex_svc_target_tx_packets{svc_scope=\"cluster\"}[5m])",
+          "expr": "topk(10, rate(opflex_svc_to_endpoint_packets{svc_name=\"kubernetes\"}[5m]))",
           "intervalFactor": 1,
-          "legendFormat": "pod={{ep_name}}, ns={{ep_namespace}}, node={{instance}}",
+          "legendFormat": "\"{{svc_namespace}}:{{svc_name}}\" to \"{{ep_namespace}}:{{ep_name}}\"",
           "refId": "A"
         }
       ],
@@ -812,7 +269,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "service-pod egress [rate-5m]",
+      "title": "Top 10 Pods consuming \"Kubernetes\" service [rate-5m]",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -836,7 +293,7 @@
           "show": true
         },
         {
-          "format": "short",
+          "format": "pps",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -850,151 +307,22 @@
       }
     },
     {
+      "aliasColors": {},
+      "bars": false,
       "cacheTimeout": null,
-      "cards": {
-        "cardPadding": 0.5,
-        "cardRound": null
-      },
-      "color": {
-        "cardColor": "#b4ff00",
-        "colorScale": "sqrt",
-        "colorScheme": "interpolateSpectral",
-        "exponent": 0.5,
-        "mode": "spectrum"
-      },
-      "dataFormat": "timeseries",
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus-cloud",
+      "decimals": null,
+      "fill": 2,
+      "fillGradient": 1,
       "gridPos": {
-        "h": 10,
-        "w": 12,
+        "h": 11,
+        "w": 24,
         "x": 0,
-        "y": 50
+        "y": 21
       },
-      "heatmap": {},
-      "hideZeroBuckets": false,
-      "highlightCards": true,
-      "id": 8,
-      "legend": {
-        "show": true
-      },
-      "links": [],
-      "options": {},
-      "pluginVersion": "6.3.6",
-      "reverseYBuckets": false,
-      "targets": [
-        {
-          "expr": "rate(opflex_svc_target_rx_packets{svc_scope=\"cluster\"}[5m])",
-          "intervalFactor": 1,
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "service-pod ingress [rate-5m]",
-      "tooltip": {
-        "show": true,
-        "showHistogram": true
-      },
-      "type": "heatmap",
-      "xAxis": {
-        "show": true
-      },
-      "xBucketNumber": null,
-      "xBucketSize": null,
-      "yAxis": {
-        "decimals": null,
-        "format": "pps",
-        "logBase": 1,
-        "max": null,
-        "min": null,
-        "show": true,
-        "splitFactor": null
-      },
-      "yBucketBound": "auto",
-      "yBucketNumber": null,
-      "yBucketSize": null
-    },
-    {
-      "cards": {
-        "cardPadding": 0.5,
-        "cardRound": null
-      },
-      "color": {
-        "cardColor": "rgb(86, 255, 0)",
-        "colorScale": "sqrt",
-        "colorScheme": "interpolateSpectral",
-        "exponent": 0.5,
-        "min": null,
-        "mode": "spectrum"
-      },
-      "dataFormat": "timeseries",
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 12,
-        "y": 50
-      },
-      "heatmap": {},
-      "hideZeroBuckets": false,
-      "highlightCards": true,
-      "id": 9,
-      "legend": {
-        "show": true
-      },
-      "options": {},
-      "reverseYBuckets": false,
-      "targets": [
-        {
-          "expr": "rate(opflex_svc_target_tx_packets{svc_scope=\"cluster\"}[5m])",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "service-pod egress [rate-5m] ",
-      "tooltip": {
-        "show": true,
-        "showHistogram": true
-      },
-      "type": "heatmap",
-      "xAxis": {
-        "show": true
-      },
-      "xBucketNumber": null,
-      "xBucketSize": null,
-      "yAxis": {
-        "decimals": null,
-        "format": "pps",
-        "logBase": 1,
-        "max": null,
-        "min": null,
-        "show": true,
-        "splitFactor": null
-      },
-      "yBucketBound": "auto",
-      "yBucketNumber": null,
-      "yBucketSize": null
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "cacheTimeout": null,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus",
-      "decimals": null,
-      "fill": 2,
-      "fillGradient": 2,
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 0,
-        "y": 60
-      },
-      "id": 10,
+      "id": 6,
       "legend": {
         "alignAsTable": true,
         "avg": true,
@@ -1003,7 +331,7 @@
         "hideZero": true,
         "max": false,
         "min": false,
-        "rightSide": false,
+        "rightSide": true,
         "show": false,
         "sideWidth": null,
         "sort": "avg",
@@ -1012,7 +340,7 @@
         "values": true
       },
       "lines": true,
-      "linewidth": 2,
+      "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
       "options": {
@@ -1029,9 +357,9 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum by (job) (rate(opflex_svc_rx_packets{name=\"kube-dns\",namespace=\"kube-system\",scope=\"cluster\"}[5m]))",
+          "expr": "rate(opflex_endpoint_to_svc_packets{ep_namespace=\"monitoring\"}[5m])",
           "intervalFactor": 1,
-          "legendFormat": "svc=kube-dns, ns=kube-system, scope=cluster",
+          "legendFormat": "\"{{ep_namespace}}:{{ep_name}}\" to \"{{svc_namespace}}:{{svc_name}}\"",
           "refId": "A"
         }
       ],
@@ -1039,7 +367,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "kube-dns ingress [rate-5m]",
+      "title": "Services used by Prometheus pod in cloud setup [rate-5m]",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1072,301 +400,7 @@
         }
       ],
       "yaxis": {
-        "align": true,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "cacheTimeout": null,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus",
-      "decimals": null,
-      "fill": 2,
-      "fillGradient": 2,
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 12,
-        "y": 60
-      },
-      "id": 11,
-      "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": false,
-        "hideEmpty": true,
-        "hideZero": true,
-        "max": false,
-        "min": false,
-        "rightSide": false,
-        "show": false,
-        "sideWidth": null,
-        "sort": "avg",
-        "sortDesc": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "options": {
-        "dataLinks": []
-      },
-      "percentage": false,
-      "pluginVersion": "6.3.6",
-      "pointradius": 2,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "sum by (job) (rate(opflex_svc_tx_packets{name=\"kube-dns\",namespace=\"kube-system\",scope=\"cluster\"}[5m]))",
-          "intervalFactor": 1,
-          "legendFormat": "svc=kube-dns, ns=kube-system, scope=cluster",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "kube-dns egress [rate-5m]",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "pps",
-          "label": "",
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "pps",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": false
-        }
-      ],
-      "yaxis": {
-        "align": true,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "cacheTimeout": null,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus",
-      "decimals": null,
-      "fill": 2,
-      "fillGradient": 2,
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 0,
-        "y": 70
-      },
-      "id": 12,
-      "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": false,
-        "hideEmpty": true,
-        "hideZero": true,
-        "max": false,
-        "min": false,
-        "rightSide": false,
-        "show": false,
-        "sideWidth": null,
-        "sort": "avg",
-        "sortDesc": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "options": {
-        "dataLinks": []
-      },
-      "percentage": false,
-      "pluginVersion": "6.3.6",
-      "pointradius": 2,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "rate(opflex_svc_target_rx_packets{svc_name=\"kube-dns\",svc_scope=\"cluster\"}[5m])",
-          "intervalFactor": 1,
-          "legendFormat": "pod={{ep_name}}, ns={{ep_namespace}}, node={{instance}}",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "kube-dns ingress per pod LB [rate-5m]",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "pps",
-          "label": "",
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "pps",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": false
-        }
-      ],
-      "yaxis": {
-        "align": true,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "cacheTimeout": null,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus",
-      "decimals": null,
-      "fill": 2,
-      "fillGradient": 2,
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 12,
-        "y": 70
-      },
-      "id": 13,
-      "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": false,
-        "hideEmpty": true,
-        "hideZero": true,
-        "max": false,
-        "min": false,
-        "rightSide": false,
-        "show": false,
-        "sideWidth": null,
-        "sort": "avg",
-        "sortDesc": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null",
-      "options": {
-        "dataLinks": []
-      },
-      "percentage": false,
-      "pluginVersion": "6.3.6",
-      "pointradius": 2,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "rate(opflex_svc_target_tx_packets{svc_name=\"kube-dns\",svc_scope=\"cluster\"}[5m])",
-          "intervalFactor": 1,
-          "legendFormat": "pod={{ep_name}}, ns={{ep_namespace}}, node={{instance}}",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "kube-dns egress per pod LB [rate-5m]",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "pps",
-          "label": "",
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "pps",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": false
-        }
-      ],
-      "yaxis": {
-        "align": true,
+        "align": false,
         "alignLevel": null
       }
     }
@@ -1399,7 +433,7 @@
     ]
   },
   "timezone": "",
-  "title": "Opflex Service LB [east-west]",
-  "uid": "O8_oiXUZz",
-  "version": 101
+  "title": "Opflex endpoint <--> service [east-west]",
+  "uid": "O8_stPQRk",
+  "version": 14
 }

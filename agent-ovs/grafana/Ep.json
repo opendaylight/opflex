@@ -38,7 +38,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -60,7 +60,8 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "opflex_endpoint_active_total",
+          "expr": "sum by (job) (opflex_endpoint_active_total)",
+          "legendFormat": ":",
           "refId": "A"
         }
       ],
@@ -124,7 +125,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -145,7 +146,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(opflex_endpoint_tx_packets[5m])",
+          "expr": "sum by (name,namespace) (rate(opflex_endpoint_tx_packets[5m]))",
           "format": "time_series",
           "intervalFactor": 5,
           "refId": "A"
@@ -211,7 +212,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -232,7 +233,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(opflex_endpoint_rx_packets[5m])",
+          "expr": "sum by (name,namespace) (rate(opflex_endpoint_rx_packets[5m]))",
           "format": "time_series",
           "intervalFactor": 5,
           "refId": "A"
@@ -298,7 +299,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -319,7 +320,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(opflex_endpoint_tx_drop_packets[5m])",
+          "expr": "sum by (name,namespace) (rate(opflex_endpoint_tx_drop_packets[5m]))",
           "format": "time_series",
           "intervalFactor": 1,
           "refId": "A"
@@ -385,7 +386,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -406,7 +407,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(opflex_endpoint_rx_drop_packets[5m])",
+          "expr": "sum by (name,namespace) (rate(opflex_endpoint_rx_drop_packets[5m]))",
           "format": "time_series",
           "intervalFactor": 5,
           "refId": "A"
@@ -483,5 +484,5 @@
   "timezone": "",
   "title": "Opflex endpoints",
   "uid": "NTSLelUWk",
-  "version": 18
+  "version": 22
 }

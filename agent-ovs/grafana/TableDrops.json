@@ -37,7 +37,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -59,6 +59,7 @@
       "targets": [
         {
           "expr": "rate(opflex_table_drop_packets[5m])",
+          "legendFormat": "{{table}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -122,7 +123,7 @@
         "current": false,
         "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
         "values": false
       },
@@ -144,6 +145,7 @@
       "targets": [
         {
           "expr": "rate(opflex_policy_drop_packets[5m])",
+          "legendFormat": "vrf:{{routing_domain}}, instance:{{instance}}",
           "refId": "A"
         }
       ],
@@ -218,5 +220,5 @@
   "timezone": "",
   "title": "Opflex Table Drop Stats",
   "uid": "S7HPvmlZk",
-  "version": 4
+  "version": 6
 }

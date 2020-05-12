@@ -69,9 +69,9 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "topk(5, rate(opflex_svc_rx_packets{scope=\"nodePort\"}[5m]))",
+          "expr": "topk(5, sum by (name, namespace) (rate(opflex_svc_rx_packets{scope=\"nodePort\"}[5m])))",
           "intervalFactor": 1,
-          "legendFormat": "svc={{name}}, ns={{namespace}}, node={{instance}}",
+          "legendFormat": "svc={{name}}, ns={{namespace}}",
           "refId": "A"
         }
       ],
@@ -79,7 +79,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "top 5 service ingress [rate-5m]",
+      "title": "top 5 services ingress [rate-5m]",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -164,9 +164,9 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "topk(5, rate(opflex_svc_tx_packets{scope=\"nodePort\"}[5m]))",
+          "expr": "topk(5, sum by (name, namespace) (rate(opflex_svc_tx_packets{scope=\"nodePort\"}[5m])))",
           "intervalFactor": 1,
-          "legendFormat": "svc={{name}}, ns={{namespace}}, node={{instance}}",
+          "legendFormat": "svc={{name}}, ns={{namespace}}",
           "refId": "A"
         }
       ],
@@ -174,7 +174,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "top 5 service egress [rate-5m]",
+      "title": "top 5 services egress [rate-5m]",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -455,9 +455,9 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum by (job) (rate(opflex_svc_rx_packets{name=\"prometheus-service\",namespace=\"monitoring\",scope=\"nodePort\"}[5m]))",
+          "expr": "sum by (name,namespace) (rate(opflex_svc_rx_packets{name=\"prometheus-service\",namespace=\"monitoring\",scope=\"nodePort\"}[5m]))",
           "intervalFactor": 1,
-          "legendFormat": "svc=prometheus-service, ns=monitoring, scope=nodePort",
+          "legendFormat": "svc={{name}}, ns={{namespace}}",
           "refId": "A"
         }
       ],
@@ -553,9 +553,9 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum by (job) (rate(opflex_svc_tx_packets{name=\"prometheus-service\",namespace=\"monitoring\",scope=\"nodePort\"}[5m]))",
+          "expr": "sum by (name,namespace) (rate(opflex_svc_tx_packets{name=\"prometheus-service\",namespace=\"monitoring\",scope=\"nodePort\"}[5m]))",
           "intervalFactor": 1,
-          "legendFormat": "svc=prometheus-service, ns=monitoring, scope=nodePort",
+          "legendFormat": "svc={{name}}, ns={{namespace}}",
           "refId": "A"
         }
       ],
@@ -827,5 +827,5 @@
   "timezone": "",
   "title": "Opflex Service LB [nodePort]",
   "uid": "O8_ub123x",
-  "version": 11
+  "version": 16
 }

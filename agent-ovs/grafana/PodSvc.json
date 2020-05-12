@@ -210,135 +210,6 @@
       }
     },
     {
-      "cacheTimeout": null,
-      "cards": {
-        "cardPadding": 0.5,
-        "cardRound": null
-      },
-      "color": {
-        "cardColor": "#b4ff00",
-        "colorScale": "sqrt",
-        "colorScheme": "interpolateSpectral",
-        "exponent": 0.5,
-        "mode": "spectrum"
-      },
-      "dataFormat": "timeseries",
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 0,
-        "y": 10
-      },
-      "heatmap": {},
-      "hideZeroBuckets": false,
-      "highlightCards": true,
-      "id": 5,
-      "legend": {
-        "show": true
-      },
-      "links": [],
-      "options": {},
-      "pluginVersion": "6.3.6",
-      "reverseYBuckets": false,
-      "targets": [
-        {
-          "expr": "rate(opflex_endpoint_to_svc_packets[5m])",
-          "intervalFactor": 1,
-          "legendFormat": "\"{{ep_namespace}}:{{ep_name}}\" to \"{{svc_namespace}}:{{svc_name}}\"",
-          "refId": "A"
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "endpoint to service [rate-5m]",
-      "tooltip": {
-        "show": true,
-        "showHistogram": true
-      },
-      "type": "heatmap",
-      "xAxis": {
-        "show": true
-      },
-      "xBucketNumber": null,
-      "xBucketSize": null,
-      "yAxis": {
-        "decimals": null,
-        "format": "pps",
-        "logBase": 1,
-        "max": null,
-        "min": null,
-        "show": true,
-        "splitFactor": null
-      },
-      "yBucketBound": "auto",
-      "yBucketNumber": null,
-      "yBucketSize": null
-    },
-    {
-      "cards": {
-        "cardPadding": 0.5,
-        "cardRound": null
-      },
-      "color": {
-        "cardColor": "#b4ff00",
-        "colorScale": "sqrt",
-        "colorScheme": "interpolateSpectral",
-        "exponent": 0.5,
-        "min": null,
-        "mode": "spectrum"
-      },
-      "dataFormat": "timeseries",
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 12,
-        "y": 10
-      },
-      "heatmap": {},
-      "hideZeroBuckets": false,
-      "highlightCards": true,
-      "id": 4,
-      "legend": {
-        "show": true
-      },
-      "options": {},
-      "reverseYBuckets": false,
-      "targets": [
-        {
-          "expr": "rate(opflex_svc_to_endpoint_packets[5m])",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "\"{{svc_namespace}}:{{svc_name}}\" to \"{{ep_namespace}}:{{ep_name}}\"",
-          "refId": "A"
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "service to endpoint [rate-5m] ",
-      "tooltip": {
-        "show": true,
-        "showHistogram": true
-      },
-      "type": "heatmap",
-      "xAxis": {
-        "show": true
-      },
-      "xBucketNumber": null,
-      "xBucketSize": null,
-      "yAxis": {
-        "decimals": null,
-        "format": "pps",
-        "logBase": 1,
-        "max": null,
-        "min": null,
-        "show": true,
-        "splitFactor": null
-      },
-      "yBucketBound": "auto",
-      "yBucketNumber": null,
-      "yBucketSize": null
-    },
-    {
       "aliasColors": {},
       "bars": false,
       "cacheTimeout": null,
@@ -351,7 +222,7 @@
         "h": 11,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 10
       },
       "id": 7,
       "legend": {
@@ -449,7 +320,7 @@
         "h": 11,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 21
       },
       "id": 6,
       "legend": {
@@ -486,7 +357,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(opflex_endpoint_to_svc_packets{ep_name=\"prometheus-deployment-5c4f4f5779-hvk5f\"}[5m])",
+          "expr": "rate(opflex_endpoint_to_svc_packets{ep_namespace=\"monitoring\"}[5m])",
           "intervalFactor": 1,
           "legendFormat": "\"{{ep_namespace}}:{{ep_name}}\" to \"{{svc_namespace}}:{{svc_name}}\"",
           "refId": "A"
@@ -564,5 +435,5 @@
   "timezone": "",
   "title": "Opflex endpoint <--> service [east-west]",
   "uid": "O8_stPQRk",
-  "version": 10
+  "version": 14
 }
