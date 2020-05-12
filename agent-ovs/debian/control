@@ -6,7 +6,7 @@ Build-Depends:
  debhelper (>= 8.0.0), autotools-dev, libboost-all-dev (>= 1.53),
  libopflex-dev, libmodelgbp-dev, libnoiro-openvswitch-dev (>= 2.12.0) <!norenderer>,
  libnoiro-openvswitch (>= 2.12.0) <!norenderer>, libnetfilter-conntrack-dev (>= 1.0) <!norenderer>,
- rapidjson-dev (>=1.1), pkgconf, dh-systemd, libssl-dev (>= 1.0)
+ rapidjson-dev (>=1.1), pkgconf, dh-systemd, libssl-dev (>= 1.0), prometheus-cpp (>= 0.9.0)
 Standards-Version: 3.9.8
 Homepage: https://wiki.opendaylight.org/view/OpFlex:Main
 
@@ -51,7 +51,8 @@ Architecture: any
 Build-Profiles: <!norenderer>
 Depends:
  opflex-agent (>= ${binary:Version}),
- opflex-agent-renderer-openvswitch (>= ${binary:Version})
+ opflex-agent-renderer-openvswitch (>= ${binary:Version}),
+ prometheus-cpp (>= 0.9.0)
 Description: Transitional package for OpFlex Agent and OVS renderer
  This package depends on opflex-agent and
  opflex-agent-renderer-openvswitch to allow smoother transition from

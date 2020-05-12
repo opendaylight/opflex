@@ -31,6 +31,9 @@ Requires: boost-system
 Requires: boost-date-time
 Requires: boost-thread
 Requires: boost-filesystem
+Requires: prometheus-cpp-lib >= 0.9.0
+BuildRequires: prometheus-cpp-lib >= 0.9.0
+BuildRequires: prometheus-cpp-devel >= 0.9.0
 BuildRequires: boost-devel
 BuildRequires: boost-test
 BuildRequires: libopflex-devel
@@ -82,6 +85,7 @@ Group: Development/Libraries
 Requires: %{name} = %{epoch}:%{version}-%{release}
 Requires: libopflex >= %{version}
 Requires: libmodelgbp >= %{version}
+Requires: prometheus-cpp-lib >= 0.9.0
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 
@@ -96,6 +100,7 @@ Requires: %{name} = %{epoch}:%{version}-%{release}
 Requires: pkgconfig
 Requires: libopflex-devel >= %{version}
 Requires: libnetfilter_conntrack-devel >= 1.0
+Requires: prometheus-cpp-devel >= 0.9.0
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 Provides: libopflex_agent-static = %{version}-%{release}
