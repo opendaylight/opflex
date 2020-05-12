@@ -32,8 +32,11 @@ Following are the configuration steps for droplog feature:
  2. Add droplog geneve tunnel ports to both bridges.  
 
     > sudo ovs-vsctl add-port br-int gen1 -- set interface gen1 type=geneve options:remote_ip=flow options:key=1  
-    >
+    > ovs-vsctl set interface gen1 ingress_policing_rate=1000
+    > ovs-vsctl set interface gen1 ingress_policing_burst=100
     > sudo ovs-vsctl add-port br-access gen2 -- set interface gen2 type=geneve options:remote_ip=flow options:key=2  
+    > ovs-vsctl set interface gen2 ingress_policing_rate=1000
+    > ovs-vsctl set interface gen2 ingress_policing_burst=100
 
  3. Create a file with the name (a.droplogcfg) in the directory above(/var/lib/opflex-agent-ovs/droplog)  
     with the following contents  
