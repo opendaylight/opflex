@@ -27,7 +27,7 @@
       "fillGradient": 0,
       "gridPos": {
         "h": 11,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 0
       },
@@ -116,10 +116,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 11,
-        "w": 12,
-        "x": 12,
-        "y": 0
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 11
       },
       "id": 3,
       "legend": {
@@ -197,130 +197,6 @@
         "align": false,
         "alignLevel": null
       }
-    },
-    {
-      "cards": {
-        "cardPadding": null,
-        "cardRound": null
-      },
-      "color": {
-        "cardColor": "#b4ff00",
-        "colorScale": "sqrt",
-        "colorScheme": "interpolateSpectral",
-        "exponent": 0.5,
-        "mode": "spectrum"
-      },
-      "dataFormat": "timeseries",
-      "gridPos": {
-        "h": 11,
-        "w": 12,
-        "x": 0,
-        "y": 11
-      },
-      "heatmap": {},
-      "hideZeroBuckets": false,
-      "highlightCards": true,
-      "id": 4,
-      "legend": {
-        "show": true
-      },
-      "options": {},
-      "reverseYBuckets": false,
-      "targets": [
-        {
-          "expr": "rate(opflex_contract_packets[5m])",
-          "intervalFactor": 1,
-          "legendFormat": "\"{{src_epg}} to {{dst_epg}}\"",
-          "refId": "A"
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "Packet Rate [5m]",
-      "tooltip": {
-        "show": true,
-        "showHistogram": true
-      },
-      "type": "heatmap",
-      "xAxis": {
-        "show": true
-      },
-      "xBucketNumber": null,
-      "xBucketSize": null,
-      "yAxis": {
-        "decimals": null,
-        "format": "pps",
-        "logBase": 1,
-        "max": null,
-        "min": null,
-        "show": true,
-        "splitFactor": null
-      },
-      "yBucketBound": "auto",
-      "yBucketNumber": null,
-      "yBucketSize": null
-    },
-    {
-      "cards": {
-        "cardPadding": null,
-        "cardRound": null
-      },
-      "color": {
-        "cardColor": "#b4ff00",
-        "colorScale": "sqrt",
-        "colorScheme": "interpolateSpectral",
-        "exponent": 0.5,
-        "mode": "spectrum"
-      },
-      "dataFormat": "timeseries",
-      "gridPos": {
-        "h": 11,
-        "w": 12,
-        "x": 12,
-        "y": 11
-      },
-      "heatmap": {},
-      "hideZeroBuckets": true,
-      "highlightCards": true,
-      "id": 5,
-      "legend": {
-        "show": true
-      },
-      "options": {},
-      "reverseYBuckets": false,
-      "targets": [
-        {
-          "expr": "rate(opflex_contract_bytes[5m])",
-          "intervalFactor": 1,
-          "legendFormat": "\"{{src_epg}} to {{dst_epg}}\"",
-          "refId": "A"
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "Byte Rate [5m]",
-      "tooltip": {
-        "show": true,
-        "showHistogram": true
-      },
-      "type": "heatmap",
-      "xAxis": {
-        "show": true
-      },
-      "xBucketNumber": null,
-      "xBucketSize": null,
-      "yAxis": {
-        "decimals": null,
-        "format": "Bps",
-        "logBase": 1,
-        "max": null,
-        "min": null,
-        "show": true,
-        "splitFactor": null
-      },
-      "yBucketBound": "auto",
-      "yBucketNumber": null,
-      "yBucketSize": null
     }
   ],
   "schemaVersion": 19,
@@ -352,5 +228,5 @@
   "timezone": "",
   "title": "Opflex Contract Statistics",
   "uid": "HphhOxwWk",
-  "version": 11
+  "version": 12
 }

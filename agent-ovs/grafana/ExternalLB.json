@@ -69,9 +69,9 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum by (job) (rate(opflex_svc_rx_packets{name=\"ngnix\",namespace=\"default\",scope=\"ext\"}[5m]))",
+          "expr": "sum by (name, namespace) (rate(opflex_svc_rx_packets{name=\"ngnix\",namespace=\"default\",scope=\"ext\"}[5m]))",
           "intervalFactor": 1,
-          "legendFormat": "svc=nginx, ns=default, scope=ext",
+          "legendFormat": "svc={{name}}, ns={{namespace}}",
           "refId": "A"
         }
       ],
@@ -167,9 +167,9 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum by (job) (rate(opflex_svc_tx_packets{name=\"ngnix\",namespace=\"default\",scope=\"ext\"}[5m]))",
+          "expr": "sum by (name, namespace) (rate(opflex_svc_tx_packets{name=\"ngnix\",namespace=\"default\",scope=\"ext\"}[5m]))",
           "intervalFactor": 1,
-          "legendFormat": "svc=nginx, ns=default, scope=ext",
+          "legendFormat": "svc={{name}}, ns={{namespace}}",
           "refId": "A"
         }
       ],
@@ -441,5 +441,5 @@
   "timezone": "",
   "title": "Opflex Service LB [external]",
   "uid": "O8_an456y",
-  "version": 8
+  "version": 11
 }
