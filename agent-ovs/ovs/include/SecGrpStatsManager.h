@@ -66,7 +66,7 @@ public:
      * @param key the key of the object to remove
      * @param index the index of the counter to remove
      */
-    void clearCounterObject(const std::string& key,uint8_t index);
+    virtual void clearCounterObject(const std::string& key,uint8_t index);
 
     /** Interface: ObjectListener */
     void objectUpdated(opflex::modb::class_id_t class_id,

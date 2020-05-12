@@ -77,7 +77,7 @@ public:
     /*
      * Derived class API to delete indexth counter object
      */
-    void clearCounterObject(const std::string& key,uint8_t index) override;
+    virtual void clearCounterObject(const std::string& key,uint8_t index) override;
 
     /** Interface: ObjectListener */
     void objectUpdated(opflex::modb::class_id_t class_id,
