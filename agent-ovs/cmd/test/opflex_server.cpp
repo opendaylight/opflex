@@ -60,35 +60,39 @@ int main(int argc, char** argv) {
     signal(SIGPIPE, SIG_IGN);
     // Parse command line options
     po::options_description desc("Allowed options");
-    desc.add_options()
-        ("help,h", "Print this help message")
-        ("log", po::value<string>()->default_value(""),
-         "Log to the specified file (default standard out)")
-        ("level", po::value<string>()->default_value("info"),
-         "Use the specified log level (default info)")
-        ("sample", po::value<string>()->default_value(""),
-         "Output a sample policy to the given file then exit")
-        ("daemon", "Run the opflex server as a daemon")
-        ("policy,p", po::value<string>()->default_value(""),
-         "Read the specified policy file to seed the MODB")
-        ("ssl_castore", po::value<string>()->default_value("/etc/ssl/certs/"),
-         "Use the specified path or certificate file as the SSL CA store")
-        ("ssl_key", po::value<string>()->default_value(""),
-         "Enable SSL and use the private key specified")
-        ("ssl_pass", po::value<string>()->default_value(""),
-         "Use the specified password for the private key")
-        ("peer", po::value<std::vector<string> >(),
-         "A peer specified as hostname:port to return in identity response")
-        ("transport_mode_proxies", po::value<std::vector<string> >(),
-         "3 transport_mode_proxy IPv4 addresses specified to return "
-         "in identity response")
-        ("grpc_address", po::value<string>()->default_value("localhost:19999"),
-         "GRPC server address for policy updates")
-        ("grpc_conf", po::value<string>()->default_value(""),
-         "GRPC config file, should be in same directory as policy file")
-        ("prr_interval_secs", po::value<int>()->default_value(60),
-         "How often to wakeup prr thread to check for prr timeouts")
-        ;
+    try {
+        desc.add_options()
+            ("help,h", "Print this help message")
+            ("log", po::value<string>()->default_value(""),
+             "Log to the specified file (default standard out)")
+            ("level", po::value<string>()->default_value("info"),
+             "Use the specified log level (default info)")
+            ("sample", po::value<string>()->default_value(""),
+             "Output a sample policy to the given file then exit")
+            ("daemon", "Run the opflex server as a daemon")
+            ("policy,p", po::value<string>()->default_value(""),
+             "Read the specified policy file to seed the MODB")
+            ("ssl_castore", po::value<string>()->default_value("/etc/ssl/certs/"),
+             "Use the specified path or certificate file as the SSL CA store")
+            ("ssl_key", po::value<string>()->default_value(""),
+             "Enable SSL and use the private key specified")
+            ("ssl_pass", po::value<string>()->default_value(""),
+             "Use the specified password for the private key")
+            ("peer", po::value<std::vector<string> >(),
+             "A peer specified as hostname:port to return in identity response")
+            ("transport_mode_proxies", po::value<std::vector<string> >(),
+             "3 transport_mode_proxy IPv4 addresses specified to return "
+             "in identity response")
+            ("grpc_address", po::value<string>()->default_value("localhost:19999"),
+             "GRPC server address for policy updates")
+            ("grpc_conf", po::value<string>()->default_value(""),
+             "GRPC config file, should be in same directory as policy file")
+            ("prr_interval_secs", po::value<int>()->default_value(60),
+             "How often to wakeup prr thread to check for prr timeouts");
+    } catch (const boost::bad_lexical_cast& e) {
+        std::cerr << e.what() << std::endl;
+        return 1;
+    }
 
     bool daemon = false;
     std::string log_file;
@@ -166,10 +170,10 @@ int main(int argc, char** argv) {
         prr_interval_secs = vm["prr_interval_secs"].as<int>();
     } catch (const po::unknown_option& e) {
         std::cerr << e.what() << std::endl;
-        return 1;
+        return 2;
     } catch (const std::bad_cast& e) {
         std::cerr << e.what() << std::endl;
-        return 2;
+        return 3;
     }
 
     if (daemon)
@@ -271,9 +275,9 @@ cleanup:
         server.stop();
     } catch (const std::exception& e) {
         LOG(ERROR) << "Fatal error: " << e.what();
-        return 2;
+        return 4;
     } catch (...) {
         LOG(ERROR) << "Unknown fatal error";
-        return 3;
+        return 5;
     }
 }

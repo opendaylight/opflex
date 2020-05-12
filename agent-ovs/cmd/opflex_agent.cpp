@@ -223,21 +223,25 @@ int main(int argc, char** argv) {
 
     // Parse command line options
     po::options_description desc("Allowed options");
-    desc.add_options()
-        ("help,h", "Print this help message")
-        ("version,v", "print version information and git hash")
-        ("config,c",
-         po::value<std::vector<string> >(),
-         "Read configuration from the specified files or directories")
-        ("watch,w", "Watch configuration directories for changes")
-        ("log", po::value<string>()->default_value(""),
-         "Log to the specified file (default standard out)")
-        ("level", po::value<string>()->default_value("info"),
-         "Use the specified log level (default info). "
-         "Overridden by log level in configuration file")
-        ("syslog", "Log to syslog instead of file or standard out")
-        ("daemon", "Run the agent as a daemon")
-        ;
+    try {
+        desc.add_options()
+            ("help,h", "Print this help message")
+            ("version,v", "print version information and git hash")
+            ("config,c",
+             po::value<std::vector<string> >(),
+             "Read configuration from the specified files or directories")
+            ("watch,w", "Watch configuration directories for changes")
+            ("log", po::value<string>()->default_value(""),
+             "Log to the specified file (default standard out)")
+            ("level", po::value<string>()->default_value("info"),
+             "Use the specified log level (default info). "
+             "Overridden by log level in configuration file")
+            ("syslog", "Log to syslog instead of file or standard out")
+            ("daemon", "Run the agent as a daemon");
+    } catch (const boost::bad_lexical_cast& e) {
+        std::cerr << e.what() << std::endl;
+        return 1;
+    }
 
     bool daemon = false;
     bool watch = false;
@@ -274,10 +278,10 @@ int main(int argc, char** argv) {
         }
     } catch (const po::unknown_option& e) {
         std::cerr << e.what() << std::endl;
-        return 1;
+        return 2;
     } catch (const std::bad_cast& e) {
         std::cerr << e.what() << std::endl;
-        return 2;
+        return 3;
     }
 
     if (daemon)
@@ -288,7 +292,12 @@ int main(int argc, char** argv) {
     // Initialize agent and configuration
     std::vector<string> configFiles;
     if (vm.count("config"))
-        configFiles = vm["config"].as<std::vector<string> >();
+        try {
+            configFiles = vm["config"].as<std::vector<string> >();
+        } catch (const boost::bad_any_cast& e) {
+            std::cerr << e.what() << std::endl;
+            return 4;
+        }
     else
         configFiles.push_back(DEFAULT_CONF);
 

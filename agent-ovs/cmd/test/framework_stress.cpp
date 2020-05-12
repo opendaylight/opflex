@@ -67,16 +67,19 @@ int main(int argc, char** argv) {
     signal(SIGPIPE, SIG_IGN);
     // Parse command line options
     po::options_description desc("Allowed options");
-    desc.add_options()
-        ("help,h", "Print this help message")
-        ("log", po::value<string>()->default_value(""),
-         "Log to the specified file (default standard out)")
-        ("level", po::value<string>()->default_value("info"),
-         "Use the specified log level (default info)")
-        ("policy,p", po::value<string>()->default_value(""),
-         "Read the specified policy file to seed the MODB")
-        ;
-
+    try {
+        desc.add_options()
+            ("help,h", "Print this help message")
+            ("log", po::value<string>()->default_value(""),
+             "Log to the specified file (default standard out)")
+            ("level", po::value<string>()->default_value("info"),
+             "Use the specified log level (default info)")
+            ("policy,p", po::value<string>()->default_value(""),
+             "Read the specified policy file to seed the MODB");
+    } catch (const boost::bad_lexical_cast& e) {
+        std::cerr << e.what() << std::endl;
+        return 1;
+    }
     std::string log_file;
     std::string level_str;
     std::string policy_file;
@@ -98,10 +101,10 @@ int main(int argc, char** argv) {
 
     } catch (const po::unknown_option& e) {
         std::cerr << e.what() << std::endl;
-        return 1;
+        return 2;
     } catch (const std::bad_cast& e) {
         std::cerr << e.what() << std::endl;
-        return 2;
+        return 3;
     }
 
     initLogging(level_str, false /*syslog*/, log_file, "framework-stress");
@@ -202,9 +205,9 @@ int main(int argc, char** argv) {
         server.stop();
     } catch (const std::exception& e) {
         LOG(ERROR) << "Fatal error: " << e.what();
-        return 2;
+        return 4;
     } catch (...) {
         LOG(ERROR) << "Unknown fatal error";
-        return 3;
+        return 5;
     }
 }

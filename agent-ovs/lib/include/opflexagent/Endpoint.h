@@ -39,7 +39,11 @@ public:
      */
     Endpoint() : promiscuousMode(false), discoveryProxyMode(false), natMode(false),
                  external(false), aapModeAA(false), disableAdv(false),
-                 accessAllowUntagged(false), extEncap(0) {}
+                 accessAllowUntagged(false), extEncap(0) {
+#ifdef HAVE_PROMETHEUS_SUPPORT
+        attr_hash = 0;
+#endif
+    }
 
     /**
      * Construct a new Endpoint with the given uuid.  Note that

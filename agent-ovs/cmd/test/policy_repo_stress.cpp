@@ -347,7 +347,7 @@ int main(int argc, char** argv) {
 
     if (agents.size() == 0) {
         LOG(opflexagent::ERROR) << "No agents created";
-        return 2;
+        return 3;
     }
 
     opflexagent::initLogging(level_str, false, "");
@@ -403,7 +403,12 @@ int main(int argc, char** argv) {
 
     stats.stop();
     for (TestAgent& a : agents) {
-        a.agent->stop();
+        try {
+            a.agent->stop();
+        } catch (const std::runtime_error& e) {
+            std::cerr << e.what() << std::endl;
+            return 4;
+        }
     }
 
     return 0;
