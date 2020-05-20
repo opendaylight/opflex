@@ -17,7 +17,8 @@ namespace opflexagent {
 
     enum FaultCodes {
         SAMPLE_FAULT = 1,
-        ENCAP_MISMATCH = 2
+        ENCAP_MISMATCH = 2,
+        TEP_ENCAP_MISMATCH = 3
     };
 }
 
