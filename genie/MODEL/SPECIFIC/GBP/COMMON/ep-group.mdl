@@ -78,6 +78,24 @@ module[gbp]
                cardinality=many;]
         }
 
+        dependency[ingressDppPol;
+                   cardinality=single;
+                   ]
+        {
+            to[class=qos/DppPol;
+                cardinality=many;
+                ]
+        }
+
+        dependency[egressDppPol;
+                   cardinality=single;
+                   ]
+        {
+            to[class=qos/DppPol;
+                cardinality=many;
+                ]
+        }
+ 
         contained
         {
             parent[class=policy/Space]

@@ -1,0 +1,34 @@
+module[qos]
+{
+    type[BurstUnit; super=scalar/Enum8]
+    {
+        const[name=unspecified; value=0]
+        const[name=kilo; value=1]
+        const[name=mega; value=2]
+        const[name=giga; value=3]
+    }
+
+    class[DppPol;
+          super=policy/NamedDefinition;
+          concrete]
+    {
+        member[burst; type=scalar/UInt64]
+        member[burstUnit; type=qos/BurstUnit]
+        member[rate; type=scalar/UInt64]
+        member[rateUnit; type=qos/BurstUnit]
+
+        contained
+        {
+            parent[class=policy/Space]
+        }
+
+        named
+        {
+            parent[class=*;]
+            {
+                component[prefix=dpppol;
+                          member=name]
+            }
+        }
+    }
+}

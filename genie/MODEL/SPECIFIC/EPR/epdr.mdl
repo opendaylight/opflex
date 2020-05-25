@@ -31,6 +31,25 @@ module[epdr]
                 cardinality=many;
                 ]
         }
+
+        dependency[ingressDppPol;
+                   cardinality=single;
+                   ]
+        {
+            to[class=qos/DppPol;
+                cardinality=many;
+                ]
+        }
+
+        dependency[egressDppPol;
+                   cardinality=single;
+                   ]
+        {
+            to[class=qos/DppPol;
+                cardinality=many;
+                ]
+        }
+
         member[dom; type=reference/URI]
         member[extEncapType; type=gbpe/EncapType]
         member[extEncapId; type=gbpe/EncapId]
