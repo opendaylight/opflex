@@ -238,32 +238,12 @@ SwitchConnection::Monitor() {
             cleanupOFConn();
         }
         bool oldConnLost = connLost;
-        uint32_t counterEnoent = 0;
         while (connLost && !isDisconnecting) {
             WatchPollEvent();
             poll_timer_wait(LOST_CONN_BACKOFF_MSEC);
             poll_block(); // block till timer expires or disconnect is requested
             if (!isDisconnecting) {
-                int err = doConnectOF();
-                /**
-                 *Treating ENOENT error specifically as this error can
-                 *persist without resolution
-                 */
-                if (err == ENOENT) {
-                    if(++counterEnoent == maxSocketFileMissingFailure) {
-                        LOG(ERROR) << "ENOENT connection failure limit reached"
-                            << " for " << getSwitchName() << ". Exiting..";
-                        sync();
-                        exit(1);
-                    } else if(counterEnoent ==
-                              (maxSocketFileMissingFailure-1)) {
-                        LOG(ERROR) << "ENOENT connection failure count: "
-                           << (maxSocketFileMissingFailure - 1);
-                    }
-                } else {
-                    counterEnoent = 0;
-                }
-                connLost = (err != 0);
+                connLost = (doConnectOF() != 0);
             }
         }
         if (isDisconnecting) {
