@@ -240,6 +240,9 @@ void EndpointManager::updateEndpoint(const Endpoint& endpoint) {
     unordered_set<uri_set_t> notifySecGroupSets;
     EndpointListener::uri_set_t notifyExtDomSets;
 
+    //es.endpoint->setIngressDppPol(endpoint.getIngressDppPol());
+    //es.endpoint->setEngressDppPol(endpoint.getEgressDppPol());
+
     // Refresh IP to EP map for this endpoint, to track delete/update
     // of this IP list
     for (const string& ip : es.endpoint->getIPs()) {
@@ -915,6 +918,41 @@ bool EndpointManager::updateEndpointLocal(const std::string& uuid,
             for (const URI& sg : secGrps) {
                 l2e->addEpdrEndPointToSecGroupRSrc(sg.toString());
             }
+            
+	    //Adding relation to Endpoint for ingress and egress Dpp Policy
+	    const optional<opflex::modb::URI>& ingressPol = 
+		    es.endpoint->getIngressDppPol();
+	    if (ingressPol)
+	    {
+	        l2e->addEpdrEndPointToIngressDppPolRSrc()
+		   ->setTargetDppPol(ingressPol.get());
+	    }
+	    else
+	    {
+                optional<shared_ptr<EndPointToIngressDppPolRSrc>> ingressRel =
+			l2e->resolveEpdrEndPointToIngressDppPolRSrc();
+		if (ingressRel)
+		{
+		    ingressRel.get()->remove();
+		}
+	    }
+
+            const optional<opflex::modb::URI>& egressPol =
+                    es.endpoint->getEgressDppPol();
+            if (egressPol)
+            {
+                l2e->addEpdrEndPointToEgressDppPolRSrc()
+                   ->setTargetDppPol(egressPol.get());
+            }
+	    else
+	    {
+	        optional<shared_ptr<EndPointToEgressDppPolRSrc>> egressRel =
+			l2e->resolveEpdrEndPointToEgressDppPolRSrc();
+		if (egressRel)
+		{
+	            egressRel.get()->remove();
+		}
+	    }
 
             // Update LocalL2 objects in the MODB corresponding to
             // floating IP endpoints
