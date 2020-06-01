@@ -84,6 +84,9 @@ void FSEndpointSource::updated(const fs::path& filePath) {
     static const std::string EP_PROVIDER_VLAN_FLAG("provider-vlan");
     static const std::string EP_EXT_ENCAP_TYPE("ext-encap-type");
     static const std::string EP_EXT_ENCAP_ID("ext-encap-id");
+    static const std::string EP_INGRESS_POL("ingress-pol");
+    static const std::string EP_EGRESS_POL("egress-pol");
+    static const std::string QOS_POL_NAME("name");
 
     static const std::string DHCP4("dhcp4");
     static const std::string DHCP6("dhcp6");
@@ -204,6 +207,54 @@ void FSEndpointSource::updated(const fs::path& filePath) {
                                            .addElement("GbpSecGroup")
                                            .addElement(secGrpName.get())
                                            .build());
+                }
+            }
+        }
+
+        optional<ptree&> ingressPol =
+            properties.get_child_optional(EP_INGRESS_POL);
+        if(ingressPol)
+        {
+            for (const ptree::value_type &v : ingressPol.get())
+            {
+		optional<string> ingressPolS =
+                    v.second.get_optional<string>(SEC_GROUP_POLICY_SPACE);
+                optional<string> ingressPolName =
+                    v.second.get_optional<string>(SEC_GROUP_NAME);
+                if (ingressPolS && ingressPolName)
+                {
+                    newep.setIngressDppPol(opflex::modb::URIBuilder()
+				         .addElement("PolicyUniverse")
+					 .addElement("PolicySpace")
+                                         .addElement(ingressPolS.get())
+					 .addElement("EpdrDppPol")
+					 .addElement(ingressPolName.get())
+					 .build());
+
+                }
+            }
+        }
+
+	optional<ptree&> egressPol =
+            properties.get_child_optional(EP_EGRESS_POL);
+        if(egressPol)
+        {
+            for (const ptree::value_type &v : egressPol.get())
+            {
+		optional<string> egressPolS =
+                    v.second.get_optional<string>(SEC_GROUP_POLICY_SPACE);
+                optional<string> egressPolName =
+                    v.second.get_optional<string>(SEC_GROUP_NAME);
+                if (egressPolS && egressPolName)
+                {
+                    newep.setEngressDppPol(opflex::modb::URIBuilder()
+                                         .addElement("PolicyUniverse")
+					 .addElement("PolicySpace")
+                                         .addElement(egressPolS.get())
+                                         .addElement("EpdrDppPol")
+                                         .addElement(egressPolName.get())
+                                         .build());
+
                 }
             }
         }
