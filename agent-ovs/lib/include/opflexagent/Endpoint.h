@@ -119,6 +119,44 @@ public:
     }
 
     /**
+     * Get the set of ingressDpp policy labels for this endpoint
+     *
+     * @return the list of ingressDpp policy labels
+     */
+    const boost::optional<opflex::modb::URI>& getIngressDppPol() const {
+        return ingressDppPol;
+    }
+
+    /**
+     * Set the security ingressDpp policy for this endpoint.  This will
+     * overwrite any existing labels
+     *
+     * @param ingressDppPol the set of security labels
+     */
+    void setIngressDppPol(const opflex::modb::URI& ingressDppPol) {
+        this->ingressDppPol = ingressDppPol;
+    }
+
+    /**
+     * Get the set of egressDpp policy labels for this endpoint
+     *
+     * @return the list of egressDpp policy labels
+     */
+    const boost::optional<opflex::modb::URI>& getEgressDppPol() const {
+        return egressDppPol;
+    }
+
+    /**
+     * Set the security egressDpp policy for this endpoint.  This will
+     * overwrite any existing labels
+     *
+     * @param egressDppPol the set of security labels
+     */
+    void setEngressDppPol(const opflex::modb::URI& egressDppPol) {
+        this->egressDppPol = egressDppPol;
+    }
+
+    /**
      * Get the set of security group labels for this endpoint
      *
      * @return the list of security group labels
@@ -1313,6 +1351,8 @@ private:
     virt_ip_set virtualIps;
     boost::optional<std::string> egMappingAlias;
     boost::optional<opflex::modb::URI> egURI;
+    boost::optional<opflex::modb::URI> ingressDppPol;
+    boost::optional<opflex::modb::URI> egressDppPol;
     /*Properties in this block are relevant for external
      endpoints only*/
     boost::optional<opflex::modb::URI> extInterfaceURI;
