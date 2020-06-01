@@ -450,6 +450,8 @@ private:
     typedef std::unordered_map<std::string, str_uset_t> string_ep_map_t;
     typedef std::unordered_map<EndpointListener::uri_set_t,
                                str_uset_t> secgrp_ep_map_t;
+    //typedef std::unordered_map<opflex::modb::URI, str_uset_t> ingress_uuid_map_t;
+    //typedef std::unordered_map<opflex::modb::URI, str_uset_t> egress_uuid_map_t;
     typedef std::unordered_map<std::string,
                             std::shared_ptr<const Endpoint>> ipmac_map_t;
     typedef std::unordered_map<opflex::modb::URI, ipmac_map_t> adj_ep_map_t;
