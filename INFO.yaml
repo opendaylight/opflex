@@ -1,0 +1,53 @@
+---
+project: 'opflex'
+project_creation_date: '2014-05-02'
+project_category: ''
+lifecycle_state: 'Incubation'
+project_lead: &odl_opflex_ptl
+    name: 'Tom Flynn'
+    email: 'tom.flynn@gmail.com'
+    company: ''
+    id: 'tomflynn'
+    timezone: 'Unknown/Unknown'
+primary_contact: *odl_opflex_ptl
+issue_tracking:
+    type: 'jira'
+    url: 'https://jira.opendaylight.org/projects/'
+    key: 'opflex'
+mailing_list:
+    type: 'groups.io'
+    url: 'app-dev@lists.opendaylight.org'
+    tag: '[]'
+realtime_discussion:
+    type: 'irc'
+    server: 'freenode.net'
+    channel: '#opendaylight'
+meetings:
+    - type: 'gotomeeting+irc'
+      agenda: 'https://wiki.opendaylight.org'
+      url: ''
+      server: 'freenode.net'
+      channel: '#opendaylight'
+      repeats: ''
+      time: ''
+repositories:
+    - opflex
+committers:
+    - <<: *odl_opflex_ptl
+    - name: 'Rob Adams'
+      email: 'readams@readams.net'
+      company: 'readams'
+      id: 'readams'
+      timezone: 'Unknown/Unknown'
+    - name: 'Amit Bose'
+      email: 'amitbose@gmail.com'
+      company: ''
+      id: 'amitbose'
+      timezone: 'Unknown/Unknown'
+tsc:
+    # yamllint disable rule:line-length
+    approval: 'NA'
+    changes:
+        - type: ''
+          name: ''
+          link: ''
