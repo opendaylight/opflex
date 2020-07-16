@@ -15,6 +15,7 @@ module[gbp]
         const[name=deny; value=2]
     }
 
+
     class[EpGroup;
           super=gbp/BehavioralGroup;
           concrete;
@@ -38,6 +39,23 @@ module[gbp]
                 ]
         }
         dependency[consContract;
+                   cardinality=many;
+                   ]
+        {
+            to[class=gbp/Contract;
+                cardinality=many;
+                ]
+        }
+
+        dependency[provAsAnyContract;
+                   cardinality=many;
+                   ]
+        {
+            to[class=gbp/Contract;
+                cardinality=many;
+                ]
+        }
+        dependency[consAsAnyContract;
                    cardinality=many;
                    ]
         {
